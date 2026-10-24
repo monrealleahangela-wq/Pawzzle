@@ -51,7 +51,6 @@ const sanitizeUser = (user) => {
   const safe = user.toObject ? user.toObject() : { ...user };
   delete safe.password;
   delete safe.twoFactorSecret;
-  delete safe.governmentId;
   delete safe.__v;
   return safe;
 };
@@ -64,7 +63,6 @@ const buildPublicRegistrationData = (data) => ({
   lastName: data.lastName,
   phone: data.phone,
   address: data.address,
-  governmentIdType: data.governmentIdType,
   role: 'customer'
 });
 

@@ -124,24 +124,6 @@ const attendanceEvidenceUpload = multer({
   }
 });
 
-// Registration IDs stay in memory until the OTP is verified, then the
-// controller encrypts them before persistence. They are never publicly hosted.
-const governmentIdUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-  fileFilter: (req, file, cb) => {
-    const extension = path.extname(file.originalname || '').toLowerCase();
-    const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-    if (!allowedExtensions.has(extension) || !allowedMimeTypes.has(String(file.mimetype || '').toLowerCase())) {
-      const error = new Error('Government ID must be a JPG, PNG, or WEBP image.');
-      error.statusCode = 400;
-      return cb(error);
-    }
-    return cb(null, true);
-  }
-});
-
 // Cloudinary storage for documents (PDF, Doc)
 const documentStorage = new CloudinaryStorage({
   cloudinary,
@@ -174,7 +156,6 @@ const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
-const uploadGovernmentId = governmentIdUpload.single('governmentIdImage');
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -199,7 +180,6 @@ module.exports = {
   uploadMultiple,
   uploadProcurementEvidence,
   uploadAttendanceEvidence,
-  uploadGovernmentId,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

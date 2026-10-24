@@ -34,10 +34,31 @@ if (googleOAuthConfigured) passport.use(new GoogleStrategy({
             return done(null, user);
         }
 
-        // A new account cannot be created from an OAuth profile alone because
-        // registration requires one protected government ID. Existing linked
-        // accounts can continue to use Google sign-in normally.
-        return done(null, false, { code: 'GOVERNMENT_ID_REQUIRED' });
+        // Create new user from Google profile
+        const firstName = profile.name?.givenName || profile.displayName?.split(' ')[0] || 'User';
+        const lastName = profile.name?.familyName || profile.displayName?.split(' ').slice(1).join(' ') || '';
+        const baseUsername = (firstName + lastName).toLowerCase().replace(/\s+/g, '').slice(0, 30);
+        const username = baseUsername + '_' + Date.now().toString().slice(-4);
+
+        user = new User({
+            googleId: profile.id,
+            authProvider: 'google',
+            email,
+            firstName,
+            lastName,
+            username,
+            avatar: profile.photos?.[0]?.value || '',
+            role: 'customer',
+            isActive: true,
+            address: {
+                street: 'Not provided',
+                city: 'Not provided',
+                province: 'Not provided',
+                barangay: 'Not provided'
+            }
+        });
+        await user.save();
+        return done(null, user);
     } catch (err) {
         return done(err, null);
     }

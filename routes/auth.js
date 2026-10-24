@@ -23,8 +23,6 @@ const {
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
-const { uploadGovernmentId, handleUploadError } = require('../middleware/upload');
-const { GOVERNMENT_ID_TYPES } = require('../config/governmentIds');
 
 // Validation rules
 const registerValidation = [
@@ -48,7 +46,6 @@ const registerValidation = [
   body('lastName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Last name is required'),
   body('phone').trim().optional({ checkFalsy: true }).isMobilePhone().withMessage('Please provide a valid phone number'),
   body('address.barangay').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Barangay is required'),
-  body('governmentIdType').isIn(GOVERNMENT_ID_TYPES).withMessage('Select a valid government ID type'),
   body('role').optional().equals('customer').withMessage('Public registration only creates customer accounts')
 ];
 
@@ -117,7 +114,7 @@ const otpVerificationValidation = [
 
 // ─── Registration with OTP ────────────────────────────────────────────────────
 router.post('/register/send-otp', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, sendRegisterOTP);
-router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, uploadGovernmentId, handleUploadError, otpVerificationValidation, verifyRegisterOTP);
+router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, otpVerificationValidation, verifyRegisterOTP);
 router.post('/register/resend-otp', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, resendRegisterOTP);
 
 // ─── Legacy register (for admin/super_admin creation) ─────────────────────────
@@ -199,18 +196,10 @@ if (googleOAuthConfigured) {
     passport.authenticate('google', { scope: ['profile', 'email'], session: false })
   );
 
-  router.get('/google/callback', (req, res, next) => {
-    passport.authenticate('google', { session: false }, (error, user, info) => {
-      if (error) return res.redirect('/login?error=google_failed');
-      if (!user) {
-        return res.redirect(info?.code === 'GOVERNMENT_ID_REQUIRED'
-          ? '/register?notice=government-id-required'
-          : '/login?error=google_failed');
-      }
-      req.user = user;
-      return next();
-    })(req, res, next);
-  }, issueTokenAndRedirect);
+  router.get('/google/callback',
+    passport.authenticate('google', { session: false, failureRedirect: '/login?error=google_failed' }),
+    issueTokenAndRedirect
+  );
 } else {
   router.get('/google', googleOAuthUnavailable);
   router.get('/google/callback', googleOAuthUnavailable);

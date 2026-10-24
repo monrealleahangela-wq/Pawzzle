@@ -17,7 +17,7 @@ A multi-store pet commerce, veterinary-service, workforce, procurement, finance,
 - **Order Processing**: Complete order lifecycle from cart to delivery
 - **Service Booking**: Proposal, specialist selection, PayMongo payment, care timeline, and reviews
 - **Store Operations**: Staff, role policies, inventory, procurement, finance, logistics, reports, and DSS
-- **User Authentication**: Secure login/registration with JWT, email OTP, and one protected government-ID image for new customer accounts
+- **User Authentication**: Secure login/registration with JWT
 - **Responsive Design**: Mobile-friendly SPA with modern UI
 
 ### Technical Features
@@ -73,11 +73,8 @@ npm install
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/pawzzle
 JWT_SECRET=your_jwt_secret_key_here_change_in_production
-GOVERNMENT_ID_ENCRYPTION_KEY=64_hex_characters_from_a_managed_32_byte_key
 NODE_ENV=development
 ```
-
-`GOVERNMENT_ID_ENCRYPTION_KEY` is required before new registrations can be completed. Keep it in the deployment secret manager, never in client configuration or source control. The backend accepts either 64 hexadecimal characters or base64 encoding of exactly 32 bytes and uses AES-256-GCM to protect ID images before database storage.
 
 5. Start the backend server:
 ```bash

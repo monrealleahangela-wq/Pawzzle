@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../../services/authService';
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles, Contact, Upload } from 'lucide-react';
-import { GOVERNMENT_ID_ACCEPT, GOVERNMENT_ID_MAX_BYTES, GOVERNMENT_ID_TYPES } from '../../constants/governmentIdTypes';
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,7 +10,6 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    governmentIdType: '',
     // Hidden/Defaults for now
     firstName: '',
     lastName: '',
@@ -28,14 +26,16 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [governmentIdImage, setGovernmentIdImage] = useState(null);
 
   // OTP state
   const [step, setStep] = useState(1); // 1: form, 2: OTP verification
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [deliveryMethod, setDeliveryMethod] = useState('email');
   const otpRefs = useRef([]);
+
+  const navigate = useNavigate();
 
   // Resend cooldown timer
   useEffect(() => {
@@ -45,32 +45,9 @@ const Register = () => {
     }
   }, [resendCooldown]);
 
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('notice') === 'government-id-required') {
-      toast.info('New accounts must be created here with one valid government ID. You can link Google after registration.');
-    }
-  }, []);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleGovernmentIdImage = (event) => {
-    const file = event.target.files?.[0] || null;
-    if (file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      event.target.value = '';
-      setGovernmentIdImage(null);
-      toast.error('Government ID must be a JPG, PNG, or WEBP image');
-      return;
-    }
-    if (file && file.size > GOVERNMENT_ID_MAX_BYTES) {
-      event.target.value = '';
-      setGovernmentIdImage(null);
-      toast.error('Government ID image must be 5MB or smaller');
-      return;
-    }
-    setGovernmentIdImage(file);
   };
 
   // ─── STEP 1: Submit simplified registration form ────────────────────────────
@@ -79,11 +56,6 @@ const Register = () => {
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
-      return;
-    }
-
-    if (!formData.governmentIdType || !governmentIdImage) {
-      toast.error('Select an ID type and upload one valid government ID image');
       return;
     }
 
@@ -145,11 +117,7 @@ const Register = () => {
     }
     setOtpLoading(true);
     try {
-      const verificationData = new FormData();
-      verificationData.append('email', formData.email);
-      verificationData.append('otp', otp);
-      verificationData.append('governmentIdImage', governmentIdImage);
-      const result = await authService.verifyRegisterOTP(verificationData);
+      const result = await authService.verifyRegisterOTP({ email: formData.email, otp });
       if (result.success && result.token && result.user) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
@@ -238,7 +206,7 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center px-6 py-20 overflow-x-hidden">
+    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
       {/* Decorative Blobs */}
       <div className="fixed inset-0 z-[-1] pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
@@ -319,29 +287,6 @@ const Register = () => {
                     </button>
                   </div>
                 </div>
-              </div>
-
-              <div className="rounded-3xl border border-primary-100 bg-primary-50/60 p-4 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 rounded-xl bg-white p-2 text-primary-600 shadow-sm"><Contact className="h-5 w-5" /></div>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-widest text-slate-800">Government ID</p>
-                    <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">Choose one valid government-issued ID and upload a clear photo. It is encrypted and kept private.</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="register-government-id-type" className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-500">ID Type</label>
-                  <select id="register-government-id-type" name="governmentIdType" required value={formData.governmentIdType} onChange={handleChange} className="input w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10">
-                    <option value="">Select government ID</option>
-                    {GOVERNMENT_ID_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                  </select>
-                </div>
-                <label htmlFor="register-government-id-image" className="block cursor-pointer rounded-2xl border-2 border-dashed border-primary-200 bg-white p-4 text-center transition-colors hover:border-primary-500">
-                  <Upload className="mx-auto h-5 w-5 text-primary-600" />
-                  <span className="mt-2 block break-all text-[10px] font-black uppercase tracking-widest text-slate-700">{governmentIdImage ? governmentIdImage.name : 'Upload ID photo'}</span>
-                  <span className="mt-1 block text-[9px] font-medium text-slate-400">JPG, PNG, or WEBP &middot; Max 5MB</span>
-                  <input id="register-government-id-image" type="file" required accept={GOVERNMENT_ID_ACCEPT} onChange={handleGovernmentIdImage} className="sr-only" />
-                </label>
               </div>
             </div>
 

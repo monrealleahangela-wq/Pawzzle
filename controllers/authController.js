@@ -15,8 +15,6 @@ const {
 } = require('../utils/authSecurity');
 const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
-const { isGovernmentIdType } = require('../config/governmentIds');
-const { encryptGovernmentId, matchesImageSignature } = require('../utils/governmentIdSecurity');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -54,7 +52,7 @@ const sendRegisterOTP = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    let { username, email, password, firstName, lastName, phone, address, governmentIdType } = req.body;
+    let { username, email, password, firstName, lastName, phone, address } = req.body;
     email = String(email).trim().toLowerCase();
 
     if (!username) {
@@ -77,8 +75,7 @@ const sendRegisterOTP = async (req, res) => {
       firstName,
       lastName,
       phone,
-      address,
-      governmentIdType
+      address
     });
 
     const otp = otpService.generateOTP();
@@ -107,13 +104,6 @@ const verifyRegisterOTP = async (req, res) => {
     const email = String(req.body.email || '').trim().toLowerCase();
     const { otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and verification code are required' });
-    if (!req.file) return res.status(400).json({ message: 'Upload one valid government ID image to complete registration.' });
-    if (!matchesImageSignature(req.file.buffer, req.file.mimetype)) {
-      return res.status(400).json({ message: 'Government ID image content does not match its file type.' });
-    }
-
-    // Validate encryption configuration before consuming the one-time code.
-    const encryptedImage = encryptGovernmentId(req.file.buffer);
 
     const verification = await otpService.verifyOTP(email, 'registration', otp);
     if (!verification.valid) {
@@ -122,12 +112,8 @@ const verifyRegisterOTP = async (req, res) => {
       });
     }
 
-    const pendingUserData = verification.userData;
-    if (!pendingUserData) return res.status(400).json({ message: 'Registration data is unavailable. Please start over.' });
-    const { governmentIdType, ...userData } = pendingUserData;
-    if (!isGovernmentIdType(governmentIdType)) {
-      return res.status(400).json({ message: 'Government ID selection is unavailable. Please start over.' });
-    }
+    const userData = verification.userData;
+    if (!userData) return res.status(400).json({ message: 'Registration data is unavailable. Please start over.' });
     userData.role = 'customer';
 
     const conflict = await User.findOne({
@@ -136,18 +122,7 @@ const verifyRegisterOTP = async (req, res) => {
     });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
-    const user = new User({
-      ...userData,
-      governmentId: {
-        documentType: governmentIdType,
-        encryptedImage,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        size: req.file.size,
-        submittedAt: new Date(),
-        status: 'submitted'
-      }
-    });
+    const user = new User(userData);
     await user.save();
 
     try {
@@ -169,10 +144,7 @@ const verifyRegisterOTP = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration verification failed');
-    return res.status(error.statusCode || 500).json({
-      message: error.statusCode === 503 ? error.message : 'Server error during verification',
-      ...(error.code ? { code: error.code } : {})
-    });
+    return res.status(500).json({ message: 'Server error during verification' });
   }
 };
 
