@@ -1,6 +1,20 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
+const { GOVERNMENT_ID_TYPES } = require('../config/governmentIds');
+
+const governmentIdSchema = new mongoose.Schema({
+  documentType: { type: String, enum: GOVERNMENT_ID_TYPES, required: true },
+  encryptedImage: { type: String, required: true },
+  originalName: { type: String, trim: true, maxlength: 255, default: '' },
+  mimeType: { type: String, enum: ['image/jpeg', 'image/png', 'image/webp'], required: true },
+  size: { type: Number, min: 1, max: 5 * 1024 * 1024, required: true },
+  submittedAt: { type: Date, default: Date.now },
+  status: { type: String, enum: ['submitted', 'verified', 'rejected'], default: 'submitted' },
+  reviewedAt: Date,
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewNotes: { type: String, trim: true, maxlength: 1000, default: '' }
+}, { _id: false });
 
 const compensationRevisionSchema = new mongoose.Schema({
   compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], required: true },
@@ -53,6 +67,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['local', 'google'],
     default: 'local'
+  },
+  // Optional at schema level so existing accounts remain valid. New local
+  // registrations enforce this protected document in the registration flow.
+  governmentId: {
+    type: governmentIdSchema,
+    select: false
   },
   avatar: {
     type: String // Profile picture URL from OAuth

@@ -7,6 +7,7 @@ import authService from '../../services/authService';
 import { Store, User, MapPin, ShieldCheck, ArrowRight, CheckCircle2, Building2, FileCheck, Info, Lock, Eye, EyeOff, Map as MapIcon, RefreshCw, Heart, Package, Calendar } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
+import { GOVERNMENT_ID_ACCEPT, GOVERNMENT_ID_MAX_BYTES, GOVERNMENT_ID_TYPES } from '../../constants/governmentIdTypes';
 
 const SellerJoin = () => {
   const { isAuthenticated, completeOAuthLogin } = useAuth();
@@ -31,7 +32,8 @@ const SellerJoin = () => {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    governmentIdType: ''
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -122,13 +124,27 @@ const SellerJoin = () => {
   };
 
   const handleFileChange = (e, type) => {
-    setFiles({ ...files, [type]: e.target.files[0] });
+    const file = e.target.files?.[0] || null;
+    if (type === 'governmentId' && file && !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      e.target.value = '';
+      toast.error('Government ID must be a JPG, PNG, or WEBP image');
+      return;
+    }
+    if (type === 'governmentId' && file && file.size > GOVERNMENT_ID_MAX_BYTES) {
+      e.target.value = '';
+      toast.error('Government ID image must be 5MB or smaller');
+      return;
+    }
+    setFiles(current => ({ ...current, [type]: file }));
   };
 
   const handleAccountSubmit = async (e) => {
     e.preventDefault();
     if (regData.password !== regData.confirmPassword) {
       return toast.error('Passwords do not match');
+    }
+    if (!regData.governmentIdType || !files.governmentId) {
+      return toast.error('Select an ID type and upload one valid government ID image');
     }
     setLoading(true);
     try {
@@ -152,7 +168,11 @@ const SellerJoin = () => {
     if (otp.length !== 6) return toast.error('Enter 6-digit code');
     setOtpLoading(true);
     try {
-      const result = await authService.verifyRegisterOTP({ email: regData.email, otp });
+      const verificationData = new FormData();
+      verificationData.append('email', regData.email);
+      verificationData.append('otp', otp);
+      verificationData.append('governmentIdImage', files.governmentId);
+      const result = await authService.verifyRegisterOTP(verificationData);
       if (result.success && result.token && result.user) {
         // Log in the user
         completeOAuthLogin(result.user, result.token);
@@ -371,6 +391,27 @@ const SellerJoin = () => {
                         </button>
                       </div>
                    </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-primary-100 bg-primary-50/60 p-6 space-y-5">
+                   <div className="flex items-start gap-4">
+                      <div className="w-11 h-11 shrink-0 rounded-xl bg-white text-primary-600 flex items-center justify-center shadow-sm"><FileCheck className="h-5 w-5" /></div>
+                      <div>
+                         <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Government ID Required</p>
+                         <p className="mt-1 text-[9px] font-bold text-slate-400 uppercase leading-relaxed">Choose one valid ID and upload a clear photo. It is encrypted and kept private.</p>
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <select name="governmentIdType" required value={regData.governmentIdType} onChange={handleRegChange} className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/5">
+                         <option value="">Select government ID</option>
+                         {GOVERNMENT_ID_TYPES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                      <label className="relative flex min-h-[50px] cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-primary-200 bg-white px-5 py-3 text-center hover:border-primary-500">
+                         <span className="break-all text-[9px] font-black uppercase tracking-widest text-primary-700">{files.governmentId ? files.governmentId.name : 'Upload ID photo'}</span>
+                         <input type="file" required accept={GOVERNMENT_ID_ACCEPT} onChange={(e) => handleFileChange(e, 'governmentId')} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
+                      </label>
+                   </div>
+                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">JPG, PNG, or WEBP &middot; Max 5MB</p>
                 </div>
 
                 <button type="submit" disabled={loading} className="w-full py-5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] hover:bg-primary-600 transition-all flex items-center justify-center gap-3 group disabled:opacity-50">
@@ -697,7 +738,7 @@ const SellerJoin = () => {
 
                 <div className="space-y-6">
                    {[
-                     { id: 'governmentId', label: 'Authorized Owner ID (Passport/License)', icon: User },
+                     { id: 'governmentId', label: 'Authorized Owner ID (already selected during account setup)', icon: User },
                      { id: 'businessRegistration', label: 'Business Registration (DTI/SEC)', icon: Building2 },
                      { id: 'birRegistration', label: 'Tax Certification (BIR 2303)', icon: FileCheck }
                    ].map((doc) => (
@@ -718,6 +759,7 @@ const SellerJoin = () => {
                             <input 
                                 type="file" 
                                 required={doc.id !== 'licenseDocument' && doc.id !== 'birRegistration'} 
+                                accept={doc.id === 'governmentId' ? GOVERNMENT_ID_ACCEPT : undefined}
                                 onChange={(e) => handleFileChange(e, doc.id)} 
                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10" 
                             />
