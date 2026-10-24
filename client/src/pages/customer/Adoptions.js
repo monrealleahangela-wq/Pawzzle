@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Heart, Clock, CheckCircle, XCircle, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Heart, Clock, CheckCircle, XCircle, MessageSquare, ArrowLeft, AlertTriangle, FileCheck2 } from 'lucide-react';
 import { adoptionService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,12 +32,14 @@ const Adoptions = ({ isSubcomponent = false }) => {
     };
 
     const statusConfig = {
-        inquiry_submitted: { color: 'bg-slate-100 text-slate-800', icon: <Clock className="h-4 w-4" />, label: 'Inquiry Submitted' },
+        inquiry_submitted: { color: 'bg-slate-100 text-slate-800', icon: <Clock className="h-4 w-4" />, label: 'Checkout Started' },
         under_review: { color: 'bg-indigo-100 text-indigo-800', icon: <Clock className="h-4 w-4" />, label: 'Under Review' },
         reserved: { color: 'bg-amber-100 text-amber-800', icon: <Clock className="h-4 w-4" />, label: 'Reserved' },
         approved: { color: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Approved' },
         pickup_scheduling: { color: 'bg-primary-100 text-primary-800', icon: <Clock className="h-4 w-4" />, label: 'Awaiting Schedule' },
         pickup_confirmed: { color: 'bg-emerald-100 text-emerald-800', icon: <CheckCircle className="h-4 w-4" />, label: 'Pickup Confirmed' },
+        pickup_missed: { color: 'bg-amber-100 text-amber-800', icon: <AlertTriangle className="h-4 w-4" />, label: 'Pickup Missed' },
+        no_show_cancelled: { color: 'bg-rose-100 text-rose-800', icon: <XCircle className="h-4 w-4" />, label: 'Cancelled After No-show' },
         completed: { color: 'bg-primary-600 text-white', icon: <Heart className="h-4 w-4" />, label: 'Purchased' },
         cancelled: { color: 'bg-gray-100 text-gray-800', icon: <XCircle className="h-4 w-4" />, label: 'Cancelled' },
         declined: { color: 'bg-rose-100 text-rose-800', icon: <XCircle className="h-4 w-4" />, label: 'Declined' }
@@ -46,29 +48,23 @@ const Adoptions = ({ isSubcomponent = false }) => {
     const paymentConfig = {
         unpaid: { color: 'bg-slate-50 text-slate-400', label: 'Waiting' },
         payment_pending: { color: 'bg-amber-100 text-amber-700', label: 'Payment Requested' },
+        payment_cancelled: { color: 'bg-slate-100 text-slate-600', label: 'Payment Cancelled' },
+        payment_failed: { color: 'bg-rose-100 text-rose-700', label: 'Payment Failed' },
         deposit_paid: { color: 'bg-emerald-50 text-emerald-600', label: 'Deposit Settled' },
-        paid_in_full: { color: 'bg-emerald-600 text-white', label: 'Fully Paid' }
-    };
-
-    const getStatusDisplay = (status) => {
-        const config = statusConfig[status] || statusConfig.inquiry_submitted;
-        return (
-            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${config.color}`}>
-                {config.icon}
-                {config.label}
-            </span>
-        );
+        paid_in_full: { color: 'bg-emerald-600 text-white', label: 'Fully Paid' },
+        refund_review_required: { color: 'bg-amber-100 text-amber-800', label: 'Refund Review Required' },
+        no_show_fees_applied: { color: 'bg-rose-100 text-rose-800', label: 'No-show Fees Applied' }
     };
 
     const handleCancel = async (requestId) => {
-        if (!await pawzzleConfirm('The seller will be notified that this purchase inquiry was cancelled.', { title: 'Cancel purchase inquiry?', confirmLabel: 'Cancel inquiry', tone: 'danger' })) return;
+        if (!await pawzzleConfirm('The seller will be notified that this unpaid pet purchase was cancelled.', { title: 'Cancel pet purchase?', confirmLabel: 'Cancel purchase', tone: 'danger' })) return;
         try {
             await adoptionService.cancelAdoptionRequest(requestId);
-            toast.success('Inquiry cancelled');
+            toast.success('Purchase cancelled');
             fetchRequests();
         } catch (error) {
-            console.error('Error cancelling purchase inquiry:', error);
-            toast.error(error.response?.data?.message || 'We could not cancel this inquiry. Please try again.');
+            console.error('Error cancelling pet purchase:', error);
+            toast.error(error.response?.data?.message || 'We could not cancel this purchase. Please try again.');
         }
     };
 
@@ -106,7 +102,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
                         <Heart className="h-10 w-10 text-slate-200" />
                     </div>
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">No Purchases</h3>
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No active purchase inquiries detected</p>
+                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-8">No pet purchase records yet</p>
                     <Link to="/pets" className="px-10 py-4 bg-primary-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all">Explore Pets</Link>
                 </div>
             ) : (
@@ -162,6 +158,34 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                     </button>
                                 )}
 
+                                {request.status === 'pickup_missed' && (
+                                    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                                        <div className="flex items-start gap-3">
+                                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest">Contact the seller now</p>
+                                                <p className="mt-1 text-xs leading-relaxed">
+                                                    Your pickup was marked missed. Use chat to arrange the one allowed reschedule before the cancellation deadline.
+                                                </p>
+                                                {request.pickupCompliance?.cancellationEligibleAt && (
+                                                    <p className="mt-2 text-[10px] font-black uppercase tracking-wide">
+                                                        Cancellation eligible: {new Date(request.pickupCompliance.cancellationEligibleAt).toLocaleString()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {request.status === 'no_show_cancelled' && request.pickupCompliance?.settlement && (
+                                    <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
+                                        <p className="text-[10px] font-black uppercase tracking-widest">No-show settlement review</p>
+                                        <div className="mt-2 flex justify-between text-xs"><span>Policy deductions</span><strong>₱{Number(request.pickupCompliance.settlement.deductionTotal || 0).toLocaleString()}</strong></div>
+                                        <div className="mt-1 flex justify-between text-xs"><span>Refundable balance</span><strong>₱{Number(request.pickupCompliance.settlement.refundDue || 0).toLocaleString()}</strong></div>
+                                        <p className="mt-2 text-[10px] leading-relaxed">Any refundable balance is reviewed and processed through the authorized payment workflow; this notice is not a completed refund receipt.</p>
+                                    </div>
+                                )}
+
                                 <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-3">
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                                         <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Purchase Date</span>
@@ -171,6 +195,18 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                         <span className="flex items-center gap-2 italic opacity-60"><CheckCircle className="h-3 w-3" /> Identity Prime</span>
                                         <span className="text-slate-900 truncate max-w-[120px]">{request.seller?.firstName} {request.seller?.lastName}</span>
                                     </div>
+                                    {(request.pickupCompliance?.scheduledFor || request.scheduling?.confirmedDate || request.inquiryData?.preferredPickupDate) && (
+                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                            <span className="flex items-center gap-2 italic opacity-60"><Clock className="h-3 w-3" /> Pickup Date</span>
+                                            <span className="text-slate-900">{new Date(request.pickupCompliance?.scheduledFor || request.scheduling?.confirmedDate || request.inquiryData?.preferredPickupDate).toLocaleDateString()}</span>
+                                        </div>
+                                    )}
+                                    {request.pickupAgreement?.accepted && (
+                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                            <span className="flex items-center gap-2 italic opacity-60"><FileCheck2 className="h-3 w-3" /> Pickup Terms</span>
+                                            <span className="text-emerald-700">Accepted</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="mt-auto space-y-3">
@@ -190,12 +226,13 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                         </Link>
                                     </div>
 
-                                    {request.status && ['pending', 'approved', 'ready_for_pickup'].includes(request.status) && (
+                                    {request.status && ['inquiry_submitted', 'under_review', 'reserved', 'approved'].includes(request.status) &&
+                                        ['unpaid', 'payment_cancelled', 'payment_failed'].includes(request.paymentDetails?.paymentStatus || 'unpaid') && (
                                         <button
                                             onClick={() => handleCancel(request._id)}
                                             className="w-full py-4 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 rounded-2xl transition-all border border-transparent hover:border-rose-100"
                                         >
-                                            Cancel Inquiry
+                                            Cancel Purchase
                                         </button>
                                     )}
                                 </div>

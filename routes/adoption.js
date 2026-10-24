@@ -7,11 +7,18 @@ const {
     getMyAdoptionRequests,
     getAdoptionByConversation,
     cancelAdoptionRequest,
-    sendPaymentRequest
+    sendPaymentRequest,
+    getPickupPolicy,
+    markPickupMissed,
+    recordPickupContactAttempt,
+    reschedulePickup,
+    cancelForPickupNoShow
 } = require('../controllers/adoptionController');
 
 // All adoption routes require authentication
 router.use(authenticate);
+
+router.get('/pickup-policy', getPickupPolicy);
 
 // Request adoption (customer)
 router.post('/request', createAdoptionRequest);
@@ -30,5 +37,10 @@ router.get('/conversation/:conversationId', getAdoptionByConversation);
 
 // Payment Requests
 router.post('/payment-request/:requestId', sendPaymentRequest);
+
+router.patch('/pickup/:requestId/missed', markPickupMissed);
+router.post('/pickup/:requestId/contact-attempts', recordPickupContactAttempt);
+router.patch('/pickup/:requestId/reschedule', reschedulePickup);
+router.patch('/pickup/:requestId/no-show-cancel', cancelForPickupNoShow);
 
 module.exports = router;

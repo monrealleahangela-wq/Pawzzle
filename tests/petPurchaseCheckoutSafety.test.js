@@ -34,6 +34,8 @@ test('purchase records have request and active-purchase uniqueness without chang
   assert.ok(AdoptionRequest.schema.path('isActivePurchase'));
   assert.ok(AdoptionRequest.schema.path('refundPolicySnapshot.type'));
   assert.ok(AdoptionRequest.schema.path('refundPolicyAcknowledgment.acknowledged'));
+  assert.ok(AdoptionRequest.schema.path('pickupAgreement.accepted'));
+  assert.ok(AdoptionRequest.schema.path('pickupCompliance.status'));
   assert.ok(AdoptionRequest.schema.path('inquiryData.interestReason'), 'legacy screening data remains readable');
 
   const indexes = AdoptionRequest.schema.indexes();
@@ -53,6 +55,7 @@ test('pet details keeps chat separate from the server-authoritative PayMongo che
   assert.doesNotMatch(detail, /Book a Service|PetInquiryBoard|Buy \/ Inquire|Adopt \/ Inquire/);
   assert.doesNotMatch(modal, /Purchase Inquiry|Send inquiry|Why are you interested|Previous Experience/i);
   assert.match(modal, /Proceed to Payment/);
+  assert.match(modal, /pickupAgreementAccepted/);
   assert.match(modal, /refundPolicyLabel|requiresRefundAcknowledgment/);
   assert.doesNotMatch(chat, /handlePurchaseRequest|Buy this Pet|Serious Inquiry/);
 });

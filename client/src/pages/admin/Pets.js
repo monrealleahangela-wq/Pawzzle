@@ -3,11 +3,25 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminPetService, uploadService, adoptionService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, CheckCircle2, XCircle, MessageSquare, UserCheck } from 'lucide-react';
+import { Heart, Plus, Edit, Trash2, Filter, X, Search, ChevronLeft, ChevronRight, Activity, Shield, Image as ImageIcon, Zap, ArrowUpRight, Info, CheckCircle, PawPrint, Home, History, ClipboardList, Clock, MessageSquare, UserCheck } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, hasUiActionPermission } from '../../utils/authorization';
 import PetListingFormModal from '../../components/pets/PetListingFormModal';
-import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
+
+const PAID_PET_PURCHASE_STATUSES = new Set(['paid_in_full', 'deposit_paid', 'partially_paid']);
+
+const pickupStatusClasses = status => {
+  if (status === 'completed') return 'bg-emerald-50 border-emerald-100 text-emerald-700';
+  if (status === 'pickup_missed') return 'bg-amber-50 border-amber-200 text-amber-700';
+  if (status === 'no_show_cancelled' || status === 'cancelled' || status === 'declined') {
+    return 'bg-rose-50 border-rose-100 text-rose-700';
+  }
+  if (['approved', 'pickup_confirmed', 'reserved'].includes(status)) {
+    return 'bg-blue-50 border-blue-100 text-blue-700';
+  }
+  return 'bg-slate-50 border-slate-100 text-slate-600';
+};
 
 const AdminPets = () => {
   const { user } = useAuth();
@@ -120,6 +134,67 @@ const AdminPets = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update order status');
+    }
+  };
+
+  const handleMarkPickupMissed = async requestId => {
+    const confirmed = await pawzzleConfirm('This starts the buyer\'s 24-hour grace period. Use it only after the confirmed pickup date has passed.', {
+      title: 'Mark pickup as missed?', confirmLabel: 'Start grace period', tone: 'warning'
+    });
+    if (!confirmed) return;
+    try {
+      await adoptionService.markPickupMissed(requestId, { reason: 'Buyer did not arrive for the confirmed pickup.' });
+      toast.success('Pickup marked missed. The buyer has been notified.');
+      fetchSalesHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to mark this pickup missed.');
+    }
+  };
+
+  const handleRecordPickupContact = async requestId => {
+    const note = await pawzzlePrompt('Describe the genuine contact attempt. Attempts must be at least 30 minutes apart.', {
+      title: 'Record buyer contact', inputLabel: 'Contact note', multiline: true,
+      defaultValue: 'Sent a Pawzzle chat message about the missed pickup.', confirmLabel: 'Record attempt'
+    });
+    if (!note) return;
+    try {
+      await adoptionService.recordPickupContactAttempt(requestId, { channel: 'chat', note });
+      toast.success('Contact attempt recorded.');
+      fetchSalesHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to record the contact attempt.');
+    }
+  };
+
+  const handleReschedulePickup = async requestId => {
+    const pickupDate = await pawzzlePrompt('Enter the newly agreed pickup date in YYYY-MM-DD format.', {
+      title: 'Reschedule pickup', inputLabel: 'New pickup date', confirmLabel: 'Continue'
+    });
+    if (!pickupDate) return;
+    const reason = await pawzzlePrompt('Record why the pickup is being rescheduled.', {
+      title: 'Reschedule reason', inputLabel: 'Reason', multiline: true, confirmLabel: 'Confirm reschedule'
+    });
+    if (!reason) return;
+    try {
+      await adoptionService.reschedulePickup(requestId, { pickupDate, reason });
+      toast.success('Pickup rescheduled and the buyer was notified.');
+      fetchSalesHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to reschedule this pickup.');
+    }
+  };
+
+  const handleCancelPickupNoShow = async requestId => {
+    const confirmed = await pawzzleConfirm('Pawzzle will calculate the disclosed no-show and care deductions, release the pet for relisting, and flag any remaining balance for authorized refund processing.', {
+      title: 'Cancel after pickup no-show?', confirmLabel: 'Calculate and cancel', tone: 'danger'
+    });
+    if (!confirmed) return;
+    try {
+      const response = await adoptionService.cancelForPickupNoShow(requestId);
+      toast.success(response.data?.message || 'No-show cancellation recorded.');
+      fetchSalesHistory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to complete the no-show cancellation.');
     }
   };
 
@@ -724,38 +799,75 @@ const AdminPets = () => {
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col gap-1.5">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border ${req.status === 'approved' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                            req.status === 'rejected' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                              req.status === 'pending' ? 'bg-secondary-50 border-secondary-100 text-primary-600' :
-                                'bg-slate-50 border-slate-100 text-slate-600'
-                            }`}>
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit border ${pickupStatusClasses(req.status)}`}>
                             {req.status.replace(/_/g, ' ')}
                           </span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+                            Payment: {(req.paymentDetails?.paymentStatus || 'unpaid').replace(/_/g, ' ')}
+                          </span>
+                          {req.pickupCompliance?.contactAttempts?.length > 0 && (
+                            <span className="text-[9px] font-bold text-amber-600">
+                              {req.pickupCompliance.contactAttempts.length} contact attempt{req.pickupCompliance.contactAttempts.length === 1 ? '' : 's'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        {new Date(req.createdAt).toLocaleDateString()} <br />
-                        <span className="opacity-50 italic">{formatTime12h(new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
+                        {req.pickupCompliance?.scheduledFor || req.scheduling?.confirmedDate || req.inquiryData?.preferredPickupDate ? (
+                          <>
+                            Pickup: {new Date(req.pickupCompliance?.scheduledFor || req.scheduling?.confirmedDate || req.inquiryData?.preferredPickupDate).toLocaleDateString()}
+                            {req.pickupCompliance?.graceEndsAt && (
+                              <><br /><span className="normal-case text-amber-600">Grace ends {new Date(req.pickupCompliance.graceEndsAt).toLocaleString()}</span></>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {new Date(req.createdAt).toLocaleDateString()} <br />
+                            <span className="opacity-50 italic">{formatTime12h(new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }))}</span>
+                          </>
+                        )}
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          <Link to={`/admin/chat?conversation=${req.conversation}`} className="p-2.5 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
+                        <div className="flex max-w-[290px] flex-wrap items-center justify-end gap-1.5 ml-auto">
+                          <Link title="Open buyer chat" to={`/admin/chat?conversation=${req.conversation}`} className="p-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-900 hover:text-white transition-all">
                             <MessageSquare className="h-4 w-4" />
                           </Link>
-                          {req.status === 'pending' && canManageAdoptions && (
+                          {req.status === 'approved' && canManageAdoptions && (
+                            <button onClick={() => handleUpdateSaleStatus(req._id, 'pickup_confirmed')} className="px-3 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-primary-700 transition-all">
+                              Confirm pickup
+                            </button>
+                          )}
+                          {req.status === 'pickup_confirmed' && canManageAdoptions && PAID_PET_PURCHASE_STATUSES.has(req.paymentDetails?.paymentStatus) && (
                             <>
-                              <button onClick={() => handleUpdateSaleStatus(req._id, 'approved')} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-500 hover:text-white transition-all">
-                                <CheckCircle2 className="h-4 w-4" />
+                              <button onClick={() => handleUpdateSaleStatus(req._id, 'completed')} className="px-3 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all">
+                                Handover done
                               </button>
-                              <button onClick={() => handleUpdateSaleStatus(req._id, 'rejected')} className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
-                                <XCircle className="h-4 w-4" />
+                              <button onClick={() => handleReschedulePickup(req._id)} className="px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 transition-all">
+                                Reschedule
+                              </button>
+                              <button onClick={() => handleMarkPickupMissed(req._id)} className="px-3 py-2 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-amber-100 transition-all">
+                                Missed
                               </button>
                             </>
                           )}
-                          {req.status === 'approved' && canManageAdoptions && (
-                            <button onClick={() => handleUpdateSaleStatus(req._id, 'ready_for_pickup')} className="px-4 py-2 bg-slate-900 text-white rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all">
-                              Ready for Pickup
-                            </button>
+                          {req.status === 'pickup_missed' && canManageAdoptions && (
+                            <>
+                              <button onClick={() => handleRecordPickupContact(req._id)} className="px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-slate-200 transition-all">
+                                Record contact
+                              </button>
+                              {(req.pickupCompliance?.rescheduleCount || 0) < (req.pickupAgreement?.policy?.freeReschedules ?? 1) && (
+                                <button onClick={() => handleReschedulePickup(req._id)} className="px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 transition-all">
+                                  Reschedule
+                                </button>
+                              )}
+                              {req.pickupCompliance?.cancellationEligibleAt &&
+                                new Date(req.pickupCompliance.cancellationEligibleAt).getTime() <= Date.now() &&
+                                (req.pickupCompliance?.contactAttempts?.length || 0) >= (req.pickupAgreement?.policy?.minimumContactAttempts ?? 3) && (
+                                  <button onClick={() => handleCancelPickupNoShow(req._id)} className="px-3 py-2 bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-wider hover:bg-rose-700 transition-all">
+                                    Cancel &amp; relist
+                                  </button>
+                                )}
+                            </>
                           )}
                         </div>
                       </td>

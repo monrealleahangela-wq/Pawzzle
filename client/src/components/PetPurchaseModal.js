@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, CheckCircle2, MapPin, Phone, ShieldCheck, Store, User, Wallet, X } from 'lucide-react';
+import { Calendar, CheckCircle2, FileCheck2, Loader2, MapPin, Phone, ShieldCheck, Store, User, Wallet, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { adoptionService } from '../services/apiService';
 import { formatPeso } from '../utils/paymentSummary';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../utils/refundPolicy';
 import './PetPurchaseModal.css';
@@ -19,9 +20,11 @@ const localDateValue = date => {
 };
 
 const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submitting = false }) => {
+  const [pickupPolicy, setPickupPolicy] = useState(null);
+  const [policyError, setPolicyError] = useState('');
   const [formData, setFormData] = useState({
     fullName: '', contactNumber: '', cityArea: '', preferredPickupDate: '',
-    pickupConfirmation: false, refundPolicyAcknowledged: false,
+    pickupConfirmation: false, refundPolicyAcknowledged: false, pickupAgreementAccepted: false,
     paymentMethod: 'paymongo', purchaseRequestId: createPurchaseRequestId()
   });
 
@@ -34,10 +37,22 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
       preferredPickupDate: '',
       pickupConfirmation: false,
       refundPolicyAcknowledged: false,
+      pickupAgreementAccepted: false,
       paymentMethod: 'paymongo',
       purchaseRequestId: createPurchaseRequestId()
     });
   }, [isOpen, pet?._id, buyer?.firstName, buyer?.lastName, buyer?.phone, buyer?.contactNumber, buyer?.address?.city]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let active = true;
+    setPickupPolicy(null);
+    setPolicyError('');
+    adoptionService.getPickupPolicy()
+      .then(response => { if (active) setPickupPolicy(response.data?.policy || null); })
+      .catch(() => { if (active) setPolicyError('The pickup agreement could not be loaded. Close this checkout and try again.'); });
+    return () => { active = false; };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -86,6 +101,10 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
       toast.error('Please acknowledge the pickup-only condition.');
       return;
     }
+    if (!pickupPolicy || !formData.pickupAgreementAccepted) {
+      toast.error('Please read and accept the Pet Purchase and Pickup Agreement.');
+      return;
+    }
     if (acknowledgmentRequired && !formData.refundPolicyAcknowledged) {
       toast.error(`Please acknowledge the ${refundPolicyLabel(refundPolicy.type)} policy.`);
       return;
@@ -95,7 +114,9 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
       fullName: formData.fullName.trim(),
       contactNumber: formData.contactNumber.trim(),
       cityArea: formData.cityArea.trim(),
-      refundPolicyAcknowledged: acknowledgmentRequired ? formData.refundPolicyAcknowledged : false
+      refundPolicyAcknowledged: acknowledgmentRequired ? formData.refundPolicyAcknowledged : false,
+      pickupAgreementAccepted: true,
+      pickupAgreementVersion: pickupPolicy.version
     });
   };
 
@@ -138,6 +159,30 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
                 <input required type="checkbox" name="pickupConfirmation" checked={formData.pickupConfirmation} onChange={handleChange} className="mt-0.5 h-4 w-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500" />
                 <span><strong className="block text-[10px] font-black uppercase tracking-wider text-primary-900">Pickup only</strong><span className="mt-0.5 block text-[9px] leading-4 text-primary-700">I understand that this pet must be collected from the seller at an agreed safe handover time and location.</span></span>
               </label>
+
+              <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4" aria-label="Pet Purchase and Pickup Agreement">
+                <div className="flex items-start gap-3">
+                  <FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider text-amber-950">Pet Purchase and Pickup Agreement</h3>
+                    {!pickupPolicy && !policyError && <p role="status" className="mt-2 flex items-center gap-2 text-[9px] text-amber-800"><Loader2 className="h-3.5 w-3.5 animate-spin" />Loading the current agreement…</p>}
+                    {policyError && <p role="alert" className="mt-2 text-[9px] font-semibold leading-4 text-rose-700">{policyError}</p>}
+                    {pickupPolicy && <>
+                      <p className="mt-2 text-[9px] leading-4 text-amber-900">You receive a {pickupPolicy.graceHours}-hour grace period and one reasonable reschedule. After the grace period, care is {formatPeso(pickupPolicy.dailyCareFee)} per day. After {pickupPolicy.cancellationAfterDays} days and {pickupPolicy.minimumContactAttempts} documented contact attempts, the purchase may be cancelled and the pet relisted.</p>
+                      <details className="mt-2 rounded-xl border border-amber-200 bg-white/80 p-2.5">
+                        <summary className="cursor-pointer text-[9px] font-black uppercase tracking-wider text-amber-900">Read complete terms</summary>
+                        <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[9px] leading-4 text-slate-700">
+                          {(pickupPolicy.terms || []).map(term => <li key={term}>{term}</li>)}
+                        </ol>
+                      </details>
+                      <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-amber-300 bg-white p-2.5 text-[9px] font-semibold leading-4 text-slate-800">
+                        <input required type="checkbox" name="pickupAgreementAccepted" checked={formData.pickupAgreementAccepted} onChange={handleChange} className="mt-0.5 h-4 w-4 shrink-0 rounded border-amber-400 text-primary-600 focus:ring-primary-500" />
+                        <span>I have read and agree to the Pet Purchase and Pickup Agreement, version {pickupPolicy.version}.</span>
+                      </label>
+                    </>}
+                  </div>
+                </div>
+              </section>
             </div>
 
             <div className="space-y-4">
@@ -166,8 +211,8 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
         </form>
 
         <footer className="pet-purchase-modal__footer shrink-0 border-t border-slate-200 bg-white px-4 pt-3 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] sm:px-6 sm:pt-4">
-          <button form="pet-purchase-form" type="submit" disabled={submitting} className="flex h-11 w-full items-center justify-center rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase tracking-[.16em] text-white shadow-lg transition hover:bg-primary-700 disabled:cursor-wait disabled:bg-slate-400">
-            {submitting ? 'Preparing secure checkout…' : 'Proceed to Payment'}
+          <button form="pet-purchase-form" type="submit" disabled={submitting || !pickupPolicy} className="flex h-11 w-full items-center justify-center rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase tracking-[.16em] text-white shadow-lg transition hover:bg-primary-700 disabled:cursor-wait disabled:bg-slate-400">
+            {submitting ? 'Preparing secure checkout…' : !pickupPolicy ? 'Loading Agreement…' : 'Proceed to Payment'}
           </button>
           <p className="mt-2 text-center text-[8px] font-semibold text-slate-400">Availability, seller, Store, and price are rechecked by Pawzzle before payment.</p>
         </footer>

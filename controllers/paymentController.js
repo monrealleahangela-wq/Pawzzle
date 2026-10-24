@@ -24,6 +24,7 @@ const {
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { canAccessStore, canOperateStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
+const { hasCurrentPickupAgreement } = require('../utils/petPickupPolicy');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const {
@@ -46,6 +47,7 @@ const PROCUREMENT_CHECKOUT_BLOCKED_STATUSES = [
   'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
   'awaiting_replacement', 'reinspection', 'completed'
 ];
+const PICKUP_AGREEMENT_EFFECTIVE_AT = new Date('2026-10-25T00:00:00+08:00');
 
 const procurementCheckoutEligibilityFilter = record => ({
   _id: record._id,
@@ -641,12 +643,17 @@ const createAdoptionCheckoutSession = async (req, res) => {
       .populate('pet')
       .populate('store', 'name refundPolicy isActive isDeleted');
     if (!adoption) return res.status(404).json({ message: 'Adoption request not found.' });
-    if (['cancelled', 'declined', 'expired', 'completed'].includes(adoption.status)) {
+    if (['cancelled', 'declined', 'expired', 'completed', 'pickup_missed', 'no_show_cancelled'].includes(adoption.status)) {
       return res.status(400).json({ message: `Cannot pay for a purchase or reservation that is ${adoption.status}.` });
     }
     if (String(adoption.customer?._id || adoption.customer) !== String(req.user._id)
         || req.user?.role !== 'customer') {
       return res.status(403).json({ message: 'Only the authenticated buyer can start this payment.' });
+    }
+    const pickupAgreementRequired = new Date(adoption.createdAt) >= PICKUP_AGREEMENT_EFFECTIVE_AT;
+    if ((pickupAgreementRequired || adoption.pickupAgreement?.accepted)
+        && !hasCurrentPickupAgreement(adoption.pickupAgreement)) {
+      return res.status(409).json({ message: 'Accept the current Pet Purchase and Pickup Agreement before starting payment.' });
     }
     if (!adoption.pet || !adoption.store || adoption.store.isActive === false || adoption.store.isDeleted === true
         || String(adoption.seller) !== String(adoption.pet.addedBy)

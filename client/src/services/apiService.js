@@ -369,10 +369,15 @@ export const publicService = {
 
 // Adoption services
 export const adoptionService = {
+  getPickupPolicy: () => api.get('/adoption/pickup-policy'),
   requestAdoption: (data) => api.post('/adoption/request', data),
   updateAdoptionStatus: (requestId, data) => api.patch(`/adoption/status/${requestId}`, data),
   sendPaymentRequest: (requestId, data) => api.post(`/adoption/payment-request/${requestId}`, data),
   cancelAdoptionRequest: (requestId) => api.patch(`/adoption/cancel/${requestId}`),
+  markPickupMissed: (requestId, data = {}) => api.patch(`/adoption/pickup/${requestId}/missed`, data),
+  recordPickupContactAttempt: (requestId, data) => api.post(`/adoption/pickup/${requestId}/contact-attempts`, data),
+  reschedulePickup: (requestId, data) => api.patch(`/adoption/pickup/${requestId}/reschedule`, data),
+  cancelForPickupNoShow: (requestId, data = {}) => api.patch(`/adoption/pickup/${requestId}/no-show-cancel`, data),
   getMyRequests: () => api.get('/adoption/my-requests'),
   getAdoptionByConversation: (conversationId) => api.get(`/adoption/conversation/${conversationId}`)
 };

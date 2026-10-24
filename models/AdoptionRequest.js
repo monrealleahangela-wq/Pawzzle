@@ -45,7 +45,7 @@ const adoptionRequestSchema = new mongoose.Schema({
         },
         paymentStatus: {
             type: String,
-            enum: ['unpaid', 'payment_pending', 'payment_cancelled', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded', 'awaiting_confirmation'],
+            enum: ['unpaid', 'payment_pending', 'payment_cancelled', 'partially_paid', 'deposit_paid', 'paid_in_full', 'payment_failed', 'refunded', 'awaiting_confirmation', 'refund_review_required', 'no_show_fees_applied'],
             default: 'unpaid'
         },
         pricingBreakdown: {
@@ -101,6 +101,61 @@ const adoptionRequestSchema = new mongoose.Schema({
         acknowledgedAt: Date,
         acknowledgedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     },
+    pickupAgreement: {
+        version: { type: String, trim: true },
+        title: { type: String, trim: true },
+        accepted: { type: Boolean, default: false },
+        acceptedAt: Date,
+        acceptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        termsHash: { type: String, trim: true },
+        terms: [{ type: String, trim: true }],
+        policy: {
+            graceHours: Number,
+            cancellationAfterDays: Number,
+            minimumContactAttempts: Number,
+            dailyCareFee: Number,
+            careFeeCapDays: Number,
+            noShowFeeRate: Number,
+            noShowFeeCap: Number,
+            freeReschedules: Number
+        },
+        acceptanceEvidence: {
+            ipHash: { type: String, select: false },
+            userAgentHash: { type: String, select: false }
+        }
+    },
+    pickupCompliance: {
+        status: {
+            type: String,
+            enum: ['scheduled', 'pickup_missed', 'rescheduled', 'completed', 'no_show_cancelled'],
+            default: 'scheduled'
+        },
+        scheduledFor: Date,
+        missedAt: Date,
+        graceEndsAt: Date,
+        cancellationEligibleAt: Date,
+        rescheduleCount: { type: Number, min: 0, default: 0 },
+        contactAttempts: [{
+            attemptedAt: { type: Date, default: Date.now },
+            attemptedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+            channel: { type: String, enum: ['chat', 'phone', 'email', 'other'], default: 'chat' },
+            note: { type: String, trim: true, maxlength: 500 }
+        }],
+        settlement: {
+            careFeeDays: { type: Number, min: 0, default: 0 },
+            careFee: { type: Number, min: 0, default: 0 },
+            noShowFee: { type: Number, min: 0, default: 0 },
+            statedDeductions: { type: Number, min: 0, default: 0 },
+            deductionTotal: { type: Number, min: 0, default: 0 },
+            refundDue: { type: Number, min: 0, default: 0 },
+            refundStatus: { type: String, enum: ['not_required', 'review_required', 'processing', 'completed'], default: 'not_required' },
+            calculatedAt: Date,
+            refundReference: { type: String, trim: true, maxlength: 200 }
+        },
+        cancelledAt: Date,
+        cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        cancellationReason: { type: String, trim: true, maxlength: 1000 }
+    },
     // Scheduling
     scheduling: {
         confirmedDate: Date,
@@ -116,6 +171,8 @@ const adoptionRequestSchema = new mongoose.Schema({
             'approved', 
             'pickup_scheduling', 
             'pickup_confirmed', 
+            'pickup_missed',
+            'no_show_cancelled',
             'completed', 
             'cancelled', 
             'declined', 
@@ -162,5 +219,6 @@ adoptionRequestSchema.index(
 );
 adoptionRequestSchema.index({ seller: 1, status: 1 });
 adoptionRequestSchema.index({ customer: 1, status: 1 });
+adoptionRequestSchema.index({ status: 1, 'pickupCompliance.cancellationEligibleAt': 1 });
 
 module.exports = mongoose.model('AdoptionRequest', adoptionRequestSchema);

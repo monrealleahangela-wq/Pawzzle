@@ -4,15 +4,17 @@ import { Clock, MessageSquare, PawPrint, RefreshCw } from 'lucide-react';
 import { adoptionService, getImageUrl } from '../../services/apiService';
 
 const STATUS_LABELS = {
-  inquiry_submitted: 'Inquiry Submitted', under_review: 'Under Review', reserved: 'Reserved',
+  inquiry_submitted: 'Checkout Started', under_review: 'Under Review', reserved: 'Reserved',
   approved: 'Approved', pickup_scheduling: 'Pickup Scheduling', pickup_confirmed: 'Pickup Confirmed',
+  pickup_missed: 'Pickup Missed', no_show_cancelled: 'Cancelled After No-show',
   completed: 'Completed', cancelled: 'Cancelled', declined: 'Declined', expired: 'Expired'
 };
 
 const PAYMENT_LABELS = {
   unpaid: 'Payment Not Requested', payment_pending: 'Payment Requested', payment_cancelled: 'Payment Cancelled',
   partially_paid: 'Partially Paid', deposit_paid: 'Deposit Paid', paid_in_full: 'Paid in Full',
-  payment_failed: 'Payment Failed', refunded: 'Refunded', awaiting_confirmation: 'Payment Confirmation Pending'
+  payment_failed: 'Payment Failed', refunded: 'Refunded', awaiting_confirmation: 'Payment Confirmation Pending',
+  refund_review_required: 'Refund Review Required', no_show_fees_applied: 'No-show Fees Applied'
 };
 
 const timestamp = request => {
@@ -38,7 +40,7 @@ const PetPurchaseInquiryList = () => {
       setRequests(Array.isArray(response.data?.requests) ? response.data.requests : []);
     } catch (failure) {
       setRequests([]);
-      setError(failure.response?.data?.message || 'Unable to load purchase inquiries.');
+      setError(failure.response?.data?.message || 'Unable to load pet purchases.');
     } finally {
       setLoading(false);
     }
@@ -51,15 +53,15 @@ const PetPurchaseInquiryList = () => {
     [requests]
   );
 
-  return <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-label="Purchase inquiries">
+  return <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5" aria-label="Pet purchases">
     <div>
-      <h2 className="text-base font-black text-slate-900">Purchase Inquiries</h2>
-      <p className="text-xs text-slate-500">Requests started from a pet listing are shown here as well as in Messages.</p>
+      <h2 className="text-base font-black text-slate-900">Pet Purchases</h2>
+      <p className="text-xs text-slate-500">Purchase, payment, and pickup updates are shown here as well as in Messages.</p>
     </div>
 
     {loading ? <p role="status" className="mt-4 text-sm text-slate-500">Loading purchase inquiries…</p>
       : error ? <div role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-xs text-rose-800">{error}<button type="button" onClick={load} className="ml-2 inline-flex items-center gap-1 font-bold underline"><RefreshCw className="h-3 w-3" />Retry</button></div>
-        : ordered.length === 0 ? <p className="mt-4 text-sm text-slate-500">No purchase inquiries yet.</p>
+        : ordered.length === 0 ? <p className="mt-4 text-sm text-slate-500">No pet purchases yet.</p>
           : <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {ordered.map(request => {
               const pet = request.pet || {};
@@ -71,10 +73,11 @@ const PetPurchaseInquiryList = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-1">
-                    <div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{pet.name || 'Pet listing unavailable'}</p><p className="truncate text-xs text-slate-500">{pet.breed || pet.species || 'Pet purchase inquiry'}</p></div>
+                    <div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{pet.name || 'Pet listing unavailable'}</p><p className="truncate text-xs text-slate-500">{pet.breed || pet.species || 'Pet purchase'}</p></div>
                     <span className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-800">{STATUS_LABELS[request.status] || String(request.status || 'Pending').replaceAll('_', ' ')}</span>
                   </div>
                   <p className="mt-2 flex items-center gap-1 text-[10px] text-slate-400"><Clock className="h-3 w-3" />Updated {formatDate(request.updatedAt || request.createdAt)}</p>
+                  {(request.pickupCompliance?.scheduledFor || request.scheduling?.confirmedDate || request.inquiryData?.preferredPickupDate) && <p className="mt-1 text-[10px] font-semibold text-slate-600">Pickup: {formatDate(request.pickupCompliance?.scheduledFor || request.scheduling?.confirmedDate || request.inquiryData?.preferredPickupDate)}</p>}
                   {paymentStatus && <p className="mt-1 text-[10px] font-semibold text-slate-600">{PAYMENT_LABELS[paymentStatus] || paymentStatus.replaceAll('_', ' ')}</p>}
                   <div className="mt-2 flex flex-wrap gap-2">
                     {conversationId && <Link to={`/messages/${conversationId}`} className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-[10px] font-bold text-white"><MessageSquare className="h-3 w-3" />Open Messages</Link>}

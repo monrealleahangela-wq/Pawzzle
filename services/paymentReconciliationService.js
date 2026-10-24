@@ -454,7 +454,7 @@ const finalizeAdoption = async (adoption, payment) => {
   const alreadyRecorded = adoption.paymentDetails?.history?.some(row => row.paymentId === payment.id);
   if (alreadyRecorded) return adoption;
 
-  if (['cancelled', 'declined', 'expired', 'completed'].includes(adoption.status)) {
+  if (['cancelled', 'declined', 'expired', 'completed', 'no_show_cancelled'].includes(adoption.status)) {
     await AdoptionRequest.findByIdAndUpdate(adoption._id, {
       $set: { 'paymentDetails.paymentStatus': 'payment_failed' },
       $push: {
