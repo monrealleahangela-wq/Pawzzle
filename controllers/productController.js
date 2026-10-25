@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const StockSyncService = require('../services/stockSyncService');
+const Inventory = require('../models/Inventory');
 const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const Store = require('../models/Store');
@@ -12,6 +13,7 @@ const {
   normalizeProductWeight
 } = require('../utils/catalogListing');
 const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
+const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode',
@@ -364,6 +366,14 @@ const updateStock = async (req, res) => {
     if (!(await canOperateStore(req.user, product.store, ['inventory.adjust']))) {
       return res.status(403).json({ message: 'Access denied' });
     }
+
+    const inventory = await Inventory.findOne({ store: product.store, product: product._id, isActive: true });
+    const restockBlockReason = manualRestockBlockReason({
+      currentQuantity: inventory?.quantity ?? product.stockQuantity,
+      operation: 'set',
+      quantity: stockQuantity
+    });
+    if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
 
     product.stockQuantity = stockQuantity;
     await product.save();

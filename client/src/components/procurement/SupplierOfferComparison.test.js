@@ -13,9 +13,9 @@ jest.mock('../../services/apiService', () => ({ purchaseOrderService: {
 const candidate = { supplierProductId: 'offer-2', supplier: { businessName: 'Supplier B' }, name: 'Food B',
   sku: 'B', unitOfMeasure: 'bag', unitPrice: 265, availableStock: 3, minimumOrderQuantity: 1,
   deliveryLeadTimeDays: 2, available: true, matchType: 'unverified_candidate' };
-const response = offer => ({ data: { storeProduct: { name: 'Store Food' }, offers: [offer] } });
+const response = offer => ({ data: { storeProduct: { _id: 'product-1', name: 'Store Food', sku: 'STORE-FOOD' }, offers: [offer] } });
 const props = { storeProducts: [{ _id: 'product-1', name: 'Store Food', sku: 'STORE-FOOD' }],
-  initialStoreProductId: 'product-1', onCartUpdated: jest.fn(), onClose: jest.fn() };
+  initialStoreProductId: 'product-1', onCartUpdated: jest.fn(), onOfferAdded: jest.fn(), onClose: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -46,6 +46,15 @@ test('requires explicit reviewed match and seller selection before adding an alt
     storeProductId: 'product-1', confirmSelection: true
   }));
   await waitFor(() => expect(props.onCartUpdated).toHaveBeenCalled());
+  await waitFor(() => expect(props.onOfferAdded).toHaveBeenCalled());
+});
+
+test('restock mode explains that stock changes only after receiving inspection', async () => {
+  purchaseOrderService.compareOffers.mockResolvedValue(response({ ...candidate, matchType: 'exact' }));
+  render(<><PawzzleDialogHost /><SupplierOfferComparison {...props} restockMode /></>);
+
+  expect(await screen.findByRole('heading', { name: 'Order new stock' })).toBeInTheDocument();
+  expect(screen.getByText(/quantity will remain unchanged until delivery passes receiving inspection/i)).toBeInTheDocument();
 });
 
 test('selects a reviewed service-supply offer without changing an existing Store product', async () => {

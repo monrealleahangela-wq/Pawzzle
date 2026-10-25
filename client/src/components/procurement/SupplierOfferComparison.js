@@ -3,7 +3,7 @@ import { purchaseOrderService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
-const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartUpdated, onClose }) => {
+const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartUpdated, onOfferAdded, onClose, restockMode = false }) => {
   const [targetType, setTargetType] = useState('product');
   const [storeProductId, setStoreProductId] = useState(initialStoreProductId || '');
   const [data, setData] = useState(null);
@@ -84,6 +84,7 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
         confirmSelection: true
       });
       onCartUpdated(response.data);
+      onOfferAdded?.(response.data);
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Unable to add this supplier offer.');
     } finally { setBusyId(null); }
@@ -93,7 +94,7 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-3" role="presentation">
       <section role="dialog" aria-modal="true" aria-labelledby="supplier-comparison-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <header className="flex shrink-0 items-start justify-between gap-3 border-b p-4">
-          <div><h2 id="supplier-comparison-title" className="text-lg font-bold">Compare supplier offers</h2><p className="text-sm text-slate-600">Exact and equivalent labels require a Store review. Candidates are not automatically interchangeable.</p></div>
+          <div><h2 id="supplier-comparison-title" className="text-lg font-bold">{restockMode ? 'Order new stock' : 'Compare supplier offers'}</h2><p className="text-sm text-slate-600">{restockMode ? 'Choose an approved supplier offer. The quantity will remain unchanged until delivery passes receiving inspection.' : 'Exact and equivalent labels require a Store review. Candidates are not automatically interchangeable.'}</p></div>
           <button type="button" onClick={onClose} aria-label="Close supplier comparison" className="rounded border px-3 py-1">Close</button>
         </header>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
@@ -112,8 +113,10 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
           <label className="block text-sm font-semibold">{targetType === 'service_supply' ? 'Service supply' : 'Store product'}
             <select className="mt-1 w-full rounded border p-2" value={storeProductId} onChange={event => { setStoreProductId(event.target.value); setPage(1); }}>
               <option value="">Select a {targetType === 'service_supply' ? 'service supply' : 'Store product'}</option>
-              {[...productOptions, ...(targetType === 'product' ? storeProducts : []).filter(product => String(product._id) === String(storeProductId)
-                && !productOptions.some(option => String(option._id) === String(storeProductId)))]
+              {[...productOptions, ...[data?.storeProduct, ...(targetType === 'product' ? storeProducts : [])].filter((product, index, candidates) => product
+                && String(product._id) === String(storeProductId)
+                && !productOptions.some(option => String(option._id) === String(storeProductId))
+                && candidates.findIndex(candidate => String(candidate?._id) === String(product._id)) === index)]
                 .map(product => <option key={product._id} value={product._id}>{product.name} ({product.sku})</option>)}
             </select>
           </label>

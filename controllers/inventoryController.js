@@ -5,6 +5,7 @@ const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
+const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 
 const User = require('../models/User');
 
@@ -186,6 +187,12 @@ const updateInventoryQuantity = async (req, res) => {
     }
 
     const oldQuantity = inventory.quantity;
+    const restockBlockReason = manualRestockBlockReason({
+      currentQuantity: oldQuantity,
+      operation,
+      quantity
+    });
+    if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
 
     switch (operation) {
       case 'add':
@@ -262,6 +269,13 @@ const addToInventory = async (req, res) => {
     if (existingInventory) {
       return res.status(400).json({ message: 'Product already in inventory' });
     }
+
+    const restockBlockReason = manualRestockBlockReason({
+      currentQuantity: 0,
+      operation: 'set',
+      quantity
+    });
+    if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
 
     const inventory = new Inventory({
       store: storeId,
@@ -560,6 +574,12 @@ const addToAdminInventory = async (req, res) => {
       const oldQuantity = existingInventory.quantity;
       const operation = req.body.operation || 'add';
       const changeQty = quantity || 0;
+      const restockBlockReason = manualRestockBlockReason({
+        currentQuantity: oldQuantity,
+        operation,
+        quantity: changeQty
+      });
+      if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
 
       switch (operation) {
         case 'add':
@@ -587,6 +607,13 @@ const addToAdminInventory = async (req, res) => {
         inventory: await Inventory.findById(existingInventory._id).populate('product', 'name brand category price images')
       });
     }
+
+    const restockBlockReason = manualRestockBlockReason({
+      currentQuantity: 0,
+      operation: req.body.operation || 'add',
+      quantity
+    });
+    if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
 
     // Calculate initial quantity for a new record based on operation
     const initialQuantity = req.body.operation === 'subtract' ? 0 : (quantity || 0);

@@ -12,7 +12,8 @@ import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const PurchaseOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedTab = searchParams.get('tab') === 'suppliers' ? 'suppliers' : 'orders';
+  const restockProductId = searchParams.get('restockProduct');
+  const requestedTab = searchParams.get('tab') === 'suppliers' || restockProductId ? 'suppliers' : 'orders';
   const [activeTab, setActiveTab] = useState(requestedTab);
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -63,9 +64,29 @@ const PurchaseOrders = () => {
     setActiveTab(requestedTab);
   }, [requestedTab]);
 
+  useEffect(() => {
+    if (restockProductId) setComparisonStoreProductId(restockProductId);
+  }, [restockProductId]);
+
   const selectTab = (tab) => {
     setActiveTab(tab);
     setSearchParams(tab === 'suppliers' ? { tab: 'suppliers' } : {}, { replace: true });
+  };
+
+  const closeSupplierComparison = () => {
+    setComparisonStoreProductId(null);
+    if (!restockProductId) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('restockProduct');
+    next.set('tab', 'suppliers');
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleSupplierOfferAdded = updatedCart => {
+    setProcurementCart(updatedCart);
+    if (!restockProductId) return;
+    closeSupplierComparison();
+    setShowCheckout(true);
   };
 
   const fetchData = async () => {
@@ -545,7 +566,9 @@ const PurchaseOrders = () => {
         storeProducts={storeProducts}
         initialStoreProductId={comparisonStoreProductId}
         onCartUpdated={setProcurementCart}
-        onClose={() => setComparisonStoreProductId(null)}
+        onOfferAdded={handleSupplierOfferAdded}
+        onClose={closeSupplierComparison}
+        restockMode={Boolean(restockProductId)}
       />}
 
       {selectedOrder && <div className="fixed inset-0 bg-slate-900/60 z-[105] flex items-center justify-center p-3"><div className="bg-white w-full max-w-xl rounded-2xl p-5 max-h-[90vh] overflow-y-auto"><div className="flex justify-between mb-4"><div><h3 className="text-base font-black">{selectedOrder.orderNumber}</h3><p className="text-[10px] text-slate-500">{selectedOrder.supplier?.businessName} · {selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)}><X className="h-4 w-4"/></button></div><div className="space-y-2">{selectedOrder.items?.map(item=><div key={item._id} className="p-3 bg-slate-50 rounded-xl flex justify-between text-xs"><div><p className="font-bold">{item.productName}</p><p className="text-[10px] text-slate-500">{item.quantity} × {formatPeso(item.unitPrice)} · Received {item.receivedQuantity || 0}</p></div><p className="font-black">{formatPeso(item.totalPrice)}</p></div>)}</div><div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><PaymentBreakdown summary={purchaseOrderPaymentSummary(selectedOrder)} compact /><p className="mt-3 border-t border-slate-200 pt-2 text-[10px] text-slate-500">Payment: <b>{selectedOrder.paymentStatus}</b> · Paid {formatPeso(selectedOrder.paidAmount || 0)}</p></div></div></div>}

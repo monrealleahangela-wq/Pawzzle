@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { productService, adminProductService, inventoryService, uploadService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +7,7 @@ import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiAction
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ProductFormModal from '../../components/forms/ProductFormModal';
 import { PRODUCT_CATEGORIES, normalizeProductCategory } from '../../constants/productCategories';
-import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock, Truck } from 'lucide-react';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const PhilippinePeso = ({ className }) => (
@@ -172,6 +173,7 @@ const ProductInventory = () => {
   const canUpdate = hasUiActionPermission(user, 'inventory', 'update', isAdmin);
   const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   const canAdjustStock = canUpdate;
+  const canManageProcurement = hasUiActionPermission(user, 'procurement', 'manage', isAdmin);
 
   useEffect(() => {
     if (activeTab === 'products') fetchProducts();
@@ -348,6 +350,17 @@ const ProductInventory = () => {
     if (inventoryForm.operation !== 'set' && quantity === 0) {
       return toast.warn('Enter how many items you want to add or remove.');
     }
+    const selectedProduct = selectedInventoryItem
+      || products.find(product => product._id === inventoryForm.productId);
+    const currentQuantity = Number(selectedInventoryItem?.currentStock ?? selectedProduct?.stockQuantity ?? 0);
+    const nextQuantity = inventoryForm.operation === 'add'
+      ? currentQuantity + quantity
+      : inventoryForm.operation === 'subtract'
+        ? Math.max(0, currentQuantity - quantity)
+        : quantity;
+    if (currentQuantity <= 0 && nextQuantity > 0) {
+      return toast.warn('Out-of-stock products must be reordered from a supplier and received through inspection.');
+    }
 
     setSubmitting(true);
     try {
@@ -390,6 +403,7 @@ const ProductInventory = () => {
   const currentInventoryStock = Number(
     selectedInventoryItem?.currentStock ?? inventoryProduct?.stockQuantity ?? 0
   );
+  const requiresSupplierRestock = Boolean(inventoryProduct && currentInventoryStock <= 0);
   const requestedInventoryQuantity = Math.max(0, Number(inventoryForm.quantity) || 0);
   const projectedInventoryStock = inventoryForm.operation === 'add'
     ? currentInventoryStock + requestedInventoryQuantity
@@ -672,7 +686,19 @@ const ProductInventory = () => {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
-                          {canAdjustStock && (
+                          {item.currentStock === 0 ? (canManageProcurement ? (
+                            <Link
+                              to={`/admin/purchase-orders?tab=suppliers&restockProduct=${encodeURIComponent(item._id)}`}
+                              aria-label={`Order new stock for ${item.name}`}
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-[10px] font-black uppercase tracking-wide text-white shadow-sm transition-all hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                            >
+                              <Truck className="h-4 w-4" /> Order New Stock
+                            </Link>
+                          ) : (
+                            <span className="inline-flex h-10 items-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-[9px] font-black uppercase tracking-wide text-amber-700" title="A user with procurement access must place the supplier order.">
+                              Procurement Required
+                            </span>
+                          )) : canAdjustStock && (
                             <button onClick={() => handleOpenInventoryModal(item)} className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-black uppercase tracking-wide text-slate-600 transition-all hover:border-slate-900 hover:bg-slate-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group-hover:shadow-sm">
                               Adjust Stock
                             </button>
@@ -1362,7 +1388,19 @@ const ProductInventory = () => {
                 </div>
               )}
 
-              <fieldset className="space-y-3">
+              {requiresSupplierRestock && (
+                <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                  <div className="flex items-start gap-3">
+                    <Truck className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+                    <div>
+                      <p className="text-sm font-black">Supplier restock required</p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-800">This product is out of stock. Its quantity can increase only after a supplier purchase order is delivered and accepted during receiving inspection.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <fieldset disabled={requiresSupplierRestock} className={`space-y-3 ${requiresSupplierRestock ? 'opacity-45' : ''}`}>
                 <legend className="text-sm font-bold text-slate-800">What do you want to do?</legend>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {inventoryOperationOptions.map(op => {
@@ -1381,7 +1419,7 @@ const ProductInventory = () => {
 
               <div className="space-y-2">
                 <label htmlFor="stock-quantity" className="text-sm font-bold text-slate-800">{inventoryQuantityCopy.label}</label>
-                <input id="stock-quantity" type="number" min="0" step="1" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-lg font-black text-slate-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5" placeholder="Enter quantity" />
+                <input id="stock-quantity" type="number" min="0" step="1" required disabled={requiresSupplierRestock} value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-lg font-black text-slate-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="Enter quantity" />
                 <p className="text-xs text-slate-500">{inventoryQuantityCopy.help}</p>
               </div>
 
@@ -1397,15 +1435,23 @@ const ProductInventory = () => {
 
               <div className="space-y-2">
                 <label htmlFor="stock-reason" className="text-sm font-bold text-slate-800">Why are you changing the stock? <span className="font-normal text-slate-400">(Optional)</span></label>
-                <input id="stock-reason" type="text" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5" placeholder="Example: New delivery, damaged item, or inventory count" />
+                <input id="stock-reason" type="text" disabled={requiresSupplierRestock} value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="Example: New delivery, damaged item, or inventory count" />
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
                 <button type="button" onClick={() => setShowInventoryModal(false)} className="sm:w-32 py-3.5 border border-slate-200 bg-white text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">Cancel</button>
-                <button disabled={submitting} type="submit" className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl text-sm font-black hover:bg-slate-900 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50">
-                  {submitting ? 'Updating stock...' : 'Update Stock'}
-                  {!submitting && <ChevronRight className="h-5 w-5" />}
-                </button>
+                {requiresSupplierRestock ? (canManageProcurement ? (
+                  <Link to={`/admin/purchase-orders?tab=suppliers&restockProduct=${encodeURIComponent(inventoryProduct._id)}`} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-100 transition-all hover:bg-slate-900">
+                    <Truck className="h-5 w-5" /> Order New Stock
+                  </Link>
+                ) : (
+                  <span className="flex flex-1 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 py-3.5 text-sm font-black text-amber-700">Procurement access required</span>
+                )) : (
+                  <button disabled={submitting} type="submit" className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl text-sm font-black hover:bg-slate-900 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50">
+                    {submitting ? 'Updating stock...' : 'Update Stock'}
+                    {!submitting && <ChevronRight className="h-5 w-5" />}
+                  </button>
+                )}
               </div>
             </form>
           </div>
