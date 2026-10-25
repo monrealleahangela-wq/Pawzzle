@@ -21,11 +21,21 @@ test('saved-address normalization supports flat, nested, and GeoJSON coordinate 
   assert.match(source, /latitude < -90 \|\| latitude > 90/);
 });
 
-test('Use This Address applies trusted coordinates and requests a fresh quote', () => {
+test('complete saved coordinates are confirmed automatically and request a fresh quote', () => {
+  const source = checkout();
+  assert.match(addressUtility(), /isSavedDeliveryAddressReady/);
+  assert.match(source, /useState\(\s*\(\) => isSavedDeliveryAddressReady\(user\?\.address\)\s*\)/);
+  assert.match(source, /isSavedDeliveryAddressReady\(normalizedProfileAddress\)[\s\S]*setDestinationConfirmed\(true\)/);
+  assert.match(source, /Calculating shipping for this address/);
+  assert.match(source, /Delivery location confirmed automatically/);
+  assert.doesNotMatch(source, />\s*Use This Address\s*</);
+});
+
+test('profile address fallback still applies trusted coordinates when explicitly selected', () => {
   const source = checkout();
   assert.match(source, /const resetToProfileAddress = \(\) =>/);
   assert.match(source, /setShippingAddress\(profileAddress\)/);
-  assert.match(source, /hasValidAddressCoordinates\(profileAddress\)/);
+  assert.match(source, /isSavedDeliveryAddressReady\(profileAddress\)/);
   assert.match(source, /setDestinationConfirmed\(true\)/);
   assert.match(source, /Address selected\. Calculating delivery/);
 });
@@ -36,6 +46,13 @@ test('legacy text-only saved addresses require map confirmation without fabricat
   assert.match(source, /setAddressInputType\('map'\)/);
   assert.match(source, /Confirm on Map/);
   assert.doesNotMatch(source, /coordinates:\s*\{\s*lat:\s*14\.3121/);
+});
+
+test('customers retain a Change Address action after automatic saved-address selection', () => {
+  const source = checkout();
+  assert.match(source, /'Change Address'/);
+  assert.match(source, /const startAddressChange = \(\) =>/);
+  assert.match(source, /startAddressChange[\s\S]*setDestinationConfirmed\(false\)/);
 });
 
 test('profile no longer assigns default coordinates to text-only addresses', () => {

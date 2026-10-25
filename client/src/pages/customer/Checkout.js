@@ -15,6 +15,7 @@ import {
   formatDeliveryAddress,
   getAddressCoordinates,
   hasValidAddressCoordinates,
+  isSavedDeliveryAddressReady,
   isUsableCheckoutQuote,
   normalizeDeliveryAddress,
   shippingQuoteErrorMessage
@@ -61,7 +62,9 @@ const Checkout = () => {
   const [pricingQuoteError, setPricingQuoteError] = useState('');
   const [isPricingQuoteLoading, setIsPricingQuoteLoading] = useState(false);
   const [quoteRetry, setQuoteRetry] = useState(0);
-  const [destinationConfirmed, setDestinationConfirmed] = useState(false);
+  const [destinationConfirmed, setDestinationConfirmed] = useState(
+    () => isSavedDeliveryAddressReady(user?.address)
+  );
   const quoteRequestIdRef = React.useRef(0);
   const checkoutRequestRef = React.useRef({ inputKey: null, requestId: null });
 
@@ -73,7 +76,6 @@ const Checkout = () => {
   };
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
   const [notes, setNotes] = useState('');
-  const [addressApplied, setAddressApplied] = useState(false);
   const normalizedProfileAddress = React.useMemo(
     () => normalizeDeliveryAddress(user?.address),
     [user?.address]
@@ -97,6 +99,9 @@ const Checkout = () => {
   useEffect(() => {
     if (!destinationConfirmed && !editAddress) {
       setShippingAddress(normalizedProfileAddress);
+      if (isSavedDeliveryAddressReady(normalizedProfileAddress)) {
+        setDestinationConfirmed(true);
+      }
     }
   }, [normalizedProfileAddress, destinationConfirmed, editAddress]);
 
@@ -163,8 +168,8 @@ const Checkout = () => {
       setPricingQuote(null);
       setQuotedInputKey(null);
       setPricingQuoteError(
-        hasValidAddressCoordinates(normalizedProfileAddress)
-          ? 'Use your saved address or choose another location to calculate shipping.'
+        isSavedDeliveryAddressReady(normalizedProfileAddress)
+          ? 'Loading your saved delivery address to calculate shipping.'
           : 'Confirm this delivery address on the map to calculate shipping.'
       );
       setIsPricingQuoteLoading(false);
@@ -322,14 +327,13 @@ const Checkout = () => {
     setShippingAddress(profileAddress);
     setPhoneNumber(user?.phone || '');
     setPricingQuote(null);
-    setAddressApplied(false);
 
     // Re-initialize cities and barangays for Cavite
     setCities(getCitiesByProvince('cavite'));
     if (user?.address?.city) {
       setBarangays(getBarangaysByCity(user.address.city));
     }
-    if (!hasValidAddressCoordinates(profileAddress)) {
+    if (!isSavedDeliveryAddressReady(profileAddress)) {
       setDestinationConfirmed(false);
       setEditAddress(true);
       setAddressInputType('map');
@@ -341,10 +345,6 @@ const Checkout = () => {
     setDestinationConfirmed(true);
     setEditAddress(false);
 
-    // Show visual feedback
-    setAddressApplied(true);
-    setTimeout(() => setAddressApplied(false), 2000);
-
     toast.success('Address selected. Calculating delivery…');
   };
 
@@ -352,7 +352,6 @@ const Checkout = () => {
     setDestinationConfirmed(false);
     setPricingQuote(null);
     setPricingQuoteError('Select or confirm your delivery location.');
-    setAddressApplied(false);
     setEditAddress(true);
   };
 
@@ -842,35 +841,30 @@ const Checkout = () => {
                         <p className="text-sm text-gray-600">
                           <strong>Current Address:</strong> {formatDeliveryAddress(shippingAddress) || 'No saved delivery address'}
                         </p>
-                        {!hasValidAddressCoordinates(shippingAddress) && (
+                        {!isSavedDeliveryAddressReady(shippingAddress) && (
                           <p className="mt-2 text-xs font-semibold text-amber-700">
-                            This saved address needs a confirmed map pin before shipping can be calculated.
+                            This saved address is incomplete or needs a confirmed map pin before shipping can be calculated.
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="md:col-span-2">
-                        <button
-                          type="button"
-                          onClick={resetToProfileAddress}
-                          className={`w-full py-2.5 px-5 rounded-lg font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${addressApplied
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'btn btn-outline'
-                            }`}
-                        >
-                          {addressApplied ? (
-                            <>
-                              <CheckCircle className="h-4 w-4" />
-                              Address Applied!
-                            </>
-                          ) : (
-                            <>
-                              <Edit2 className="h-4 w-4" />
-                              {hasValidAddressCoordinates(shippingAddress) ? 'Use This Address' : 'Confirm on Map'}
-                            </>
-                          )}
-                        </button>
+                        {isSavedDeliveryAddressReady(shippingAddress) ? (
+                          <div className="flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-800" aria-live="polite">
+                            <CheckCircle className="h-4 w-4" />
+                            {isPricingQuoteLoading ? 'Calculating shipping for this address…' : 'Delivery location confirmed automatically'}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={resetToProfileAddress}
+                            className="btn btn-outline flex w-full items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all duration-200"
+                          >
+                            <MapPin className="h-4 w-4" />
+                            Confirm on Map
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -913,8 +907,6 @@ const Checkout = () => {
                           setPricingQuote(null);
                           setPricingQuoteError('');
                           setEditAddress(false);
-                          setAddressApplied(true);
-                          setTimeout(() => setAddressApplied(false), 2000);
                         }}
                         initialAddress={formatDeliveryAddress(shippingAddress)}
                         initialCoordinates={getAddressCoordinates(shippingAddress)}
@@ -1014,8 +1006,6 @@ const Checkout = () => {
                         }
                         setDestinationConfirmed(true);
                         setEditAddress(false);
-                        setAddressApplied(true);
-                        setTimeout(() => setAddressApplied(false), 2000);
                         toast.success('Delivery address selected. Calculating delivery…');
                       }}
                       className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-primary-600 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 group"

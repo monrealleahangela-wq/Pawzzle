@@ -29,6 +29,15 @@ export const getAddressCoordinates = (address = {}) => {
 
 export const hasValidAddressCoordinates = address => Boolean(getAddressCoordinates(address));
 
+const hasAddressText = value => typeof value === 'string' && value.trim().length > 0;
+
+export const isSavedDeliveryAddressReady = (address = {}) => (
+  hasAddressText(address.street)
+  && hasAddressText(address.city)
+  && hasAddressText(address.barangay)
+  && hasValidAddressCoordinates(address)
+);
+
 export const normalizeDeliveryAddress = (address = {}) => ({
   street: address?.street || '',
   city: address?.city || '',
