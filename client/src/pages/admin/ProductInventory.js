@@ -169,7 +169,6 @@ const ProductInventory = () => {
     }
   });
 
-  const canCreate = hasUiActionPermission(user, 'inventory', 'create', isAdmin);
   const canUpdate = hasUiActionPermission(user, 'inventory', 'update', isAdmin);
   const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   const canAdjustStock = canUpdate;
@@ -438,11 +437,6 @@ const ProductInventory = () => {
         </div>
 
         <div className="relative z-10 flex w-full flex-wrap gap-2.5 sm:w-auto">
-          {canCreate && (
-            <button type="button" onClick={() => handleOpenProductModal()} className="group flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-[13px] font-bold text-white shadow-md shadow-slate-200 transition-all hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
-              <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" /> Add Product
-            </button>
-          )}
           {canAdjustStock && (
             <button type="button" onClick={() => handleOpenInventoryModal()} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-[13px] font-bold text-slate-600 transition-all hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
               <Zap className="h-4 w-4 text-primary-600" /> Update Stock
