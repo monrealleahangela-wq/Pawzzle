@@ -69,6 +69,7 @@ test('submission revalidates products, suppliers, quantities, prices, and store 
   assert.match(submit, /Product\.find\(\{ _id: \{ \$in: mappedProductIds \}, store/);
   assert.match(submit, /PROCUREMENT_CART_PRICE_CHANGED/);
   assert.match(submit, /addedUnitPrice = product\.wholesalePrice/);
+  assert.match(submit, /!isSupplierProductPublished\(product\)/);
 });
 
 test('multi-supplier submission is atomic and clears the cart only after all orders are created', () => {

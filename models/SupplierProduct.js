@@ -90,6 +90,38 @@ const supplierProductSchema = new mongoose.Schema({
   dimensions: { type: String },   // e.g., "10x5x3 cm"
   expirationDate: { type: Date },
 
+  // Product compliance information reviewed by the Platform Administrator.
+  ingredients: { type: String, trim: true, default: '' },
+  nutritionalInformation: { type: String, trim: true, default: '' },
+  intendedSpecies: [{ type: String, trim: true }],
+  safetyNotes: { type: String, trim: true, default: '' },
+  regulatoryDocuments: [{
+    documentType: { type: String, trim: true, default: 'supporting_document' },
+    documentUrl: { type: String, required: true, select: false },
+    originalName: { type: String, trim: true },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+
+  // Optional rollout flag preserves legacy catalog entries while requiring
+  // every new or materially edited item to pass Platform Admin review.
+  requiresPlatformReview: { type: Boolean, default: false },
+  approvalStatus: {
+    type: String,
+    enum: ['pending_review', 'approved', 'changes_requested', 'rejected'],
+    default: 'pending_review'
+  },
+  submittedAt: { type: Date },
+  reviewedAt: { type: Date },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewReason: { type: String, trim: true, default: '' },
+  publishedAt: { type: Date },
+  reviewHistory: [{
+    status: { type: String, enum: ['pending_review', 'approved', 'changes_requested', 'rejected'] },
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    reason: { type: String, trim: true, default: '' },
+    at: { type: Date, default: Date.now }
+  }],
+
   // ── Metadata ──────────────────────────────────────────
   isActive: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },

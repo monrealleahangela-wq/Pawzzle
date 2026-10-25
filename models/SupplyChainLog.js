@@ -11,6 +11,8 @@ const supplyChainLogSchema = new mongoose.Schema({
       'supplier_invited', 'supplier_activated', 'supplier_resubmission_requested',
       'supplier_resubmitted', 'supplier_association_deactivated', 'supplier_association_reactivated',
       'supplier_product_added', 'supplier_product_updated', 'supplier_product_removed',
+      'supplier_product_submitted', 'supplier_product_approved',
+      'supplier_product_changes_requested', 'supplier_product_rejected',
       // Purchase order actions
       'purchase_order_created', 'purchase_order_submitted', 'purchase_order_confirmed',
       'purchase_order_processing', 'purchase_order_shipped', 'purchase_order_delivered',

@@ -11,7 +11,8 @@ const {
   addProduct, getMyProducts, updateProduct, deleteProduct,
   getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered,
   browseSuppliers, getSupplierCatalog,
-  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails,
+  adminGetAllSuppliers, adminGetProductReviews, adminReviewProduct,
+  adminVerifySupplier, adminGetSupplierDetails,
   adminUpdateSupplier, adminDeactivateSupplier
 } = require('../controllers/supplierController');
 
@@ -53,6 +54,8 @@ router.get('/catalog/:supplierId', authenticate, getSupplierCatalog);
 
 // ── Admin: Supplier verification & management ─────────────
 router.get('/admin/all', authenticate, superAdminOnly, adminGetAllSuppliers);
+router.get('/admin/products/reviews', authenticate, superAdminOnly, adminGetProductReviews);
+router.patch('/admin/products/:id/review', authenticate, superAdminOnly, adminReviewProduct);
 router.get('/admin/:id', authenticate, superAdminOnly, adminGetSupplierDetails);
 router.patch('/admin/:id/verify', authenticate, superAdminOnly, adminVerifySupplier);
 router.put('/admin/:id', authenticate, superAdminOnly, adminUpdateSupplier);

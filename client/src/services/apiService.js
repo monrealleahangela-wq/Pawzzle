@@ -603,6 +603,8 @@ export const supplierService = {
   updateStoreSupplierStatus: (id, action) => api.patch(`/suppliers/store-managed/${id}/status`, { action }),
   // Admin
   adminGetAll: (params) => api.get('/suppliers/admin/all', { params }),
+  adminGetProductReviews: (params) => api.get('/suppliers/admin/products/reviews', { params }),
+  adminReviewProduct: (id, data) => api.patch(`/suppliers/admin/products/${id}/review`, data),
   adminGetDetails: (id) => api.get(`/suppliers/admin/${id}`),
   adminVerify: (id, data) => api.patch(`/suppliers/admin/${id}/verify`, data),
   adminUpdate: (id, data) => api.put(`/suppliers/admin/${id}`, data),

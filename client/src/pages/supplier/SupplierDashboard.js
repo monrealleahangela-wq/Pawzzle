@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import {
   Package, Plus, Edit2, Trash2, X,
   TrendingUp, Truck, Star, ShoppingCart, Clock, CheckCircle,
-  BarChart3, Box
+  BarChart3, Box, ShieldCheck, FileText
 } from 'lucide-react';
 import { supplierService, uploadService, getImageUrl } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
@@ -28,6 +28,7 @@ const SupplierDashboard = () => {
     itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
     wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
     unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [],
+    ingredients: '', nutritionalInformation: '', intendedSpecies: [], safetyNotes: '', regulatoryDocuments: [],
     pet: { name: '', species: 'dog', breed: '', age: 0, ageUnit: 'years', gender: 'male', size: 'medium', color: '', description: '', vaccinationStatus: 'none', healthCondition: 'healthy', healthNotes: '', dewormed: false, spayedNeutered: false }
   };
   const [productForm, setProductForm] = useState(initialProduct);
@@ -109,10 +110,10 @@ const SupplierDashboard = () => {
     try {
       if (editingProduct) {
         await supplierService.updateProduct(editingProduct._id, productForm);
-        toast.success('Product updated');
+        toast.success('Supply updated and submitted for Platform Admin review');
       } else {
         await supplierService.addProduct(productForm);
-        toast.success('Product added to catalog');
+        toast.success('Supply submitted for Platform Admin review');
       }
       setShowProductModal(false);
       setEditingProduct(null);
@@ -219,6 +220,44 @@ const SupplierDashboard = () => {
       const urls = res.data.urls || res.data.imageUrls || [];
       setProductForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (e) { toast.error('Upload failed'); }
+  };
+
+  const handleComplianceUpload = async event => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setSubmitting(true);
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('document', file);
+        const response = await uploadService.uploadDocument(fd);
+        uploaded.push({
+          documentType: 'supporting_document',
+          documentUrl: response.data.url,
+          originalName: response.data.originalName || file.name
+        });
+      }
+      setProductForm(current => ({
+        ...current,
+        regulatoryDocuments: [...(current.regulatoryDocuments || []), ...uploaded]
+      }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Compliance document upload failed');
+    } finally {
+      setSubmitting(false);
+      event.target.value = '';
+    }
+  };
+
+  const productReviewStatus = product => {
+    if (product.requiresPlatformReview !== true) return { label: 'Existing catalog item', classes: 'bg-slate-100 text-slate-600' };
+    return ({
+      pending_review: { label: 'Under platform review', classes: 'bg-amber-100 text-amber-800' },
+      approved: { label: 'Platform verified supply', classes: 'bg-emerald-100 text-emerald-800' },
+      changes_requested: { label: 'Changes requested', classes: 'bg-orange-100 text-orange-800' },
+      rejected: { label: 'Rejected', classes: 'bg-rose-100 text-rose-700' }
+    }[product.approvalStatus] || { label: 'Under platform review', classes: 'bg-amber-100 text-amber-800' });
   };
 
   const statusColor = (s) => ({
@@ -365,7 +404,8 @@ const SupplierDashboard = () => {
       {/* Stats */}
       <div className="responsive-card-grid [--card-min:9rem] [--card-gap:1rem]">
         {[
-          { label: 'Products', value: stats?.activeProducts || 0, icon: Package },
+          { label: 'Published', value: stats?.activeProducts || 0, icon: Package },
+          { label: 'Awaiting Review', value: stats?.pendingProducts || 0, icon: Clock },
           { label: 'Total Stock', value: stats?.totalStock || 0, icon: Box },
           { label: 'Completed', value: supplier?.performance?.completedOrders || 0, icon: CheckCircle },
           { label: 'Reliability', value: `${supplier?.performance?.reliabilityScore || 100}%`, icon: TrendingUp },
@@ -438,6 +478,7 @@ const SupplierDashboard = () => {
                 </div>
                 <div className="p-4">
                   <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
+                  {(() => { const review = productReviewStatus(p); return <span className={`mt-2 inline-flex items-center rounded-full px-2 py-1 text-[8px] font-black uppercase ${review.classes}`}><ShieldCheck className="mr-1 h-3 w-3" />{review.label}</span>; })()}
                   <h4 className="mt-1 min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{p.name}</h4>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
                     <div>
@@ -449,6 +490,7 @@ const SupplierDashboard = () => {
                       <p className={`text-sm font-black ${p.availableStock <= 0 ? 'text-rose-600' : p.availableStock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{p.itemType === 'live_pet' ? (p.availableStock === 1 ? 'Available' : 'Unavailable') : p.availableStock}</p>
                     </div>
                   </div>
+                  {p.reviewReason && <p className="mt-3 rounded-xl bg-rose-50 p-2 text-[10px] font-semibold text-rose-700">Review note: {p.reviewReason}</p>}
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => { setProductForm(p); setEditingProduct(p); setShowProductModal(true); }}
                       className="flex-1 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-primary-600 transition-all flex items-center justify-center gap-1">
@@ -555,6 +597,10 @@ const SupplierDashboard = () => {
               <button onClick={() => setShowProductModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-xs leading-5 text-primary-900">
+                <b className="flex items-center gap-2 uppercase"><ShieldCheck className="h-4 w-4" /> Platform supply review</b>
+                <p className="mt-1">New supplies and material edits stay unpublished until the Platform Administrator approves them. Stock-only updates do not restart review.</p>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 {[['pet_supply','Pet Supply'],['product','Other Product'],['live_pet','Live Pet']].map(([value,label]) => <button key={value} type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, itemType: value, category: value === 'live_pet' ? 'live_pets' : value === 'product' ? 'general_product' : (p.category === 'live_pets' || p.category === 'general_product' ? 'pet_food' : p.category), availableStock: value === 'live_pet' ? 1 : p.availableStock, minimumOrderQuantity: value === 'live_pet' ? 1 : p.minimumOrderQuantity }))} className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase ${productForm.itemType === value ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500'} disabled:cursor-not-allowed`}>{label}</button>)}
               </div>
@@ -621,6 +667,24 @@ const SupplierDashboard = () => {
                 <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none h-20 resize-none" />
               </div>
+              {['pet_food', 'pet_treats'].includes(productForm.category) && <div className="grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:grid-cols-2">
+                <div className="sm:col-span-2"><h4 className="text-xs font-black uppercase text-emerald-900">Pet food and nutrition information</h4><p className="mt-1 text-[10px] text-emerald-800">Required for Platform Admin review of food and treats.</p></div>
+                <label className="text-[9px] font-black uppercase text-slate-600">Ingredients<textarea required value={productForm.ingredients || ''} onChange={e => setProductForm(p => ({ ...p, ingredients: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium normal-case" /></label>
+                <label className="text-[9px] font-black uppercase text-slate-600">Nutritional information<textarea required value={productForm.nutritionalInformation || ''} onChange={e => setProductForm(p => ({ ...p, nutritionalInformation: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium normal-case" /></label>
+              </div>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Intended species
+                  <input value={(productForm.intendedSpecies || []).join(', ')} onChange={e => setProductForm(p => ({ ...p, intendedSpecies: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="Dog, cat" className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium normal-case text-slate-900" />
+                </label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Safety / handling notes
+                  <input value={productForm.safetyNotes || ''} onChange={e => setProductForm(p => ({ ...p, safetyNotes: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium normal-case text-slate-900" />
+                </label>
+              </div>
+              <div className="space-y-2 rounded-2xl border border-slate-200 p-4">
+                <div><h4 className="text-[9px] font-black uppercase tracking-widest text-slate-600">Compliance documents</h4><p className="mt-1 text-[10px] text-slate-500">Optional licenses, registrations, test results, or product labels. Links are shown only in supplier and Platform Admin review screens.</p></div>
+                <div className="flex flex-wrap gap-2">{(productForm.regulatoryDocuments || []).map((document, index) => <div key={`${document.documentUrl}-${index}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[10px] text-slate-700"><FileText className="h-3.5 w-3.5" /><span className="max-w-[12rem] truncate">{document.originalName || 'Supporting document'}</span><button type="button" onClick={() => setProductForm(p => ({ ...p, regulatoryDocuments: p.regulatoryDocuments.filter((_, itemIndex) => itemIndex !== index) }))} className="text-rose-600"><X className="h-3.5 w-3.5" /></button></div>)}</div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-[9px] font-black uppercase text-slate-600 hover:border-primary-500"><Plus className="h-4 w-4" /> Add supporting files<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleComplianceUpload} /></label>
+              </div>
               <div className="space-y-2">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Images</label>
                 <div className="flex gap-3 flex-wrap">
@@ -642,7 +706,7 @@ const SupplierDashboard = () => {
               <button onClick={() => setShowProductModal(false)} className="px-6 py-2.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase">Cancel</button>
               <button onClick={handleProductSubmit} disabled={submitting}
                 className="flex-1 py-3 bg-primary-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all disabled:opacity-50">
-                {submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Add Product'}
+                {submitting ? 'Submitting...' : editingProduct ? 'Update & Submit for Review' : 'Submit Supply for Review'}
               </button>
             </footer>
           </div>

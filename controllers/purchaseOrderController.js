@@ -22,6 +22,7 @@ const {
 } = require('../services/procurementStockCommitmentService');
 const { createNotification } = require('./notificationController');
 const { isSupplierSelectableForStore, getSelectableSupplierFilterForStore } = require('../utils/supplierLifecycle');
+const { withPublishedSupplierProduct, isSupplierProductPublished } = require('../utils/supplierProductApproval');
 const {
   getReceivingProcessingCutoff,
   validateProcurementQuantity,
@@ -70,10 +71,10 @@ const notifySupplierStockShortage = async ({ userId, storeId, product }) => {
   ]), ...linkedSupplies.flatMap(supply => [supply.supplierProduct,
     ...(supply.supplierOffers || []).map(offer => offer.supplierProduct)])]
     .filter(id => id && String(id) !== String(product._id)).map(String))];
-  const alternativeProducts = alternativeIds.length ? await SupplierProduct.find({
+  const alternativeProducts = alternativeIds.length ? await SupplierProduct.find(withPublishedSupplierProduct({
     _id: { $in: alternativeIds }, isActive: true, isDeleted: false,
     $expr: { $gte: ['$availableStock', '$minimumOrderQuantity'] }
-  }).select('supplier') : [];
+  })).select('supplier') : [];
   const alternativeSuppliers = alternativeProducts.length ? await Supplier.find({
     _id: { $in: alternativeProducts.map(item => item.supplier) }
   }) : [];
@@ -96,7 +97,7 @@ const notifySupplierStockShortage = async ({ userId, storeId, product }) => {
 const populateProcurementCart = cart => cart.populate([
   {
     path: 'items.supplierProduct',
-    select: 'supplier itemType pet name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted',
+    select: 'supplier itemType pet name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted requiresPlatformReview approvalStatus',
     populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images listingContext' }
   },
   { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
@@ -124,7 +125,8 @@ const serializeProcurementCart = (cart, storeId) => {
     const currentUnitPrice = Number(product?.wholesalePrice || 0);
     const quantity = Number(item.quantity || 0);
     const supplierEligible = isSupplierSelectableForStore(supplier, storeId);
-    const available = Boolean(product && product.isActive && !product.isDeleted && supplierEligible);
+    const available = Boolean(product && product.isActive && !product.isDeleted
+      && isSupplierProductPublished(product) && supplierEligible);
     return {
       _id: item._id,
       cartItemId: item._id,
@@ -259,10 +261,11 @@ const getComparableSupplierOffers = async (req, res) => {
       isDeleted: false
     };
     if (search) filter.name = { $regex: escapedSearch, $options: 'i' };
-    const [products, total] = await Promise.all([SupplierProduct.find(filter)
-      .select('supplier name sku category brand wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted')
+    const publishedFilter = withPublishedSupplierProduct(filter);
+    const [products, total] = await Promise.all([SupplierProduct.find(publishedFilter)
+      .select('supplier name sku category brand wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted requiresPlatformReview approvalStatus')
       .sort({ wholesalePrice: 1, _id: 1 }).skip((page - 1) * limit).limit(limit),
-    SupplierProduct.countDocuments(filter)]);
+    SupplierProduct.countDocuments(publishedFilter)]);
     const offers = products.map(product => ({
         supplierProductId: product._id,
         supplier: { _id: product.supplier, businessName: supplierMap.get(String(product.supplier))?.businessName },
@@ -303,7 +306,7 @@ const confirmSupplierOfferMatch = async (req, res) => {
     }
     const [storeProduct, supplierProduct] = await Promise.all([
       (supplyTarget ? ServiceSupply : Product).findOne({ _id: storeProductId, store, isDeleted: { $ne: true } }),
-      SupplierProduct.findOne({ _id: supplierProductId, isActive: true, isDeleted: false })
+      SupplierProduct.findOne(withPublishedSupplierProduct({ _id: supplierProductId, isActive: true, isDeleted: false }))
     ]);
     if (!supplierProduct) return res.status(404).json({ message: 'Supplier offer is unavailable.' });
     const supplier = await Supplier.findById(supplierProduct.supplier);
@@ -356,11 +359,11 @@ const addProcurementCartItem = async (req, res) => {
   try {
     const store = await resolveUserStore(req.user);
     if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
-    const product = await SupplierProduct.findOne({
+    const product = await SupplierProduct.findOne(withPublishedSupplierProduct({
       _id: req.body.supplierProductId,
       isActive: true,
       isDeleted: false
-    });
+    }));
     if (!product) return res.status(404).json({ message: 'Supplier product is unavailable.' });
     if (product.itemType === 'live_pet') {
       const pet = await Pet.findOne({
@@ -477,7 +480,7 @@ const updateProcurementCartItem = async (req, res) => {
     const item = cart.items.find(entry => String(entry._id) === String(req.params.itemId)
       || String(entry.supplierProduct) === String(req.params.itemId));
     if (!item) return res.status(404).json({ message: 'Supply is not in your procurement cart.' });
-    const product = await SupplierProduct.findOne({ _id: item.supplierProduct, isActive: true, isDeleted: false });
+    const product = await SupplierProduct.findOne(withPublishedSupplierProduct({ _id: item.supplierProduct, isActive: true, isDeleted: false }));
     if (!product) return res.status(409).json({ message: 'This supplier product is no longer available.' });
     const supplier = await Supplier.findById(product.supplier);
     if (!isSupplierSelectableForStore(supplier, store)) return res.status(409).json({ message: 'This supplier is no longer eligible for your store.' });
@@ -631,7 +634,7 @@ const submitProcurementCart = async (req, res) => {
 
       for (const item of cart.items) {
         const product = productMap.get(String(item.supplierProduct));
-        if (!product || !product.isActive || product.isDeleted) {
+        if (!product || !product.isActive || product.isDeleted || !isSupplierProductPublished(product)) {
           issues.push({ supplierProductId: item.supplierProduct, message: 'A supply in your cart is no longer available.' });
           continue;
         }
@@ -897,12 +900,12 @@ const retiredDirectPurchaseOrderImplementation = async (req, res) => {
     const resolvedItems = [];
 
     for (const item of items) {
-      const product = await SupplierProduct.findOne({
+      const product = await SupplierProduct.findOne(withPublishedSupplierProduct({
         _id: item.supplierProductId,
         supplier: supplierId,
         isActive: true,
         isDeleted: false
-      });
+      }));
 
       if (!product) {
         return res.status(400).json({ message: `Product not found: ${item.supplierProductId}` });

@@ -38,7 +38,9 @@ test('supplier live-pet catalog reuses Pet identity and is isolated from the cus
   assert.match(supplierController, /new Pet\(buildSupplierPet/);
   assert.match(supplierController, /pet\.save\(\{ session \}\)/);
   assert.match(supplierController, /listingContext: 'supplier_catalog'/);
-  assert.doesNotMatch(supplierController, /approvalStatus:/);
+  assert.match(supplierController, /approvalStatus: 'pending_review'/);
+  assert.match(supplierController, /status: 'unavailable'[^]*isAvailable: false/);
+  assert.match(supplierController, /review\.status === 'approved'[^]*pet\.status = publishPet \? 'available' : 'unavailable'/);
   assert.match(petModel, /listingContext:[\s\S]*\['marketplace', 'supplier_catalog'\]/);
   assert.match(petModel, /sourceSupplier:[\s\S]*ref: 'Supplier'/);
 });

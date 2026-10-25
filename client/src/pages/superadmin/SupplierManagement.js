@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X } from 'lucide-react';
+import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X, ClipboardCheck, FileText } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
 import { pawzzlePrompt } from '../../utils/pawzzleDialog';
@@ -10,12 +10,21 @@ const SupplierManagement = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [supplierDetails, setSupplierDetails] = useState(null);
   const [actionReason, setActionReason] = useState('');
+  const [activeView, setActiveView] = useState('accounts');
+  const [productReviews, setProductReviews] = useState([]);
+  const [reviewCounts, setReviewCounts] = useState({});
+  const [reviewStatus, setReviewStatus] = useState('pending_review');
+  const [reviewSearch, setReviewSearch] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
+  // The fetch callbacks intentionally use the latest filter state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSuppliers(); }, [filterStatus]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (activeView === 'supplies') fetchProductReviews(); }, [activeView, reviewStatus]);
 
   const fetchSuppliers = async () => {
     try {
@@ -25,11 +34,51 @@ const SupplierManagement = () => {
     finally { setLoading(false); }
   };
 
+  const fetchProductReviews = async () => {
+    setReviewLoading(true);
+    try {
+      const res = await supplierService.adminGetProductReviews({
+        status: reviewStatus || undefined,
+        search: reviewSearch || undefined
+      });
+      setProductReviews(res.data.products || []);
+      setReviewCounts(res.data.counts || {});
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load supply reviews');
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleProductReview = async (product, action) => {
+    let reason = '';
+    if (action !== 'approve') {
+      reason = await pawzzlePrompt(
+        action === 'request_changes' ? 'Tell the supplier exactly what must be corrected.' : 'Explain why this supply cannot be approved.',
+        {
+          title: action === 'request_changes' ? 'Request supply changes' : 'Reject supply',
+          inputLabel: 'Required review reason',
+          required: true,
+          multiline: true,
+          confirmLabel: action === 'request_changes' ? 'Request changes' : 'Reject supply',
+          tone: action === 'reject' ? 'danger' : 'warning'
+        }
+      );
+      if (reason === null) return;
+    }
+    try {
+      await supplierService.adminReviewProduct(product._id, { action, reason });
+      toast.success(action === 'approve' ? 'Supply approved and published' : action === 'request_changes' ? 'Changes requested from supplier' : 'Supply rejected');
+      await fetchProductReviews();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Supply review failed');
+    }
+  };
+
   const viewDetails = async (id) => {
     try {
       const res = await supplierService.adminGetDetails(id);
       setSupplierDetails(res.data);
-      setSelectedSupplier(id);
       setShowDetailModal(true);
     } catch (e) { toast.error('Failed to load details'); }
   };
@@ -120,7 +169,13 @@ const SupplierManagement = () => {
         </div>
       </div>
 
+      <div className="flex gap-1 rounded-2xl bg-slate-900 p-1.5">
+        <button onClick={() => setActiveView('accounts')} className={`flex items-center gap-2 rounded-xl px-5 py-3 text-[10px] font-black uppercase ${activeView === 'accounts' ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}><Users className="h-4 w-4" /> Supplier accounts</button>
+        <button onClick={() => setActiveView('supplies')} className={`flex items-center gap-2 rounded-xl px-5 py-3 text-[10px] font-black uppercase ${activeView === 'supplies' ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}><ClipboardCheck className="h-4 w-4" /> Supply approvals {reviewCounts.pending_review ? `(${reviewCounts.pending_review})` : ''}</button>
+      </div>
+
       {/* Stats */}
+      {activeView === 'accounts' && <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Pending', value: suppliers.filter(s => s.status === 'pending_verification').length, icon: Clock, color: 'amber' },
@@ -216,6 +271,42 @@ const SupplierManagement = () => {
           </div>
         )}
       </div>
+      </>}
+
+      {activeView === 'supplies' && <div className="space-y-4">
+        <div className="rounded-2xl border border-primary-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div><h2 className="text-xl font-black uppercase text-slate-900">Supply approvals</h2><p className="mt-1 text-xs leading-5 text-slate-500">Review product identity, pricing, nutrition, and supporting evidence before publishing supplies to stores.</p></div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['pending_review', 'Pending'], ['approved', 'Approved'], ['changes_requested', 'Changes requested'], ['rejected', 'Rejected'], ['', 'All']
+              ].map(([value, label]) => <button key={label} onClick={() => setReviewStatus(value)} className={`rounded-xl px-3 py-2 text-[9px] font-black uppercase ${reviewStatus === value ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{label}{value && reviewCounts[value] !== undefined ? ` ${reviewCounts[value]}` : ''}</button>)}
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2"><div className="relative flex-1"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={reviewSearch} onChange={event => setReviewSearch(event.target.value)} onKeyDown={event => event.key === 'Enter' && fetchProductReviews()} placeholder="Search supply name or SKU" className="w-full rounded-xl border border-slate-200 py-3 pl-11 pr-4 text-sm outline-none focus:border-primary-500" /></div><button onClick={fetchProductReviews} className="rounded-xl bg-slate-900 px-5 text-[9px] font-black uppercase text-white">Search</button></div>
+        </div>
+
+        {reviewLoading && <div className="rounded-2xl bg-white p-8 text-center text-xs font-bold text-slate-500">Loading supply reviews...</div>}
+        {!reviewLoading && productReviews.map(product => <article key={product._id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row">
+            <div className="h-28 w-full shrink-0 overflow-hidden rounded-2xl bg-slate-100 lg:w-32">{product.images?.[0] ? <img src={getImageUrl(product.images[0])} alt="" className="h-full w-full object-cover" /> : <Package className="m-auto mt-10 h-8 w-8 text-slate-300" />}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${product.approvalStatus === 'approved' ? 'bg-emerald-100 text-emerald-800' : product.approvalStatus === 'pending_review' ? 'bg-amber-100 text-amber-800' : product.approvalStatus === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-orange-100 text-orange-800'}`}>{product.approvalStatus?.replaceAll('_', ' ')}</span><span className="text-[9px] font-bold uppercase text-primary-700">{product.itemType?.replaceAll('_', ' ')} · {product.category?.replaceAll('_', ' ')}</span></div>
+              <h3 className="mt-2 text-base font-black uppercase text-slate-900">{product.name}</h3>
+              <p className="mt-1 text-[10px] text-slate-500">SKU {product.sku} · {product.supplier?.businessName || 'Unknown supplier'} · {formatPeso(product.wholesalePrice)} wholesale</p>
+              {product.description && <p className="mt-3 text-xs leading-5 text-slate-600">{product.description}</p>}
+              <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-2">
+                {product.ingredients && <div className="rounded-xl bg-emerald-50 p-3"><b className="block uppercase text-emerald-800">Ingredients</b><span className="mt-1 block text-emerald-900">{product.ingredients}</span></div>}
+                {product.nutritionalInformation && <div className="rounded-xl bg-emerald-50 p-3"><b className="block uppercase text-emerald-800">Nutrition</b><span className="mt-1 block text-emerald-900">{product.nutritionalInformation}</span></div>}
+              </div>
+              {!!product.regulatoryDocuments?.length && <div className="mt-3 flex flex-wrap gap-2">{product.regulatoryDocuments.map((document, index) => <a key={`${document.documentUrl}-${index}`} href={getImageUrl(document.documentUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-[9px] font-bold text-slate-700 hover:border-primary-400"><FileText className="h-3.5 w-3.5" />{document.originalName || 'Supporting document'}</a>)}</div>}
+              {product.reviewReason && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-[10px] font-semibold text-rose-700">Review note: {product.reviewReason}</p>}
+            </div>
+            {product.approvalStatus === 'pending_review' && <div className="flex shrink-0 flex-row gap-2 lg:w-40 lg:flex-col"><button onClick={() => handleProductReview(product, 'approve')} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[9px] font-black uppercase text-white">Approve & publish</button><button onClick={() => handleProductReview(product, 'request_changes')} className="flex-1 rounded-xl bg-amber-100 px-4 py-3 text-[9px] font-black uppercase text-amber-800">Request changes</button><button onClick={() => handleProductReview(product, 'reject')} className="flex-1 rounded-xl bg-rose-100 px-4 py-3 text-[9px] font-black uppercase text-rose-700">Reject</button></div>}
+          </div>
+        </article>)}
+        {!reviewLoading && productReviews.length === 0 && <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center"><ClipboardCheck className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-500">No supplies match this review filter.</p></div>}
+      </div>}
 
       {/* Detail Modal */}
       {showDetailModal && supplierDetails && (

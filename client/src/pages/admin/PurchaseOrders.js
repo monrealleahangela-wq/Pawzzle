@@ -504,6 +504,7 @@ const PurchaseOrders = () => {
                         {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-8 w-8 text-indigo-300" />}
                       </div>
                       <div className="p-4">
+                        {p.requiresPlatformReview === true && p.approvalStatus === 'approved' && <span className="mb-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-emerald-800">Platform Verified Supply</span>}
                         <p className="text-[8px] font-black text-indigo-500 uppercase">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                         <h4 className="text-xs font-black text-slate-900 uppercase mt-0.5 line-clamp-1">{p.name}</h4>
                         <div className="flex justify-between items-end mt-2">

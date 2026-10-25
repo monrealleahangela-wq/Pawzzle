@@ -72,6 +72,7 @@ test('catalog audit failures do not turn successful add, update, or delete mutat
     availableStock: 4,
     isActive: true,
     isDeleted: false,
+    reviewHistory: [],
     async save() { return this; }
   };
   const loggedSecondaryFailures = [];
@@ -79,7 +80,10 @@ test('catalog audit failures do not turn successful add, update, or delete mutat
   Supplier.findOne = async () => supplier;
   Supplier.updateOne = async () => ({ acknowledged: true, modifiedCount: 1 });
   SupplierProduct.prototype.save = async function saveProduct() { return this; };
-  SupplierProduct.findOne = () => ({ session: async () => product });
+  SupplierProduct.findOne = () => ({
+    select() { return this; },
+    session: async () => product
+  });
   Product.find = () => ({ select: async () => [] });
   ServiceSupply.find = () => ({ select: async () => [] });
   PurchaseOrder.exists = () => ({ session: async () => null });

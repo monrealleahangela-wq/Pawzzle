@@ -183,7 +183,9 @@ test('comparison returns only Store-eligible supplier offers and never labels un
     assert.equal(result.status, 200);
     assert.equal(result.body.offers.length, 2);
     assert.deepEqual(result.body.offers.map(item => item.matchType), ['exact', 'equivalent']);
-    assert.deepEqual(offerFilter.supplier.$in.map(String), [String(firstSupplier), String(secondSupplier)]);
+    const scopedFilter = offerFilter.$and?.[0] || offerFilter;
+    assert.deepEqual(scopedFilter.supplier.$in.map(String), [String(firstSupplier), String(secondSupplier)]);
+    assert.ok(offerFilter.$and?.[1].$or.some(clause => clause.approvalStatus === 'approved'));
   } finally {
     Product.findOne = originals.productFindOne;
     Supplier.find = originals.supplierFind;

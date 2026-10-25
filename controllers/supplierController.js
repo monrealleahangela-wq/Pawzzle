@@ -17,6 +17,11 @@ const { sanitizeReceivingReport, sanitizeOrderReceivingReport } = require('../ut
 const { sendSupplierInvitation, sendSupplierApplicationUpdate } = require('../utils/emailService');
 const { supplierProductDuplicateResponse } = require('../utils/supplierProductDuplicate');
 const {
+  withPublishedSupplierProduct,
+  isSupplierProductPublished,
+  hasReviewedContentUpdate
+} = require('../utils/supplierProductApproval');
+const {
   getSelectableSupplierFilterForStore,
   isSupplierAvailable,
   isSupplierSelectableForStore,
@@ -25,6 +30,30 @@ const {
 
 const REQUIRED_PLATFORM_DOCUMENTS = ['business_registration', 'bir_certificate'];
 const SUPPLIER_GOODS_TYPES = ['live_pets', 'pet_supplies', 'general_products'];
+
+const normalizeStringList = value => (Array.isArray(value) ? value : [])
+  .map(item => String(item || '').trim()).filter(Boolean).slice(0, 20);
+
+const normalizeRegulatoryDocuments = value => (Array.isArray(value) ? value : [])
+  .filter(document => document && typeof document === 'object' && String(document.documentUrl || '').trim())
+  .slice(0, 10)
+  .map(document => ({
+    documentType: String(document.documentType || 'supporting_document').trim().slice(0, 80),
+    documentUrl: String(document.documentUrl).trim(),
+    originalName: String(document.originalName || '').trim().slice(0, 160),
+    uploadedAt: document.uploadedAt || new Date()
+  }));
+
+const pendingProductReview = actor => ({
+  requiresPlatformReview: true,
+  approvalStatus: 'pending_review',
+  submittedAt: new Date(),
+  reviewedAt: undefined,
+  reviewedBy: undefined,
+  reviewReason: '',
+  publishedAt: undefined,
+  reviewHistory: [{ status: 'pending_review', actor, reason: '' }]
+});
 
 const createHttpError = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 
@@ -67,8 +96,8 @@ const notifyStoresOfUnavailableOffer = async product => {
       alternativeIds.push(primary);
     }
     const candidates = alternativeIds.length
-      ? await SupplierProduct.find({ _id: { $in: alternativeIds }, isActive: true, isDeleted: false,
-        $expr: { $gte: ['$availableStock', '$minimumOrderQuantity'] } }).select('supplier') : [];
+      ? await SupplierProduct.find(withPublishedSupplierProduct({ _id: { $in: alternativeIds }, isActive: true, isDeleted: false,
+        $expr: { $gte: ['$availableStock', '$minimumOrderQuantity'] } })).select('supplier') : [];
     const suppliers = candidates.length ? await Supplier.find({ _id: { $in: candidates.map(item => item.supplier) } }) : [];
     const hasAlternative = suppliers.some(candidate => isSupplierSelectableForStore(candidate, store._id));
     await createNotification({
@@ -111,8 +140,8 @@ const buildSupplierPet = ({ input, supplier, userId, price, images }) => {
     price,
     images: images || [],
     quantity: 1,
-    status: 'available',
-    isAvailable: true,
+    status: 'unavailable',
+    isAvailable: false,
     listingType: 'sale',
     dewormed: Boolean(pet.dewormed),
     spayedNeutered: Boolean(pet.spayedNeutered),
@@ -548,9 +577,15 @@ const getSupplierDashboard = async (req, res) => {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
 
-    const products = await SupplierProduct.countDocuments({ supplier: supplier._id, isActive: true, isDeleted: false });
+    const products = await SupplierProduct.countDocuments(withPublishedSupplierProduct({ supplier: supplier._id, isActive: true, isDeleted: false }));
+    const pendingProducts = await SupplierProduct.countDocuments({
+      supplier: supplier._id,
+      requiresPlatformReview: true,
+      approvalStatus: 'pending_review',
+      isDeleted: false
+    });
     const totalStock = await SupplierProduct.aggregate([
-      { $match: { supplier: supplier._id, isActive: true, isDeleted: false } },
+      { $match: withPublishedSupplierProduct({ supplier: supplier._id, isActive: true, isDeleted: false }) },
       { $group: { _id: null, total: { $sum: '$availableStock' } } }
     ]);
 
@@ -568,6 +603,7 @@ const getSupplierDashboard = async (req, res) => {
       supplier,
       stats: {
         activeProducts: products,
+        pendingProducts,
         totalStock: totalStock[0]?.total || 0,
         ordersByStatus: orders,
         performance: supplier.performance,
@@ -594,7 +630,8 @@ const addProduct = async (req, res) => {
 
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
-      brand, specifications, weight, dimensions, expirationDate } = req.body;
+      brand, specifications, weight, dimensions, expirationDate, ingredients,
+      nutritionalInformation, intendedSpecies, safetyNotes, regulatoryDocuments } = req.body;
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
       ? req.body.itemType : 'pet_supply';
     requestedItemType = itemType;
@@ -606,6 +643,10 @@ const addProduct = async (req, res) => {
     const authoritativeCategory = itemType === 'live_pet' ? 'live_pets' : category;
     if (itemType !== 'live_pet' && category === 'live_pets') {
       return res.status(400).json({ message: 'The live-pets category is reserved for exact live-pet catalog records.' });
+    }
+    if (['pet_food', 'pet_treats'].includes(authoritativeCategory)
+        && (!String(ingredients || '').trim() || !String(nutritionalInformation || '').trim())) {
+      return res.status(400).json({ message: 'Ingredients and nutritional information are required for pet food and treats.' });
     }
     let product;
     const persistCatalogEntry = async session => {
@@ -631,7 +672,11 @@ const addProduct = async (req, res) => {
         minimumOrderQuantity: itemType === 'live_pet' ? 1 : (minimumOrderQuantity || 1),
         unitOfMeasure: itemType === 'live_pet' ? 'piece' : (unitOfMeasure || 'piece'),
         deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
-        brand, specifications, weight, dimensions, expirationDate
+        brand, specifications, weight, dimensions, expirationDate,
+        ingredients, nutritionalInformation,
+        intendedSpecies: normalizeStringList(intendedSpecies), safetyNotes,
+        regulatoryDocuments: normalizeRegulatoryDocuments(regulatoryDocuments),
+        ...pendingProductReview(req.user._id)
       });
       await product.save({ session });
       await Supplier.updateOne({ _id: supplier._id }, {
@@ -647,11 +692,11 @@ const addProduct = async (req, res) => {
 
     await settleSupplierSecondaryEffects('Add supplier product', [
       () => SupplyChainLog.create({
-        action: 'supplier_product_added',
+        action: 'supplier_product_submitted',
         performedBy: req.user._id,
         userRole: 'supplier',
         relatedEntity: { type: 'SupplierProduct', id: product._id },
-        description: `Product "${name}" (SKU: ${sku}) added to catalog`,
+        description: `Supply "${name}" (SKU: ${sku}) submitted for Platform Admin review`,
         supplier: supplier._id
       })
     ]);
@@ -678,7 +723,7 @@ const getMyProducts = async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const products = await SupplierProduct.find(filter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const products = await SupplierProduct.find(filter).select('+regulatoryDocuments.documentUrl').populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await SupplierProduct.countDocuments(filter);
 
     res.json({ products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
@@ -703,6 +748,7 @@ const hasUnreleasedProductCommitment = ({ product, supplier, session }) => Purch
 const updateProduct = async (req, res) => {
   let product;
   let previousValue;
+  let reviewedContentChanged = false;
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
@@ -711,19 +757,41 @@ const updateProduct = async (req, res) => {
       'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
       'retailPrice', 'availableStock', 'minimumOrderQuantity', 'unitOfMeasure',
       'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'dimensions',
-      'expirationDate', 'isActive'
+      'expirationDate', 'ingredients', 'nutritionalInformation', 'intendedSpecies',
+      'safetyNotes', 'regulatoryDocuments', 'isActive'
     ];
     const updates = {};
     mutableFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
+    if (updates.intendedSpecies !== undefined) updates.intendedSpecies = normalizeStringList(updates.intendedSpecies);
+    if (updates.regulatoryDocuments !== undefined) updates.regulatoryDocuments = normalizeRegulatoryDocuments(updates.regulatoryDocuments);
 
     await mongoose.connection.transaction(async session => {
-      product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
+      product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id })
+        .select('+regulatoryDocuments.documentUrl').session(session);
       if (!product) throw createHttpError('Product not found.', 404);
+      reviewedContentChanged = hasReviewedContentUpdate(req.body, product);
       previousValue = { price: product.wholesalePrice, stock: product.availableStock,
-        minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive };
+        minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive,
+        approvalStatus: product.approvalStatus, published: isSupplierProductPublished(product) };
       Object.assign(product, updates);
+
+      if (['pet_food', 'pet_treats'].includes(product.category)
+          && (!String(product.ingredients || '').trim() || !String(product.nutritionalInformation || '').trim())) {
+        throw createHttpError('Ingredients and nutritional information are required for pet food and treats.', 400);
+      }
+
+      if (reviewedContentChanged) {
+        product.requiresPlatformReview = true;
+        product.approvalStatus = 'pending_review';
+        product.submittedAt = new Date();
+        product.reviewedAt = undefined;
+        product.reviewedBy = undefined;
+        product.reviewReason = '';
+        product.publishedAt = undefined;
+        product.reviewHistory.push({ status: 'pending_review', actor: req.user._id, reason: '' });
+      }
 
       if (product.itemType === 'live_pet') {
         const requestedStock = req.body.availableStock;
@@ -755,6 +823,9 @@ const updateProduct = async (req, res) => {
           if (reservedPurchaseOrder) {
             pet.status = 'reserved';
             pet.isAvailable = false;
+          } else if (!pet.acquiredThroughPurchaseOrder && !isSupplierProductPublished(product)) {
+            pet.status = 'unavailable';
+            pet.isAvailable = false;
           } else if (!pet.acquiredThroughPurchaseOrder) {
             pet.status = product.availableStock === 1 ? 'available' : 'unavailable';
             pet.isAvailable = product.availableStock === 1;
@@ -767,17 +838,20 @@ const updateProduct = async (req, res) => {
 
     await settleSupplierSecondaryEffects('Update supplier product', [
       () => SupplyChainLog.create({
-        action: 'supplier_product_updated',
+        action: reviewedContentChanged ? 'supplier_product_submitted' : 'supplier_product_updated',
         performedBy: req.user._id,
         userRole: 'supplier',
         relatedEntity: { type: 'SupplierProduct', id: product._id },
-        description: `Product "${product.name}" updated`,
+        description: reviewedContentChanged
+          ? `Supply "${product.name}" resubmitted for Platform Admin review`
+          : `Product "${product.name}" updated`,
         supplier: supplier._id,
         previousValue,
         newValue: { price: product.wholesalePrice, stock: product.availableStock }
       }),
       previousValue.stock >= previousValue.minimumOrderQuantity && previousValue.isActive !== false
-        && (product.availableStock < product.minimumOrderQuantity || product.isActive === false)
+        && (product.availableStock < product.minimumOrderQuantity || product.isActive === false
+          || (previousValue.published && !isSupplierProductPublished(product)))
         ? () => notifyStoresOfUnavailableOffer(product) : null
     ]);
 
@@ -1286,8 +1360,9 @@ const getSupplierCatalog = async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const products = await SupplierProduct.find(filter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
-    const total = await SupplierProduct.countDocuments(filter);
+    const publishedFilter = withPublishedSupplierProduct(filter);
+    const products = await SupplierProduct.find(publishedFilter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const total = await SupplierProduct.countDocuments(publishedFilter);
 
     res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
   } catch (error) {
@@ -1317,6 +1392,135 @@ const adminGetAllSuppliers = async (req, res) => {
   } catch (error) {
     console.error('Admin get suppliers error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const adminGetProductReviews = async (req, res) => {
+  try {
+    const { status, search, itemType, category, page = 1, limit = 30 } = req.query;
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 30));
+    const filter = { requiresPlatformReview: true, isDeleted: false };
+    if (status) filter.approvalStatus = status;
+    if (itemType) filter.itemType = itemType;
+    if (category) filter.category = category;
+    if (search) filter.$or = [
+      { name: { $regex: String(search).slice(0, 80), $options: 'i' } },
+      { sku: { $regex: String(search).slice(0, 80), $options: 'i' } }
+    ];
+
+    const [products, total, statusCounts] = await Promise.all([
+      SupplierProduct.find(filter)
+        .select('+regulatoryDocuments.documentUrl')
+        .populate('supplier', 'businessName status isActive supplierType contactPerson email')
+        .populate('reviewedBy', 'firstName lastName')
+        .populate('pet')
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .skip((safePage - 1) * safeLimit).limit(safeLimit),
+      SupplierProduct.countDocuments(filter),
+      SupplierProduct.aggregate([
+        { $match: { requiresPlatformReview: true, isDeleted: false } },
+        { $group: { _id: '$approvalStatus', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    res.json({
+      products,
+      counts: Object.fromEntries(statusCounts.map(row => [row._id, row.count])),
+      pagination: { page: safePage, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) }
+    });
+  } catch (error) {
+    console.error('Admin get product reviews error:', error);
+    res.status(500).json({ message: 'Unable to load supply reviews.' });
+  }
+};
+
+const adminReviewProduct = async (req, res) => {
+  const actionMap = {
+    approve: { status: 'approved', logAction: 'supplier_product_approved', label: 'approved' },
+    request_changes: { status: 'changes_requested', logAction: 'supplier_product_changes_requested', label: 'changes requested' },
+    reject: { status: 'rejected', logAction: 'supplier_product_rejected', label: 'rejected' }
+  };
+  const review = actionMap[req.body.action];
+  const reason = String(req.body.reason || '').trim();
+  if (!review) return res.status(400).json({ message: 'Choose approve, request_changes, or reject.' });
+  if (req.body.action !== 'approve' && !reason) {
+    return res.status(400).json({ message: 'A review reason is required when requesting changes or rejecting a supply.' });
+  }
+
+  let product;
+  let supplier;
+  try {
+    await mongoose.connection.transaction(async session => {
+      product = await SupplierProduct.findOne({
+        _id: req.params.id,
+        requiresPlatformReview: true,
+        approvalStatus: 'pending_review',
+        isDeleted: false
+      }).session(session);
+      if (!product) throw createHttpError('This supply is not awaiting review or was already reviewed.', 409);
+
+      supplier = await Supplier.findById(product.supplier).session(session);
+      if (!supplier) throw createHttpError('Supplier not found.', 404);
+      if (req.body.action === 'approve' && !isSupplierAvailable(supplier)) {
+        throw createHttpError('Verify and activate the supplier account before approving its supplies.', 409);
+      }
+
+      product.approvalStatus = review.status;
+      product.reviewedAt = new Date();
+      product.reviewedBy = req.user._id;
+      product.reviewReason = reason;
+      product.publishedAt = review.status === 'approved' ? new Date() : undefined;
+      product.reviewHistory.push({ status: review.status, actor: req.user._id, reason });
+      await product.save({ session });
+
+      if (product.itemType === 'live_pet' && product.pet) {
+        const pet = await Pet.findOne({
+          _id: product.pet,
+          sourceSupplier: supplier._id,
+          listingContext: 'supplier_catalog'
+        }).session(session);
+        if (pet && !pet.acquiredThroughPurchaseOrder && !pet.procurementReservation?.purchaseOrder) {
+          const publishPet = review.status === 'approved' && Number(product.availableStock) === 1 && product.isActive;
+          pet.status = publishPet ? 'available' : 'unavailable';
+          pet.isAvailable = publishPet;
+          await pet.save({ session });
+        }
+      }
+
+      await SupplyChainLog.create([{
+        action: review.logAction,
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'SupplierProduct', id: product._id },
+        description: `Supply "${product.name}" ${review.label}${reason ? ` (${reason})` : ''}`,
+        supplier: supplier._id,
+        metadata: { approvalStatus: review.status }
+      }], { session });
+    });
+
+    await settleSupplierSecondaryEffects('Admin supply review', [
+      createNotification({
+        recipient: supplier.user,
+        sender: req.user._id,
+        type: 'supplier_product_review',
+        title: `Supply ${req.body.action === 'request_changes' ? 'Changes Requested' : review.label.replace(/^./, value => value.toUpperCase())}`,
+        message: req.body.action === 'approve'
+          ? `${product.name} is now published to verified stores as a Platform Verified Supply.`
+          : `${product.name} was ${review.label}. Reason: ${reason}`,
+        relatedId: product._id,
+        relatedModel: 'SupplierProduct',
+        targetUrl: '/supplier/dashboard?tab=products'
+      }),
+      review.status !== 'approved' ? () => notifyStoresOfUnavailableOffer(product) : null
+    ]);
+
+    res.json(product);
+  } catch (error) {
+    console.error('Admin review product error:', error);
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      message: error.statusCode ? error.message : error.name === 'CastError' ? 'Invalid supply.' : 'Unable to review supply.'
+    });
   }
 };
 
@@ -1446,7 +1650,7 @@ const adminGetSupplierDetails = async (req, res) => {
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
 
     const [products, orders, productCount, orderCount, recentLogs] = await Promise.all([
-      SupplierProduct.find({ supplier: supplier._id, isDeleted: false }).select('name sku category wholesalePrice availableStock isActive').sort({ createdAt: -1 }).limit(20),
+      SupplierProduct.find({ supplier: supplier._id, isDeleted: false }).select('name sku category wholesalePrice availableStock isActive approvalStatus requiresPlatformReview reviewReason').sort({ createdAt: -1 }).limit(20),
       PurchaseOrder.find({ supplier: supplier._id, isDeleted: false }).select('orderNumber status paymentStatus totalCost createdAt').populate('store', 'name').sort({ createdAt: -1 }).limit(20),
       SupplierProduct.countDocuments({ supplier: supplier._id, isDeleted: false }),
       PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false }),
@@ -1512,6 +1716,7 @@ module.exports = {
   addProduct, getMyProducts, updateProduct, deleteProduct,
   getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered,
   browseSuppliers, getSupplierCatalog,
-  adminGetAllSuppliers, adminVerifySupplier, adminGetSupplierDetails,
+  adminGetAllSuppliers, adminGetProductReviews, adminReviewProduct,
+  adminVerifySupplier, adminGetSupplierDetails,
   adminUpdateSupplier, adminDeactivateSupplier
 };
