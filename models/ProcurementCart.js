@@ -6,6 +6,11 @@ const procurementCartItemSchema = new mongoose.Schema({
     ref: 'SupplierProduct',
     required: true
   },
+  supplierVariant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SupplierProductVariant',
+    default: null
+  },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
@@ -18,6 +23,8 @@ const procurementCartItemSchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true, min: 1 },
   storeProduct: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+  sellerVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant', default: null },
+  variantMapping: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierVariantMapping', default: null },
   serviceSupply: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceSupply', default: null },
   selectionMatchType: { type: String, enum: ['exact', 'equivalent'], default: undefined },
   selectionConfirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -11,12 +11,17 @@ const lotDetailsSchema = new mongoose.Schema({
 
 const receivingItemSchema = new mongoose.Schema({
   purchaseOrderItem: { type: mongoose.Schema.Types.ObjectId, required: true },
+  supplierVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProductVariant', default: null },
+  sellerVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant', default: null },
+  variantMapping: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierVariantMapping', default: null },
   itemType: { type: String, enum: ['pet_supply', 'product', 'live_pet'], required: true },
   expectedQuantity: { type: Number, required: true, min: 1 },
+  previouslyReceivedQuantity: { type: Number, default: 0, min: 0 },
   receivedQuantity: { type: Number, required: true, min: 0 },
   damagedQuantity: { type: Number, default: 0, min: 0 },
   incorrectQuantity: { type: Number, default: 0, min: 0 },
   acceptedQuantity: { type: Number, required: true, min: 0 },
+  rejectedQuantity: { type: Number, default: 0, min: 0 },
   missingQuantity: { type: Number, required: true, min: 0 },
   condition: {
     type: String,
@@ -26,6 +31,12 @@ const receivingItemSchema = new mongoose.Schema({
   notes: { type: String, trim: true, maxlength: 1000 },
   lotDetails: lotDetailsSchema,
   inventoryApplied: { type: Boolean, default: false },
+  inventoryApplicationStatus: {
+    type: String,
+    enum: ['not_required', 'pending', 'applied', 'deferred_variant_inventory'],
+    default: 'pending'
+  },
+  idempotencyKey: { type: String, trim: true },
   processingError: String
 }, { _id: true });
 

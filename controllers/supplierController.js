@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
 const SupplierProductVariant = require('../models/SupplierProductVariant');
+const SupplierVariantMapping = require('../models/SupplierVariantMapping');
 const Product = require('../models/Product');
 const ServiceSupply = require('../models/ServiceSupply');
 const Pet = require('../models/Pet');
@@ -23,6 +24,8 @@ const {
   featureRequested,
   getSupplierVariantReadiness
 } = require('../services/supplierVariantReadinessService');
+const { getVariantProcurementReadiness } = require('../services/variantProcurementReadinessService');
+const { isVariantRegulatorilyEligible } = require('../services/supplierVariantMappingService');
 const {
   FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
@@ -1465,10 +1468,43 @@ const getSupplierCatalog = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const publishedFilter = withPublishedSupplierProduct(filter);
-    const products = await SupplierProduct.find(publishedFilter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
-    const total = await SupplierProduct.countDocuments(publishedFilter);
+    let products = await SupplierProduct.find(publishedFilter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    let total = await SupplierProduct.countDocuments(publishedFilter);
+    const variantProcurement = await getVariantProcurementReadiness();
+    if (variantProcurement.enabled) {
+      const variantParents = await SupplierProduct.find({ ...filter, productMode: 'variant' }).sort({ createdAt: -1 });
+      const parentIds = variantParents.map(product => product._id);
+      const [variants, mappings] = await Promise.all([
+        SupplierProductVariant.find({
+          supplierProduct: { $in: parentIds }, isActive: true, isDiscontinued: false
+        }).select('+supplier'),
+        SupplierVariantMapping.find({
+          store: store._id,
+          supplierProduct: { $in: parentIds },
+          status: 'confirmed'
+        }).lean()
+      ]);
+      const mappingByVariant = new Map(mappings.map(mapping => [String(mapping.supplierVariant), mapping]));
+      const variantsByParent = new Map();
+      for (const variant of variants) {
+        const parent = variantParents.find(item => String(item._id) === String(variant.supplierProduct));
+        const mapping = mappingByVariant.get(String(variant._id));
+        if (!parent || !mapping || !isVariantRegulatorilyEligible({ parent, variant })) continue;
+        const value = variant.toObject();
+        value.variantMappingId = mapping._id;
+        value.sellerVariantId = mapping.sellerVariant;
+        const key = String(parent._id);
+        if (!variantsByParent.has(key)) variantsByParent.set(key, []);
+        variantsByParent.get(key).push(value);
+      }
+      const purchasableParents = variantParents
+        .filter(parent => variantsByParent.has(String(parent._id)))
+        .map(parent => ({ ...parent.toObject(), variants: variantsByParent.get(String(parent._id)) }));
+      products = [...products.map(product => product.toObject()), ...purchasableParents].slice(0, Number(limit));
+      total += purchasableParents.length;
+    }
 
-    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
+    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, variantProcurement: { enabled: variantProcurement.enabled, reasons: variantProcurement.reasons }, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
   } catch (error) {
     console.error('Get supplier catalog error:', error);
     res.status(500).json({ message: 'Server error' });

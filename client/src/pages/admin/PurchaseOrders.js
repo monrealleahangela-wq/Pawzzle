@@ -101,7 +101,7 @@ const PurchaseOrders = () => {
       setSuppliers(supRes.data.suppliers || []);
       setStoreProducts(prodRes.data?.products || prodRes.data || []);
       setProcurementCart(cartRes.data);
-      setProductMapping(Object.fromEntries((cartRes.data.items || []).map(item => [item.supplierProductId, item.storeProduct?._id || ''])));
+      setProductMapping(Object.fromEntries((cartRes.data.items || []).map(item => [item.lineIdentity || item.supplierProductId, item.storeProduct?._id || ''])));
     } catch (e) { console.error('Load error:', e); }
     finally { setLoading(false); }
   };
@@ -142,11 +142,15 @@ const PurchaseOrders = () => {
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to resend invitation.'); }
   };
 
-  const addToCart = async (product) => {
+  const addToCart = async (product, variant = null) => {
     try {
-      const response = await purchaseOrderService.addCartItem(product._id, product.minimumOrderQuantity);
+      const response = await purchaseOrderService.addCartItem(
+        product._id,
+        variant?.minimumOrderQuantity ?? product.minimumOrderQuantity,
+        variant ? { supplierVariantId: variant._id, variantMappingId: variant.variantMappingId } : {}
+      );
       setProcurementCart(response.data);
-      toast.success(`${product.name} added to procurement cart`);
+      toast.success(`${product.name}${variant ? ` (${variant.attributes.map(item => item.valueLabel).join(' · ')})` : ''} added to procurement cart`);
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to add this supply.'); }
   };
 
@@ -165,7 +169,7 @@ const PurchaseOrders = () => {
       setProcurementCart(response.data);
       setProductMapping(previous => {
         const next = { ...previous };
-        delete next[item.supplierProductId];
+        delete next[item.lineIdentity || item.supplierProductId];
         return next;
       });
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to remove this supply.'); }
@@ -175,7 +179,7 @@ const PurchaseOrders = () => {
     try {
       const response = await purchaseOrderService.updateCartItem(item.cartItemId || item.supplierProductId, { storeProductId: storeProductId || null });
       setProcurementCart(response.data);
-      setProductMapping(previous => ({ ...previous, [item.supplierProductId]: storeProductId }));
+      setProductMapping(previous => ({ ...previous, [item.lineIdentity || item.supplierProductId]: storeProductId }));
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to save inventory mapping.'); }
   };
 
@@ -518,7 +522,7 @@ const PurchaseOrders = () => {
             <div className="flex-1 overflow-y-auto p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {catalog.products?.map(p => {
-                  const inCart = cart.find(i => String(i.supplierProductId) === String(p._id));
+                  const inCart = cart.find(i => String(i.supplierProductId) === String(p._id) && !i.supplierVariantId);
                   return (
                     <div key={p._id} className={`bg-white border ${inCart ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-slate-100'} rounded-2xl overflow-hidden shadow-sm`}>
                       <div className="h-28 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
@@ -539,7 +543,20 @@ const PurchaseOrders = () => {
                           </div>
                         </div>
                         <p className="text-[8px] text-slate-400 mt-1">{p.itemType === 'live_pet' ? `${p.pet?.species || ''} · ${p.pet?.breed || ''} · ${p.pet?.age ?? ''} ${p.pet?.ageUnit || ''}` : `Min order: ${p.minimumOrderQuantity}`} • Lead: {p.deliveryLeadTimeDays}d</p>
-                        {inCart ? (
+                        {p.productMode === 'variant' ? (
+                          <div className="mt-3 space-y-2">
+                            {(p.variants || []).map(variant => {
+                              const variantInCart = cart.find(item => String(item.supplierVariantId) === String(variant._id));
+                              const label = variant.attributes?.map(attribute => attribute.valueLabel).join(' · ') || variant.sku;
+                              return <div key={variant._id} className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                                <p className="text-[10px] font-black text-slate-800">{label}</p>
+                                <p className="mt-0.5 text-[8px] text-slate-500">SKU {variant.sku} · ₱{Number(variant.wholesalePrice || 0).toLocaleString()} · {variant.availableStock} {variant.unitOfMeasure}</p>
+                                {variantInCart ? <div className="mt-2 flex items-center justify-center gap-3 rounded-lg bg-emerald-50 py-1.5"><button onClick={() => updateCartQty(variantInCart, -1)} className="rounded bg-white p-1"><Minus className="h-3 w-3" /></button><span className="text-xs font-black text-emerald-700">{variantInCart.quantity}</span><button onClick={() => updateCartQty(variantInCart, 1)} disabled={variantInCart.quantity >= variant.availableStock} className="rounded bg-white p-1 disabled:opacity-30"><Plus className="h-3 w-3" /></button></div>
+                                  : <button onClick={() => addToCart(p, variant)} disabled={variant.availableStock < variant.minimumOrderQuantity} className="mt-2 w-full rounded-lg bg-slate-900 py-2 text-[8px] font-black uppercase text-white disabled:opacity-30">{variant.availableStock < variant.minimumOrderQuantity ? 'Unavailable' : 'Add Variant'}</button>}
+                              </div>;
+                            })}
+                          </div>
+                        ) : inCart ? (
                           <div className="flex items-center justify-center gap-3 mt-3 bg-emerald-50 rounded-xl py-2">
                             <button onClick={() => updateCartQty(inCart, -1)} className="p-1 bg-white rounded-lg shadow-sm"><Minus className="h-3 w-3" /></button>
                             <span className="text-sm font-black text-emerald-700">{inCart.quantity}</span>
@@ -551,7 +568,7 @@ const PurchaseOrders = () => {
                             {p.availableStock <= 0 ? 'Out of Stock' : 'Add to Order'}
                           </button>
                         )}
-                        {p.itemType !== 'live_pet' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-2 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase text-indigo-700">Compare suppliers and alternatives</button>}
+                        {p.itemType !== 'live_pet' && p.productMode !== 'variant' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-2 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase text-indigo-700">Compare suppliers and alternatives</button>}
                       </div>
                     </div>
                   );
@@ -601,15 +618,15 @@ const PurchaseOrders = () => {
                   </div>
                   <div className="space-y-3">
                     {group.items.map(item => (
-                      <div key={item.supplierProductId} className={`rounded-xl border p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
+                      <div key={item.lineIdentity || item.cartItemId || item.supplierProductId} className={`rounded-xl border p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.product?.wholesalePrice || 0)} · ${item.product?.unitOfMeasure}`}</p>{item.serviceSupply && <p className="mt-1 text-[9px] font-bold text-indigo-700">Service supply: {item.serviceSupply.name} · {item.selectionMatchType} match</p>}{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
+                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}{item.variant ? ` — ${item.variant.attributes?.map(attribute => attribute.valueLabel).join(' · ')}` : ''}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.variant?.wholesalePrice ?? item.product?.wholesalePrice ?? 0)} · ${item.variant?.unitOfMeasure || item.product?.unitOfMeasure}`}</p>{item.variant && <p className="mt-1 text-[9px] font-bold text-indigo-700">Exact mapped variant · SKU {item.variant.sku}</p>}{item.serviceSupply && <p className="mt-1 text-[9px] font-bold text-indigo-700">Service supply: {item.serviceSupply.name} · {item.selectionMatchType} match</p>}{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
                           <div className="text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
                         </div>
-                        {item.product && item.itemType !== 'live_pet' && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= item.product.availableStock} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.product.availableStock}</span></div>}
-                        {item.itemType !== 'live_pet' && !item.serviceSupply && <div className="mt-3 space-y-1">
+                        {item.product && item.itemType !== 'live_pet' && <div className="mt-3 flex items-center gap-2"><button onClick={() => updateCartQty(item, -1)} className="rounded-lg border bg-white p-1.5"><Minus className="h-3 w-3" /></button><span className="min-w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= (item.variant?.availableStock ?? item.product.availableStock)} className="rounded-lg border bg-white p-1.5 disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">Available: {item.variant?.availableStock ?? item.product.availableStock}</span></div>}
+                        {item.itemType !== 'live_pet' && !item.serviceSupply && !item.variant && <div className="mt-3 space-y-1">
                           <label className="text-[8px] font-black uppercase tracking-widest text-orange-500">Link to Store Product (optional)</label>
-                          <select value={productMapping[item.supplierProductId] || ''} onChange={e => updateProductMapping(item, e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold outline-none">
+                          <select value={productMapping[item.lineIdentity || item.supplierProductId] || ''} onChange={e => updateProductMapping(item, e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold outline-none">
                             <option value="">— No link (manual update later) —</option>
                             {storeProducts.map(sp => <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>)}
                           </select>

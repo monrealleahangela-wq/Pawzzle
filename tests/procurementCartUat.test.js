@@ -68,7 +68,8 @@ test('submission revalidates products, suppliers, quantities, prices, and store 
   assert.match(submit, /validateProcurementQuantity/);
   assert.match(submit, /Product\.find\(\{ _id: \{ \$in: mappedProductIds \}, store/);
   assert.match(submit, /PROCUREMENT_CART_PRICE_CHANGED/);
-  assert.match(submit, /addedUnitPrice = product\.wholesalePrice/);
+  assert.match(submit, /const stockSource = supplierVariant \|\| product/);
+  assert.match(submit, /addedUnitPrice = stockSource\.wholesalePrice/);
   assert.match(submit, /!isSupplierProductPublished\(product\)/);
 });
 
@@ -89,8 +90,8 @@ test('purchase orders remain inherently single-supplier and snapshot authoritati
   const controller = read('controllers/purchaseOrderController.js');
   assert.match(model, /supplier:[\s\S]*ref: 'Supplier'[\s\S]*required: true/);
   assert.match(model, /unitPrice:[\s\S]*required: true/);
-  assert.match(controller, /unitPrice: product\.wholesalePrice/);
-  assert.match(controller, /totalPrice: product\.wholesalePrice \* quantity/);
+  assert.match(controller, /unitPrice: stockSource\.wholesalePrice/);
+  assert.match(controller, /totalPrice: stockSource\.wholesalePrice \* quantity/);
 });
 
 test('procurement UI loads persisted cart and no longer clears it while changing suppliers', () => {

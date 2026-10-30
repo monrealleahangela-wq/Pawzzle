@@ -1,5 +1,6 @@
 const Pet = require('../models/Pet');
 const SupplierProduct = require('../models/SupplierProduct');
+const SupplierProductVariant = require('../models/SupplierProductVariant');
 
 const transactionRequired = () => {
   const error = new Error('Supplier stock commitments require an active transaction.');
@@ -57,6 +58,18 @@ const commitPurchaseOrderStock = async ({ order, session }) => {
       if (catalogReservation.modifiedCount !== 1) {
         throw conflict(`Live pet "${item.productName}" is no longer available in the supplier catalog.`);
       }
+    } else if (item.supplierVariant) {
+      const stockCommitment = await SupplierProductVariant.updateOne({
+        _id: item.supplierVariant,
+        supplierProduct: item.supplierProduct,
+        supplier: order.supplier,
+        isActive: true,
+        isDiscontinued: false,
+        availableStock: { $gte: quantity }
+      }, { $inc: { availableStock: -quantity } }, { session });
+      if (stockCommitment.modifiedCount !== 1) {
+        throw conflict(`Supplier variant stock changed for "${item.productName}" during submission.`);
+      }
     } else {
       const stockCommitment = await SupplierProduct.updateOne({
         _id: item.supplierProduct,
@@ -113,6 +126,17 @@ const releasePurchaseOrderStock = async ({ order, session }) => {
         throw conflict(`The supplier catalog record for "${item.productName}" no longer exists.`);
       }
       item.supplierStockCommittedQuantity = 1;
+    } else if (item.supplierVariant) {
+      const committedQuantity = Number(item.supplierStockCommittedQuantity || 0);
+      if (committedQuantity <= 0) continue;
+      const variantRelease = await SupplierProductVariant.updateOne({
+        _id: item.supplierVariant,
+        supplierProduct: item.supplierProduct,
+        supplier: order.supplier
+      }, { $inc: { availableStock: committedQuantity } }, { session });
+      if (variantRelease.matchedCount !== 1) {
+        throw conflict(`The exact supplier variant for "${item.productName}" no longer exists.`);
+      }
     } else {
       const committedQuantity = Number(item.supplierStockCommittedQuantity || 0);
       if (committedQuantity <= 0) continue;

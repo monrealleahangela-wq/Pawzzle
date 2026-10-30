@@ -14,6 +14,11 @@ const {
   submitReceivingInspection, reviewSupplierResolution, submitResolutionReinspection,
   getReceivingInspection, getReceivingEvidenceAccess, adminGetAllOrders
 } = require('../controllers/purchaseOrderController');
+const {
+  createVariantMapping,
+  listVariantMappings,
+  updateVariantMappingStatus
+} = require('../controllers/supplierVariantMappingController');
 
 // ── Seller routes ─────────────────────────────────────────
 router.post('/', authenticate, requirePermission('procurement.manage'), createPurchaseOrder);
@@ -28,6 +33,9 @@ router.patch('/cart/items/:itemId', authenticate, requirePermission('procurement
 router.delete('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), removeProcurementCartItem);
 router.delete('/cart', authenticate, requirePermission('procurement.manage'), clearProcurementCart);
 router.post('/cart/submit', authenticate, requirePermission('procurement.manage'), submitProcurementCart);
+router.get('/variant-mappings', authenticate, requirePermission('procurement.view', 'procurement.manage', 'inventory.receive'), listVariantMappings);
+router.post('/variant-mappings', authenticate, requirePermission('procurement.manage', 'inventory.receive'), createVariantMapping);
+router.patch('/variant-mappings/:id', authenticate, requirePermission('procurement.manage', 'inventory.receive'), updateVariantMappingStatus);
 router.get('/:id/receiving-product-links', authenticate, requirePermission('procurement.view', 'procurement.manage', 'inventory.receive'), getReceivingProductLinks);
 router.patch('/:id/items/:itemId/store-product', authenticate, requirePermission('procurement.manage', 'inventory.receive'), linkReceivingStoreProduct);
 router.post('/:id/items/:itemId/store-product', authenticate, requirePermission('procurement.manage', 'inventory.receive'), requirePermission('products.manage', 'inventory.adjust'), createReceivingStoreProduct);

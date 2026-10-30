@@ -40,16 +40,23 @@ const normalizeInspectionItem = ({ orderItem, submitted = {} }) => {
   ].filter(Boolean);
   return {
     purchaseOrderItem: orderItem._id,
+    supplierVariant: orderItem.supplierVariant || null,
+    sellerVariant: orderItem.sellerVariant || null,
+    variantMapping: orderItem.variantMapping || null,
     itemType: orderItem.itemType || 'pet_supply',
     expectedQuantity,
+    previouslyReceivedQuantity: Number(orderItem.receivedQuantity || 0),
     receivedQuantity,
     damagedQuantity,
     incorrectQuantity,
     acceptedQuantity,
+    rejectedQuantity: damagedQuantity + incorrectQuantity,
     missingQuantity,
     condition: issueTypes.length > 1 ? 'mixed' : (issueTypes[0] || 'acceptable'),
     notes: submitted.notes,
-    lotDetails: submitted.lotDetails || {}
+    lotDetails: submitted.lotDetails || {},
+    inventoryApplicationStatus: orderItem.supplierVariant ? 'deferred_variant_inventory' : 'pending',
+    idempotencyKey: submitted.idempotencyKey || `po-receipt:${orderItem._id}:${Number(orderItem.receivedQuantity || 0)}:${acceptedQuantity}`
   };
 };
 

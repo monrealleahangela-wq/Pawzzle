@@ -6,6 +6,15 @@ const purchaseOrderItemSchema = new mongoose.Schema({
     ref: 'SupplierProduct',
     required: true
   },
+  supplierVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierProductVariant', default: null },
+  supplierVariantSkuSnapshot: String,
+  supplierVariantAttributesSnapshot: { type: [mongoose.Schema.Types.Mixed], default: undefined },
+  supplierVariantDisplayNameSnapshot: String,
+  sellerVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant', default: null },
+  variantMapping: { type: mongoose.Schema.Types.ObjectId, ref: 'SupplierVariantMapping', default: null },
+  unitSnapshot: String,
+  packageWeightSnapshot: Number,
+  packageWeightUnitSnapshot: { type: String, enum: ['g', 'kg'] },
   itemType: {
     type: String,
     enum: ['pet_supply', 'product', 'live_pet'],

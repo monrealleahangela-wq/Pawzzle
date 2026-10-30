@@ -7,6 +7,7 @@ const { isPlatformAdmin } = require('../config/permissions');
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
+const SupplierProductVariant = require('../models/SupplierProductVariant');
 const Store = require('../models/Store');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
@@ -20,6 +21,16 @@ const {
   commitPurchaseOrderStock,
   releasePurchaseOrderStock
 } = require('../services/procurementStockCommitmentService');
+const {
+  assertVariantProcurementEnabled,
+  assertVariantReceivingStockApplicationEnabled
+} = require('../services/variantProcurementReadinessService');
+const {
+  assertSupplierVariantAvailable,
+  isVariantRegulatorilyEligible,
+  resolveConfirmedVariantMapping,
+  resolveHistoricalVariantMapping
+} = require('../services/supplierVariantMappingService');
 const { createNotification } = require('./notificationController');
 const { isSupplierSelectableForStore, getSelectableSupplierFilterForStore } = require('../utils/supplierLifecycle');
 const { withPublishedSupplierProduct, isSupplierProductPublished } = require('../utils/supplierProductApproval');
@@ -97,11 +108,17 @@ const notifySupplierStockShortage = async ({ userId, storeId, product }) => {
 const populateProcurementCart = cart => cart.populate([
   {
     path: 'items.supplierProduct',
-    select: 'supplier itemType pet name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays isActive isDeleted requiresPlatformReview approvalStatus',
+    select: 'supplier itemType pet name sku category images wholesalePrice availableStock minimumOrderQuantity unitOfMeasure deliveryLeadTimeDays productMode isActive isDeleted requiresPlatformReview approvalStatus',
     populate: { path: 'pet', select: 'name species breed age ageUnit gender size color healthCondition vaccinationStatus healthNotes images listingContext' }
+  },
+  {
+    path: 'items.supplierVariant',
+    select: '+supplier sku attributes wholesalePrice availableStock minimumOrderQuantity unitOfMeasure weight weightUnit images isActive isDiscontinued regulatoryReview'
   },
   { path: 'items.supplier', select: 'businessName supplierType status isActive isDeleted storeAssociations' },
   { path: 'items.storeProduct', select: 'name sku category unit stockQuantity store supplierProductRef procurementOffers visibility isActive isDeleted' },
+  { path: 'items.sellerVariant', select: 'product sku attributes price unit weight weightUnit isActive isDiscontinued' },
+  { path: 'items.variantMapping', select: 'status sourcePriority sellerProduct sellerVariant supplierProduct supplierVariant' },
   { path: 'items.serviceSupply', select: 'name sku category unitOfMeasure currentStock store supplierProduct supplierOffers isActive isDeleted' }
 ]);
 
@@ -121,16 +138,24 @@ const getOrCreateProcurementCart = async (userId, storeId) => {
 const serializeProcurementCart = (cart, storeId) => {
   const items = (cart?.items || []).map(item => {
     const product = item.supplierProduct;
+    const variant = item.supplierVariant;
     const supplier = item.supplier;
-    const currentUnitPrice = Number(product?.wholesalePrice || 0);
+    const currentUnitPrice = Number(variant?.wholesalePrice ?? product?.wholesalePrice ?? 0);
     const quantity = Number(item.quantity || 0);
     const supplierEligible = isSupplierSelectableForStore(supplier, storeId);
-    const available = Boolean(product && product.isActive && !product.isDeleted
-      && isSupplierProductPublished(product) && supplierEligible);
+    const variantLine = Boolean(variant || item.supplierVariant);
+    const available = Boolean(product && product.isActive && !product.isDeleted && supplierEligible
+      && (variantLine
+        ? product.productMode === 'variant' && variant?.isActive && !variant?.isDiscontinued
+          && isVariantRegulatorilyEligible({ parent: product, variant })
+          && item.variantMapping?.status === 'confirmed'
+        : isSupplierProductPublished(product)));
     return {
       _id: item._id,
       cartItemId: item._id,
       supplierProductId: product?._id || item.supplierProduct,
+      supplierVariantId: variant?._id || item.supplierVariant || null,
+      lineIdentity: `${product?._id || item.supplierProduct}:${variant?._id || item.supplierVariant || 'simple'}`,
       supplierId: supplier?._id || item.supplier,
       supplier: supplier ? { _id: supplier._id, businessName: supplier.businessName } : null,
       itemType: product?.itemType || item.itemType || 'pet_supply',
@@ -146,8 +171,24 @@ const serializeProcurementCart = (cart, storeId) => {
         unitOfMeasure: product.unitOfMeasure,
         deliveryLeadTimeDays: product.deliveryLeadTimeDays
       } : null,
+      variant: variant ? {
+        _id: variant._id,
+        sku: variant.sku,
+        attributes: variant.attributes,
+        wholesalePrice: currentUnitPrice,
+        availableStock: variant.availableStock,
+        minimumOrderQuantity: variant.minimumOrderQuantity,
+        unitOfMeasure: variant.unitOfMeasure,
+        weight: variant.weight,
+        weightUnit: variant.weightUnit,
+        images: variant.images,
+        isActive: variant.isActive,
+        isDiscontinued: variant.isDiscontinued
+      } : null,
       pet: product?.pet || null,
       storeProduct: item.storeProduct || null,
+      sellerVariant: item.sellerVariant || null,
+      variantMapping: item.variantMapping || null,
       serviceSupply: item.serviceSupply || null,
       selectionMatchType: item.selectionMatchType || (item.storeProduct && product
         ? getOfferMatchType({ storeProduct: item.storeProduct, supplierProduct: product })
@@ -359,12 +400,29 @@ const addProcurementCartItem = async (req, res) => {
   try {
     const store = await resolveUserStore(req.user);
     if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
-    const product = await SupplierProduct.findOne(withPublishedSupplierProduct({
-      _id: req.body.supplierProductId,
-      isActive: true,
-      isDeleted: false
+    const requestedVariant = Boolean(req.body.supplierVariantId);
+    if (requestedVariant) await assertVariantProcurementEnabled();
+    const product = await SupplierProduct.findOne(requestedVariant ? {
+      _id: req.body.supplierProductId, productMode: 'variant', isActive: true, isDeleted: false
+    } : withPublishedSupplierProduct({
+      _id: req.body.supplierProductId, isActive: true, isDeleted: false
     }));
     if (!product) return res.status(404).json({ message: 'Supplier product is unavailable.' });
+    if (product.productMode === 'variant' && !requestedVariant) {
+      return res.status(400).json({ message: 'Select an exact supplier variant before adding this product.' });
+    }
+    let supplierVariant = null;
+    let confirmedMapping = null;
+    if (requestedVariant) {
+      supplierVariant = await SupplierProductVariant.findById(req.body.supplierVariantId).select('+supplier');
+      assertSupplierVariantAvailable({ parent: product, variant: supplierVariant, supplierId: product.supplier });
+      const resolved = await resolveConfirmedVariantMapping({
+        storeId: store,
+        supplierVariantId: supplierVariant._id,
+        mappingId: req.body.variantMappingId
+      });
+      confirmedMapping = resolved.mapping;
+    }
     if (product.itemType === 'live_pet') {
       const pet = await Pet.findOne({
         _id: product.pet,
@@ -379,12 +437,20 @@ const addProcurementCartItem = async (req, res) => {
     if (!isSupplierSelectableForStore(supplier, store)) {
       return res.status(403).json({ message: 'This supplier is not eligible for your store.' });
     }
+    if (requestedVariant && (req.body.storeProductId || req.body.serviceSupplyId)) {
+      return res.status(400).json({ message: 'Variant procurement uses its confirmed seller-variant mapping, not a parent inventory target.' });
+    }
     if (req.body.storeProductId && req.body.serviceSupplyId) {
       return res.status(400).json({ message: 'Select one Store inventory target per supplier offer.' });
     }
     let selectedStoreProduct = null;
     let selectedServiceSupply = null;
     let matchType = null;
+    if (confirmedMapping) {
+      selectedStoreProduct = await Product.findOne({ _id: confirmedMapping.sellerProduct, store, isDeleted: { $ne: true } });
+      if (!selectedStoreProduct) return res.status(409).json({ message: 'The mapped seller product is unavailable.' });
+      matchType = 'exact';
+    }
     if (req.body.storeProductId) {
       if (req.body.confirmSelection !== true || !mongoose.isValidObjectId(req.body.storeProductId)) {
         return res.status(400).json({ message: 'Confirm the supplier offer and Store product before adding it.' });
@@ -407,33 +473,38 @@ const addProcurementCartItem = async (req, res) => {
       if (issue) return res.status(409).json({ message: issue });
     }
     const requested = req.body.quantity === undefined
-      ? Number(product.minimumOrderQuantity)
+      ? Number(supplierVariant?.minimumOrderQuantity ?? product.minimumOrderQuantity)
       : Number(req.body.quantity);
+    const stockSource = supplierVariant || product;
     const requestedQuantity = validateProcurementQuantity({
       quantity: requested,
-      minimumOrderQuantity: product.minimumOrderQuantity,
-      availableStock: product.availableStock,
+      minimumOrderQuantity: stockSource.minimumOrderQuantity,
+      availableStock: stockSource.availableStock,
       itemType: product.itemType
     });
     if (!requestedQuantity.valid) {
       if (requestedQuantity.reason === 'insufficient_stock') {
         await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
-        return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
+        return res.status(409).json({ message: `Only ${stockSource.availableStock} ${stockSource.unitOfMeasure}(s) of "${product.name}" are available.` });
       }
-      return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
+      return res.status(400).json({ message: `Minimum order for "${product.name}" is ${stockSource.minimumOrderQuantity} ${stockSource.unitOfMeasure}(s).` });
     }
     const cart = await getOrCreateProcurementCart(req.user._id, store);
-    const existing = cart.items.find(item => String(item.supplierProduct) === String(product._id));
+    const existing = cart.items.find(item => String(item.supplierProduct) === String(product._id)
+      && String(item.supplierVariant || '') === String(supplierVariant?._id || ''));
     const nextQuantity = existing ? existing.quantity + requested : requested;
-    if (nextQuantity > product.availableStock) {
+    if (nextQuantity > stockSource.availableStock) {
       await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
-      return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) of "${product.name}" are available.` });
+      return res.status(409).json({ message: `Only ${stockSource.availableStock} ${stockSource.unitOfMeasure}(s) of "${product.name}" are available.` });
     }
     if (existing) {
       existing.quantity = nextQuantity;
       existing.supplier = product.supplier;
       existing.itemType = product.itemType;
-      existing.addedUnitPrice = product.wholesalePrice;
+      existing.addedUnitPrice = stockSource.wholesalePrice;
+      existing.supplierVariant = supplierVariant?._id || null;
+      existing.sellerVariant = confirmedMapping?.sellerVariant || null;
+      existing.variantMapping = confirmedMapping?._id || null;
       existing.updatedAt = new Date();
       if (selectedStoreProduct) {
         existing.storeProduct = selectedStoreProduct._id;
@@ -454,7 +525,10 @@ const addProcurementCartItem = async (req, res) => {
         supplier: product.supplier,
         itemType: product.itemType,
         quantity: requested,
-        addedUnitPrice: product.wholesalePrice,
+        supplierVariant: supplierVariant?._id || null,
+        sellerVariant: confirmedMapping?.sellerVariant || null,
+        variantMapping: confirmedMapping?._id || null,
+        addedUnitPrice: stockSource.wholesalePrice,
         storeProduct: selectedStoreProduct?._id || null,
         serviceSupply: selectedServiceSupply?._id || null,
         selectionMatchType: matchType || undefined,
@@ -467,7 +541,10 @@ const addProcurementCartItem = async (req, res) => {
     res.status(201).json(serializeProcurementCart(cart, store));
   } catch (error) {
     console.error('Add procurement cart item error:', error);
-    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.name === 'CastError' ? 'Invalid supplier product.' : 'Unable to add this supply.' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      code: error.code,
+      message: error.name === 'CastError' ? 'Invalid supplier product.' : (error.message || 'Unable to add this supply.')
+    });
   }
 };
 
@@ -477,11 +554,25 @@ const updateProcurementCartItem = async (req, res) => {
     if (!store) return res.status(403).json({ message: 'Authorized store not found.' });
     const cart = await ProcurementCart.findOne({ user: req.user._id, store });
     if (!cart) return res.status(404).json({ message: 'Procurement cart not found.' });
-    const item = cart.items.find(entry => String(entry._id) === String(req.params.itemId)
-      || String(entry.supplierProduct) === String(req.params.itemId));
+    const item = cart.items.find(entry => String(entry._id) === String(req.params.itemId))
+      || cart.items.find(entry => !entry.supplierVariant
+        && String(entry.supplierProduct) === String(req.params.itemId));
     if (!item) return res.status(404).json({ message: 'Supply is not in your procurement cart.' });
-    const product = await SupplierProduct.findOne(withPublishedSupplierProduct({ _id: item.supplierProduct, isActive: true, isDeleted: false }));
+    const variantLine = Boolean(item.supplierVariant);
+    if (variantLine) await assertVariantProcurementEnabled();
+    const product = await SupplierProduct.findOne(variantLine
+      ? { _id: item.supplierProduct, productMode: 'variant', isActive: true, isDeleted: false }
+      : withPublishedSupplierProduct({ _id: item.supplierProduct, isActive: true, isDeleted: false }));
     if (!product) return res.status(409).json({ message: 'This supplier product is no longer available.' });
+    let supplierVariant = null;
+    if (variantLine) {
+      supplierVariant = await SupplierProductVariant.findById(item.supplierVariant).select('+supplier');
+      assertSupplierVariantAvailable({ parent: product, variant: supplierVariant, supplierId: product.supplier });
+      await resolveConfirmedVariantMapping({
+        storeId: store, supplierVariantId: supplierVariant._id, mappingId: item.variantMapping
+      });
+    }
+    const stockSource = supplierVariant || product;
     const supplier = await Supplier.findById(product.supplier);
     if (!isSupplierSelectableForStore(supplier, store)) return res.status(409).json({ message: 'This supplier is no longer eligible for your store.' });
 
@@ -489,22 +580,26 @@ const updateProcurementCartItem = async (req, res) => {
       const quantity = Number(req.body.quantity);
       const quantityValidation = validateProcurementQuantity({
         quantity,
-        minimumOrderQuantity: product.minimumOrderQuantity,
-        availableStock: product.availableStock,
+        minimumOrderQuantity: stockSource.minimumOrderQuantity,
+        availableStock: stockSource.availableStock,
         itemType: product.itemType
       });
       if (!quantityValidation.valid) {
         if (quantityValidation.reason === 'insufficient_stock') {
           await notifySupplierStockShortage({ userId: req.user._id, storeId: store, product });
-          return res.status(409).json({ message: `Only ${product.availableStock} ${product.unitOfMeasure}(s) are available.` });
+          return res.status(409).json({ message: `Only ${stockSource.availableStock} ${stockSource.unitOfMeasure}(s) are available.` });
         }
-        return res.status(400).json({ message: `Minimum order for "${product.name}" is ${product.minimumOrderQuantity} ${product.unitOfMeasure}(s).` });
+        return res.status(400).json({ message: `Minimum order for "${product.name}" is ${stockSource.minimumOrderQuantity} ${stockSource.unitOfMeasure}(s).` });
       }
       item.quantity = quantity;
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')
         && Object.prototype.hasOwnProperty.call(req.body, 'serviceSupplyId')) {
       return res.status(400).json({ message: 'Select one Store inventory target per supplier offer.' });
+    }
+    if (variantLine && (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')
+        || Object.prototype.hasOwnProperty.call(req.body, 'serviceSupplyId'))) {
+      return res.status(400).json({ message: 'Variant procurement destinations are controlled by the confirmed variant mapping.' });
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'storeProductId')) {
       if (req.body.storeProductId) {
@@ -550,7 +645,7 @@ const updateProcurementCartItem = async (req, res) => {
         item.selectionConfirmedAt = undefined;
       }
     }
-    if (req.body.acceptCurrentPrice === true) item.addedUnitPrice = product.wholesalePrice;
+    if (req.body.acceptCurrentPrice === true) item.addedUnitPrice = stockSource.wholesalePrice;
     item.supplier = product.supplier;
     item.itemType = product.itemType;
     item.updatedAt = new Date();
@@ -559,7 +654,10 @@ const updateProcurementCartItem = async (req, res) => {
     res.json(serializeProcurementCart(cart, store));
   } catch (error) {
     console.error('Update procurement cart item error:', error);
-    res.status(error.name === 'CastError' ? 400 : 500).json({ message: error.name === 'CastError' ? 'Invalid cart item.' : 'Unable to update this supply.' });
+    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
+      code: error.code,
+      message: error.name === 'CastError' ? 'Invalid cart item.' : (error.message || 'Unable to update this supply.')
+    });
   }
 };
 
@@ -571,7 +669,7 @@ const removeProcurementCartItem = async (req, res) => {
     if (!cart) return res.status(404).json({ message: 'Procurement cart not found.' });
     const before = cart.items.length;
     cart.items = cart.items.filter(item => String(item._id) !== String(req.params.itemId)
-      && String(item.supplierProduct) !== String(req.params.itemId));
+      && (item.supplierVariant || String(item.supplierProduct) !== String(req.params.itemId)));
     if (cart.items.length === before) return res.status(404).json({ message: 'Supply is not in your procurement cart.' });
     await cart.save();
     await populateProcurementCart(cart);
@@ -614,6 +712,12 @@ const submitProcurementCart = async (req, res) => {
       const productIds = cart.items.map(item => item.supplierProduct);
       const products = await SupplierProduct.find({ _id: { $in: productIds } }).session(session);
       const productMap = new Map(products.map(product => [String(product._id), product]));
+      const variantIds = cart.items.filter(item => item.supplierVariant).map(item => item.supplierVariant);
+      if (variantIds.length) await assertVariantProcurementEnabled();
+      const variants = variantIds.length
+        ? await SupplierProductVariant.find({ _id: { $in: variantIds } }).select('+supplier').session(session)
+        : [];
+      const variantMap = new Map(variants.map(variant => [String(variant._id), variant]));
       const supplierIds = [...new Set(products.map(product => String(product.supplier)))];
       const suppliers = await Supplier.find({ _id: { $in: supplierIds } }).session(session);
       const supplierMap = new Map(suppliers.map(supplier => [String(supplier._id), supplier]));
@@ -634,9 +738,32 @@ const submitProcurementCart = async (req, res) => {
 
       for (const item of cart.items) {
         const product = productMap.get(String(item.supplierProduct));
-        if (!product || !product.isActive || product.isDeleted || !isSupplierProductPublished(product)) {
+        const supplierVariant = item.supplierVariant ? variantMap.get(String(item.supplierVariant)) : null;
+        const variantLine = Boolean(item.supplierVariant);
+        if (!product || !product.isActive || product.isDeleted
+            || (variantLine ? product.productMode !== 'variant' : !isSupplierProductPublished(product))) {
           issues.push({ supplierProductId: item.supplierProduct, message: 'A supply in your cart is no longer available.' });
           continue;
+        }
+        let confirmedVariantMapping = null;
+        if (variantLine) {
+          try {
+            assertSupplierVariantAvailable({ parent: product, variant: supplierVariant, supplierId: product.supplier });
+            const resolved = await resolveConfirmedVariantMapping({
+              storeId: store,
+              supplierVariantId: supplierVariant._id,
+              mappingId: item.variantMapping,
+              session
+            });
+            confirmedVariantMapping = resolved.mapping;
+            if (String(item.sellerVariant || '') !== String(resolved.sellerVariant._id)
+                || String(item.storeProduct || '') !== String(resolved.sellerProduct._id)) {
+              throw Object.assign(new Error('The cart destination no longer matches the confirmed variant mapping.'), { statusCode: 409 });
+            }
+          } catch (error) {
+            issues.push({ supplierProductId: product._id, supplierVariantId: item.supplierVariant, message: error.message });
+            continue;
+          }
         }
         let exactPet = null;
         if (product.itemType === 'live_pet') {
@@ -659,14 +786,19 @@ const submitProcurementCart = async (req, res) => {
           continue;
         }
         const quantity = Number(item.quantity);
+        const stockSource = supplierVariant || product;
         const quantityValidation = validateProcurementQuantity({
           quantity,
-          minimumOrderQuantity: product.minimumOrderQuantity,
-          availableStock: product.availableStock,
+          minimumOrderQuantity: stockSource.minimumOrderQuantity,
+          availableStock: stockSource.availableStock,
           itemType: product.itemType
         });
         if (!quantityValidation.valid) {
-          issues.push({ supplierProductId: product._id, message: `Quantity for "${product.name}" must be ${product.minimumOrderQuantity}-${product.availableStock}.` });
+          issues.push({ supplierProductId: product._id, supplierVariantId: item.supplierVariant, message: `Quantity for "${product.name}" must be ${stockSource.minimumOrderQuantity}-${stockSource.availableStock}.` });
+          continue;
+        }
+        if (variantLine && item.serviceSupply) {
+          issues.push({ supplierProductId: product._id, supplierVariantId: item.supplierVariant, message: 'Supplier variants cannot target parent service-supply inventory.' });
           continue;
         }
         if (item.storeProduct) {
@@ -675,12 +807,14 @@ const submitProcurementCart = async (req, res) => {
             issues.push({ supplierProductId: product._id, message: `Inventory mapping for "${product.name}" does not belong to this store.` });
             continue;
           }
-          const compatibilityIssue = getStoreProductCompatibilityIssue({ storeProduct: mappedProduct, supplierProduct: product, storeId: store });
+          const compatibilityIssue = variantLine ? null
+            : getStoreProductCompatibilityIssue({ storeProduct: mappedProduct, supplierProduct: product, storeId: store });
           if (compatibilityIssue) {
             issues.push({ supplierProductId: product._id, message: compatibilityIssue });
             continue;
           }
-          const currentMatchType = getOfferMatchType({ storeProduct: mappedProduct, supplierProduct: product });
+          const currentMatchType = variantLine ? 'exact'
+            : getOfferMatchType({ storeProduct: mappedProduct, supplierProduct: product });
           if ((item.selectionMatchType && (currentMatchType !== item.selectionMatchType || !item.selectionConfirmedBy))
               || (currentMatchType && String(mappedProduct.supplierProductRef || '') !== String(product._id)
                 && !item.selectionConfirmedBy)) {
@@ -700,14 +834,14 @@ const submitProcurementCart = async (req, res) => {
             continue;
           }
         }
-        if (Number(item.addedUnitPrice) !== Number(product.wholesalePrice)) {
+        if (Number(item.addedUnitPrice) !== Number(stockSource.wholesalePrice)) {
           priceChanges.push({
             supplierProductId: product._id,
             name: product.name,
             previousUnitPrice: Number(item.addedUnitPrice),
-            currentUnitPrice: Number(product.wholesalePrice)
+            currentUnitPrice: Number(stockSource.wholesalePrice)
           });
-          item.addedUnitPrice = product.wholesalePrice;
+          item.addedUnitPrice = stockSource.wholesalePrice;
           item.updatedAt = new Date();
         }
         item.supplier = product.supplier;
@@ -716,6 +850,14 @@ const submitProcurementCart = async (req, res) => {
           supplier,
           orderItem: {
             supplierProduct: product._id,
+            supplierVariant: supplierVariant?._id || null,
+            supplierVariantSkuSnapshot: supplierVariant?.sku,
+            supplierVariantAttributesSnapshot: supplierVariant?.attributes?.map(attribute => attribute.toObject ? attribute.toObject() : attribute),
+            supplierVariantDisplayNameSnapshot: supplierVariant
+              ? `${product.name} — ${supplierVariant.attributes.map(attribute => attribute.valueLabel).join(' · ')}`
+              : undefined,
+            sellerVariant: confirmedVariantMapping?.sellerVariant || null,
+            variantMapping: confirmedVariantMapping?._id || null,
             itemType: product.itemType || 'pet_supply',
             pet: product.pet || null,
             petSnapshot: exactPet ? {
@@ -734,18 +876,23 @@ const submitProcurementCart = async (req, res) => {
             } : undefined,
             storeProduct: item.storeProduct || null,
             serviceSupply: item.serviceSupply || null,
-            productName: product.name,
-            sku: product.sku,
+            productName: supplierVariant
+              ? `${product.name} — ${supplierVariant.attributes.map(attribute => attribute.valueLabel).join(' · ')}`
+              : product.name,
+            sku: supplierVariant?.sku || product.sku,
             supplierNameSnapshot: supplier.businessName,
-            unitOfMeasureSnapshot: product.unitOfMeasure,
-            selectionMatchType: item.selectionMatchType || (item.storeProduct
+            unitOfMeasureSnapshot: stockSource.unitOfMeasure,
+            unitSnapshot: stockSource.unitOfMeasure,
+            packageWeightSnapshot: supplierVariant?.weight ?? product.weight,
+            packageWeightUnitSnapshot: supplierVariant?.weightUnit || (product.weight ? 'g' : undefined),
+            selectionMatchType: supplierVariant ? 'exact' : item.selectionMatchType || (item.storeProduct
               ? getOfferMatchType({ storeProduct: mappedProductMap.get(String(item.storeProduct)), supplierProduct: product }) || 'unmapped'
               : 'unmapped'),
             selectionConfirmedBy: item.selectionConfirmedBy || null,
             selectionConfirmedAt: item.selectionConfirmedAt || undefined,
             quantity,
-            unitPrice: product.wholesalePrice,
-            totalPrice: product.wholesalePrice * quantity
+            unitPrice: stockSource.wholesalePrice,
+            totalPrice: stockSource.wholesalePrice * quantity
           }
         });
       }
@@ -769,7 +916,9 @@ const submitProcurementCart = async (req, res) => {
 
       const allocations = new Map();
       for (const item of cart.items.filter(entry => entry.storeProduct || entry.serviceSupply)) {
-        const key = item.serviceSupply ? `supply:${item.serviceSupply}` : `product:${item.storeProduct}`;
+        const key = item.supplierVariant
+          ? `variant:${item.sellerVariant}`
+          : item.serviceSupply ? `supply:${item.serviceSupply}` : `product:${item.storeProduct}`;
         allocations.set(key, (allocations.get(key) || 0) + 1);
       }
       if ([...allocations.values()].some(count => count > 1) && req.body.confirmSplit !== true) {
@@ -1188,6 +1337,12 @@ const cancelOrder = async (req, res) => {
 const RECEIVING_LINKABLE_STATUSES = ['delivered', 'issue_reported', 'reinspection'];
 
 const assertReceivingProductLinkIsMutable = async ({ order, orderItem, session }) => {
+  if (orderItem.supplierVariant) {
+    throw Object.assign(new Error('Variant purchase-order destinations are immutable and controlled by their confirmed mapping.'), {
+      statusCode: 409,
+      code: 'VARIANT_RECEIVING_DESTINATION_IMMUTABLE'
+    });
+  }
   const query = ProcurementReceivingReport.findOne({ purchaseOrder: order._id });
   const report = await (session ? query.session(session) : query);
   const received = report?.items?.find(item => String(item.purchaseOrderItem) === String(orderItem._id));
@@ -1217,6 +1372,21 @@ const getReceivingProductLinks = async (req, res) => {
 
     const items = order.items.filter(item => item.itemType !== 'live_pet').map(orderItem => {
       const supplierProduct = orderItem.supplierProduct;
+      if (orderItem.supplierVariant) {
+        return {
+          purchaseOrderItem: orderItem._id,
+          productName: orderItem.productName,
+          supplierProduct,
+          supplierVariant: orderItem.supplierVariant,
+          sellerVariant: orderItem.sellerVariant,
+          variantMapping: orderItem.variantMapping,
+          linkedProduct: storeProducts.find(product => String(product._id) === String(orderItem.storeProduct)) || null,
+          eligibleProducts: [],
+          suggestions: null,
+          linkSource: 'confirmed_variant_mapping',
+          linkLocked: true
+        };
+      }
       if (orderItem.serviceSupply) {
         const received = report?.items?.find(item => String(item.purchaseOrderItem) === String(orderItem._id));
         return {
@@ -1441,8 +1611,10 @@ const recordReceivedSupplierQuantity = async ({ orderItem, acceptedQuantity, ses
     return;
   }
   const increment = Number(acceptedQuantity) - alreadyRecorded;
-  const stockUpdate = await SupplierProduct.findOneAndUpdate({
-    _id: orderItem.supplierProduct,
+  const StockModel = orderItem.supplierVariant ? SupplierProductVariant : SupplierProduct;
+  const stockUpdate = await StockModel.findOneAndUpdate({
+    _id: orderItem.supplierVariant || orderItem.supplierProduct,
+    ...(orderItem.supplierVariant ? { supplierProduct: orderItem.supplierProduct } : {}),
     availableStock: { $gte: increment }
   }, { $inc: { availableStock: -increment } }, { new: true, session });
   if (!stockUpdate) {
@@ -1466,6 +1638,29 @@ const applyReceivingItem = async ({
   if (reportItem.inventoryApplied || reportItem.acceptedQuantity <= 0) {
     reportItem.inventoryApplied = true;
     return;
+  }
+
+  if (orderItem.supplierVariant) {
+    const resolved = await resolveHistoricalVariantMapping({
+      storeId: order.store,
+      supplierVariantId: orderItem.supplierVariant,
+      mappingId: orderItem.variantMapping,
+      session
+    });
+    if (String(resolved.sellerVariant._id) !== String(orderItem.sellerVariant)
+        || String(resolved.sellerProduct._id) !== String(orderItem.storeProduct)) {
+      throw Object.assign(new Error('The receiving destination does not match the purchase-order variant snapshot.'), {
+        statusCode: 409,
+        code: 'VARIANT_RECEIVING_MAPPING_MISMATCH'
+      });
+    }
+    reportItem.supplierVariant = orderItem.supplierVariant;
+    reportItem.sellerVariant = orderItem.sellerVariant;
+    reportItem.variantMapping = orderItem.variantMapping;
+    reportItem.previouslyReceivedQuantity = Number(orderItem.receivedQuantity || 0);
+    reportItem.inventoryApplicationStatus = 'deferred_variant_inventory';
+    reportItem.idempotencyKey = reportItem.idempotencyKey || idempotencyKey;
+    await assertVariantReceivingStockApplicationEnabled();
   }
 
   if (orderItem.itemType === 'live_pet') {
@@ -1640,6 +1835,31 @@ const submitReceivingInspection = async (req, res) => {
       if (row.acceptedQuantity > 0 && orderItem.itemType !== 'live_pet') {
         if (!orderItem.supplierProduct) {
           return res.status(409).json({ message: `Supplier product identity for "${orderItem.productName}" is unavailable.` });
+        }
+        if (orderItem.supplierVariant) {
+          try {
+            await assertVariantProcurementEnabled();
+            const resolved = await resolveHistoricalVariantMapping({
+              storeId: inspectedOrder.store,
+              supplierVariantId: orderItem.supplierVariant,
+              mappingId: orderItem.variantMapping
+            });
+            if (String(resolved.sellerVariant._id) !== String(orderItem.sellerVariant)
+                || String(resolved.sellerProduct._id) !== String(orderItem.storeProduct)) {
+              return res.status(409).json({
+                code: 'VARIANT_RECEIVING_MAPPING_MISMATCH',
+                purchaseOrderItem: orderItem._id,
+                message: 'The confirmed variant destination does not match this purchase order.'
+              });
+            }
+            continue;
+          } catch (error) {
+            return res.status(error.statusCode || 409).json({
+              code: error.code || 'VARIANT_RECEIVING_MAPPING_INVALID',
+              purchaseOrderItem: orderItem._id,
+              message: error.message
+            });
+          }
         }
         if (orderItem.serviceSupply) {
           const linkedSupply = await ServiceSupply.findOne({
@@ -1822,6 +2042,7 @@ const submitReceivingInspection = async (req, res) => {
     console.error('Submit procurement inspection error:', error);
     const statusCode = error.code === 11000 ? 409 : (error.statusCode || (error.name === 'CastError' ? 400 : 500));
     res.status(statusCode).json({
+      code: error.code,
       message: error.code === 11000 ? 'This receiving inspection is already being processed.' : (error.message || 'Unable to record the receiving inspection.')
     });
   }
