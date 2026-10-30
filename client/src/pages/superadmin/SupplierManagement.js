@@ -54,13 +54,13 @@ const SupplierManagement = () => {
     let reason = '';
     if (action !== 'approve') {
       reason = await pawzzlePrompt(
-        action === 'request_changes' ? 'Tell the supplier exactly what must be corrected.' : 'Explain why this supply cannot be approved.',
+        action === 'request_changes' ? 'Tell the supplier which FDA detail or document must be corrected.' : 'Explain why the submitted FDA evidence cannot be accepted.',
         {
-          title: action === 'request_changes' ? 'Request supply changes' : 'Reject supply',
+          title: action === 'request_changes' ? 'Request FDA evidence changes' : 'Reject FDA evidence',
           inputLabel: 'Required review reason',
           required: true,
           multiline: true,
-          confirmLabel: action === 'request_changes' ? 'Request changes' : 'Reject supply',
+          confirmLabel: action === 'request_changes' ? 'Request changes' : 'Reject evidence',
           tone: action === 'reject' ? 'danger' : 'warning'
         }
       );
@@ -68,10 +68,10 @@ const SupplierManagement = () => {
     }
     try {
       await supplierService.adminReviewProduct(product._id, { action, reason });
-      toast.success(action === 'approve' ? 'Supply approved and published' : action === 'request_changes' ? 'Changes requested from supplier' : 'Supply rejected');
+      toast.success(action === 'approve' ? 'FDA evidence verified and supply published' : action === 'request_changes' ? 'FDA evidence changes requested from supplier' : 'FDA evidence rejected');
       await fetchProductReviews();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Supply review failed');
+      toast.error(error.response?.data?.message || 'FDA compliance review failed');
     }
   };
 
@@ -171,7 +171,7 @@ const SupplierManagement = () => {
 
       <div className="flex gap-1 rounded-2xl bg-slate-900 p-1.5">
         <button onClick={() => setActiveView('accounts')} className={`flex items-center gap-2 rounded-xl px-5 py-3 text-[10px] font-black uppercase ${activeView === 'accounts' ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}><Users className="h-4 w-4" /> Supplier accounts</button>
-        <button onClick={() => setActiveView('supplies')} className={`flex items-center gap-2 rounded-xl px-5 py-3 text-[10px] font-black uppercase ${activeView === 'supplies' ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}><ClipboardCheck className="h-4 w-4" /> Supply approvals {reviewCounts.pending_review ? `(${reviewCounts.pending_review})` : ''}</button>
+        <button onClick={() => setActiveView('supplies')} className={`flex items-center gap-2 rounded-xl px-5 py-3 text-[10px] font-black uppercase ${activeView === 'supplies' ? 'bg-white text-slate-900 shadow' : 'text-white/60 hover:text-white'}`}><ClipboardCheck className="h-4 w-4" /> FDA reviews {reviewCounts.pending_review ? `(${reviewCounts.pending_review})` : ''}</button>
       </div>
 
       {/* Stats */}
@@ -276,7 +276,7 @@ const SupplierManagement = () => {
       {activeView === 'supplies' && <div className="space-y-4">
         <div className="rounded-2xl border border-primary-100 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div><h2 className="text-xl font-black uppercase text-slate-900">Supply approvals</h2><p className="mt-1 text-xs leading-5 text-slate-500">Review product identity, pricing, nutrition, and supporting evidence before publishing supplies to stores.</p></div>
+            <div><h2 className="text-xl font-black uppercase text-slate-900">FDA compliance reviews</h2><p className="mt-1 text-xs leading-5 text-slate-500">Review FDA registration details and evidence for food and medicine supplies before publishing. Accessories and other supplies do not enter this queue.</p></div>
             <div className="flex flex-wrap gap-2">
               {[
                 ['pending_review', 'Pending'], ['approved', 'Approved'], ['changes_requested', 'Changes requested'], ['rejected', 'Rejected'], ['', 'All']
@@ -296,16 +296,20 @@ const SupplierManagement = () => {
               <p className="mt-1 text-[10px] text-slate-500">SKU {product.sku} · {product.supplier?.businessName || 'Unknown supplier'} · {formatPeso(product.wholesalePrice)} wholesale</p>
               {product.description && <p className="mt-3 text-xs leading-5 text-slate-600">{product.description}</p>}
               <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-2">
+                <div className="rounded-xl bg-primary-50 p-3"><b className="block uppercase text-primary-800">FDA registration number</b><span className="mt-1 block font-bold text-primary-950">{product.fdaRegistrationNumber || 'Not provided'}</span></div>
+                <div className="rounded-xl bg-primary-50 p-3"><b className="block uppercase text-primary-800">Registration expiry</b><span className="mt-1 block font-bold text-primary-950">{product.fdaRegistrationExpiry ? new Date(product.fdaRegistrationExpiry).toLocaleDateString() : 'Not specified'}</span></div>
+              </div>
+              <div className="mt-3 grid gap-2 text-[10px] sm:grid-cols-2">
                 {product.ingredients && <div className="rounded-xl bg-emerald-50 p-3"><b className="block uppercase text-emerald-800">Ingredients</b><span className="mt-1 block text-emerald-900">{product.ingredients}</span></div>}
                 {product.nutritionalInformation && <div className="rounded-xl bg-emerald-50 p-3"><b className="block uppercase text-emerald-800">Nutrition</b><span className="mt-1 block text-emerald-900">{product.nutritionalInformation}</span></div>}
               </div>
               {!!product.regulatoryDocuments?.length && <div className="mt-3 flex flex-wrap gap-2">{product.regulatoryDocuments.map((document, index) => <a key={`${document.documentUrl}-${index}`} href={getImageUrl(document.documentUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-[9px] font-bold text-slate-700 hover:border-primary-400"><FileText className="h-3.5 w-3.5" />{document.originalName || 'Supporting document'}</a>)}</div>}
               {product.reviewReason && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-[10px] font-semibold text-rose-700">Review note: {product.reviewReason}</p>}
             </div>
-            {product.approvalStatus === 'pending_review' && <div className="flex shrink-0 flex-row gap-2 lg:w-40 lg:flex-col"><button onClick={() => handleProductReview(product, 'approve')} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[9px] font-black uppercase text-white">Approve & publish</button><button onClick={() => handleProductReview(product, 'request_changes')} className="flex-1 rounded-xl bg-amber-100 px-4 py-3 text-[9px] font-black uppercase text-amber-800">Request changes</button><button onClick={() => handleProductReview(product, 'reject')} className="flex-1 rounded-xl bg-rose-100 px-4 py-3 text-[9px] font-black uppercase text-rose-700">Reject</button></div>}
+            {product.approvalStatus === 'pending_review' && <div className="flex shrink-0 flex-row gap-2 lg:w-40 lg:flex-col"><button onClick={() => handleProductReview(product, 'approve')} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[9px] font-black uppercase text-white">Verify & publish</button><button onClick={() => handleProductReview(product, 'request_changes')} className="flex-1 rounded-xl bg-amber-100 px-4 py-3 text-[9px] font-black uppercase text-amber-800">Request changes</button><button onClick={() => handleProductReview(product, 'reject')} className="flex-1 rounded-xl bg-rose-100 px-4 py-3 text-[9px] font-black uppercase text-rose-700">Reject</button></div>}
           </div>
         </article>)}
-        {!reviewLoading && productReviews.length === 0 && <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center"><ClipboardCheck className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-500">No supplies match this review filter.</p></div>}
+        {!reviewLoading && productReviews.length === 0 && <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center"><ClipboardCheck className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 text-sm font-bold text-slate-500">No food or medicine supplies match this FDA review filter.</p></div>}
       </div>}
 
       {/* Detail Modal */}

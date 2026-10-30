@@ -17,9 +17,12 @@ const { sanitizeReceivingReport, sanitizeOrderReceivingReport } = require('../ut
 const { sendSupplierInvitation, sendSupplierApplicationUpdate } = require('../utils/emailService');
 const { supplierProductDuplicateResponse } = require('../utils/supplierProductDuplicate');
 const {
+  FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
   isSupplierProductPublished,
-  hasReviewedContentUpdate
+  hasReviewedContentUpdate,
+  requiresFdaComplianceReview,
+  buildSupplierProductApprovalState
 } = require('../utils/supplierProductApproval');
 const {
   getSelectableSupplierFilterForStore,
@@ -44,18 +47,26 @@ const normalizeRegulatoryDocuments = value => (Array.isArray(value) ? value : []
     uploadedAt: document.uploadedAt || new Date()
   }));
 
-const pendingProductReview = actor => ({
-  requiresPlatformReview: true,
-  approvalStatus: 'pending_review',
-  submittedAt: new Date(),
-  reviewedAt: undefined,
-  reviewedBy: undefined,
-  reviewReason: '',
-  publishedAt: undefined,
-  reviewHistory: [{ status: 'pending_review', actor, reason: '' }]
-});
-
 const createHttpError = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+
+const validateFdaComplianceDetails = ({ category, fdaRegistrationNumber, regulatoryDocuments }) => {
+  if (!requiresFdaComplianceReview(category)) return;
+  if (!String(fdaRegistrationNumber || '').trim()) {
+    throw createHttpError('An FDA product registration number is required for food and medicine supplies.', 400);
+  }
+  if (!Array.isArray(regulatoryDocuments) || regulatoryDocuments.length === 0) {
+    throw createHttpError('Upload at least one FDA registration or product compliance document.', 400);
+  }
+};
+
+const applySupplierProductApprovalState = (product, actor) => {
+  const { reviewHistory, ...state } = buildSupplierProductApprovalState({
+    category: product.category,
+    actor
+  });
+  Object.assign(product, state);
+  if (reviewHistory.length) product.reviewHistory.push(...reviewHistory);
+};
 
 const settleSupplierSecondaryEffects = async (context, effects) => {
   const results = await Promise.allSettled(effects.filter(Boolean).map(effect => (
@@ -582,6 +593,7 @@ const getSupplierDashboard = async (req, res) => {
       supplier: supplier._id,
       requiresPlatformReview: true,
       approvalStatus: 'pending_review',
+      category: { $in: FDA_REVIEW_CATEGORIES },
       isDeleted: false
     });
     const totalStock = await SupplierProduct.aggregate([
@@ -631,7 +643,8 @@ const addProduct = async (req, res) => {
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
       brand, specifications, weight, dimensions, expirationDate, ingredients,
-      nutritionalInformation, intendedSpecies, safetyNotes, regulatoryDocuments } = req.body;
+      nutritionalInformation, intendedSpecies, safetyNotes, regulatoryDocuments,
+      fdaRegistrationNumber, fdaRegistrationExpiry } = req.body;
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
       ? req.body.itemType : 'pet_supply';
     requestedItemType = itemType;
@@ -648,6 +661,16 @@ const addProduct = async (req, res) => {
         && (!String(ingredients || '').trim() || !String(nutritionalInformation || '').trim())) {
       return res.status(400).json({ message: 'Ingredients and nutritional information are required for pet food and treats.' });
     }
+    const normalizedRegulatoryDocuments = normalizeRegulatoryDocuments(regulatoryDocuments);
+    validateFdaComplianceDetails({
+      category: authoritativeCategory,
+      fdaRegistrationNumber,
+      regulatoryDocuments: normalizedRegulatoryDocuments
+    });
+    const approvalState = buildSupplierProductApprovalState({
+      category: authoritativeCategory,
+      actor: req.user._id
+    });
     let product;
     const persistCatalogEntry = async session => {
       let pet = null;
@@ -675,8 +698,10 @@ const addProduct = async (req, res) => {
         brand, specifications, weight, dimensions, expirationDate,
         ingredients, nutritionalInformation,
         intendedSpecies: normalizeStringList(intendedSpecies), safetyNotes,
-        regulatoryDocuments: normalizeRegulatoryDocuments(regulatoryDocuments),
-        ...pendingProductReview(req.user._id)
+        fdaRegistrationNumber: String(fdaRegistrationNumber || '').trim(),
+        fdaRegistrationExpiry: fdaRegistrationExpiry || undefined,
+        regulatoryDocuments: normalizedRegulatoryDocuments,
+        ...approvalState
       });
       await product.save({ session });
       await Supplier.updateOne({ _id: supplier._id }, {
@@ -690,13 +715,16 @@ const addProduct = async (req, res) => {
       await persistCatalogEntry(null);
     }
 
+    const requiresFdaReview = requiresFdaComplianceReview(authoritativeCategory);
     await settleSupplierSecondaryEffects('Add supplier product', [
       () => SupplyChainLog.create({
-        action: 'supplier_product_submitted',
+        action: requiresFdaReview ? 'supplier_product_submitted' : 'supplier_product_added',
         performedBy: req.user._id,
         userRole: 'supplier',
         relatedEntity: { type: 'SupplierProduct', id: product._id },
-        description: `Supply "${name}" (SKU: ${sku}) submitted for Platform Admin review`,
+        description: requiresFdaReview
+          ? `Supply "${name}" (SKU: ${sku}) submitted for internal FDA compliance review`
+          : `Supply "${name}" (SKU: ${sku}) published; FDA review is not required for this category`,
         supplier: supplier._id
       })
     ]);
@@ -723,7 +751,7 @@ const getMyProducts = async (req, res) => {
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const products = await SupplierProduct.find(filter).select('+regulatoryDocuments.documentUrl').populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const products = await SupplierProduct.find(filter).select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
     const total = await SupplierProduct.countDocuments(filter);
 
     res.json({ products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
@@ -758,18 +786,20 @@ const updateProduct = async (req, res) => {
       'retailPrice', 'availableStock', 'minimumOrderQuantity', 'unitOfMeasure',
       'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'dimensions',
       'expirationDate', 'ingredients', 'nutritionalInformation', 'intendedSpecies',
-      'safetyNotes', 'regulatoryDocuments', 'isActive'
+      'safetyNotes', 'fdaRegistrationNumber', 'fdaRegistrationExpiry',
+      'regulatoryDocuments', 'isActive'
     ];
     const updates = {};
     mutableFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
     if (updates.intendedSpecies !== undefined) updates.intendedSpecies = normalizeStringList(updates.intendedSpecies);
+    if (updates.fdaRegistrationNumber !== undefined) updates.fdaRegistrationNumber = String(updates.fdaRegistrationNumber || '').trim();
     if (updates.regulatoryDocuments !== undefined) updates.regulatoryDocuments = normalizeRegulatoryDocuments(updates.regulatoryDocuments);
 
     await mongoose.connection.transaction(async session => {
       product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id })
-        .select('+regulatoryDocuments.documentUrl').session(session);
+        .select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').session(session);
       if (!product) throw createHttpError('Product not found.', 404);
       reviewedContentChanged = hasReviewedContentUpdate(req.body, product);
       previousValue = { price: product.wholesalePrice, stock: product.availableStock,
@@ -781,16 +811,13 @@ const updateProduct = async (req, res) => {
           && (!String(product.ingredients || '').trim() || !String(product.nutritionalInformation || '').trim())) {
         throw createHttpError('Ingredients and nutritional information are required for pet food and treats.', 400);
       }
-
       if (reviewedContentChanged) {
-        product.requiresPlatformReview = true;
-        product.approvalStatus = 'pending_review';
-        product.submittedAt = new Date();
-        product.reviewedAt = undefined;
-        product.reviewedBy = undefined;
-        product.reviewReason = '';
-        product.publishedAt = undefined;
-        product.reviewHistory.push({ status: 'pending_review', actor: req.user._id, reason: '' });
+        validateFdaComplianceDetails({
+          category: product.category,
+          fdaRegistrationNumber: product.fdaRegistrationNumber,
+          regulatoryDocuments: product.regulatoryDocuments
+        });
+        applySupplierProductApprovalState(product, req.user._id);
       }
 
       if (product.itemType === 'live_pet') {
@@ -838,13 +865,17 @@ const updateProduct = async (req, res) => {
 
     await settleSupplierSecondaryEffects('Update supplier product', [
       () => SupplyChainLog.create({
-        action: reviewedContentChanged ? 'supplier_product_submitted' : 'supplier_product_updated',
+        action: reviewedContentChanged && requiresFdaComplianceReview(product)
+          ? 'supplier_product_submitted'
+          : 'supplier_product_updated',
         performedBy: req.user._id,
         userRole: 'supplier',
         relatedEntity: { type: 'SupplierProduct', id: product._id },
-        description: reviewedContentChanged
-          ? `Supply "${product.name}" resubmitted for Platform Admin review`
-          : `Product "${product.name}" updated`,
+        description: reviewedContentChanged && requiresFdaComplianceReview(product)
+          ? `Supply "${product.name}" submitted for internal FDA compliance review`
+          : reviewedContentChanged
+            ? `Supply "${product.name}" updated and published; FDA review is not required for this category`
+            : `Product "${product.name}" updated`,
         supplier: supplier._id,
         previousValue,
         newValue: { price: product.wholesalePrice, stock: product.availableStock }
@@ -1400,10 +1431,16 @@ const adminGetProductReviews = async (req, res) => {
     const { status, search, itemType, category, page = 1, limit = 30 } = req.query;
     const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
     const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 30));
-    const filter = { requiresPlatformReview: true, isDeleted: false };
+    const filter = {
+      requiresPlatformReview: true,
+      category: { $in: FDA_REVIEW_CATEGORIES },
+      isDeleted: false
+    };
     if (status) filter.approvalStatus = status;
     if (itemType) filter.itemType = itemType;
-    if (category) filter.category = category;
+    if (category) filter.category = FDA_REVIEW_CATEGORIES.includes(category)
+      ? category
+      : { $in: [] };
     if (search) filter.$or = [
       { name: { $regex: String(search).slice(0, 80), $options: 'i' } },
       { sku: { $regex: String(search).slice(0, 80), $options: 'i' } }
@@ -1411,7 +1448,7 @@ const adminGetProductReviews = async (req, res) => {
 
     const [products, total, statusCounts] = await Promise.all([
       SupplierProduct.find(filter)
-        .select('+regulatoryDocuments.documentUrl')
+        .select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry')
         .populate('supplier', 'businessName status isActive supplierType contactPerson email')
         .populate('reviewedBy', 'firstName lastName')
         .populate('pet')
@@ -1419,7 +1456,7 @@ const adminGetProductReviews = async (req, res) => {
         .skip((safePage - 1) * safeLimit).limit(safeLimit),
       SupplierProduct.countDocuments(filter),
       SupplierProduct.aggregate([
-        { $match: { requiresPlatformReview: true, isDeleted: false } },
+        { $match: { requiresPlatformReview: true, category: { $in: FDA_REVIEW_CATEGORIES }, isDeleted: false } },
         { $group: { _id: '$approvalStatus', count: { $sum: 1 } } }
       ])
     ]);
@@ -1455,15 +1492,23 @@ const adminReviewProduct = async (req, res) => {
       product = await SupplierProduct.findOne({
         _id: req.params.id,
         requiresPlatformReview: true,
+        category: { $in: FDA_REVIEW_CATEGORIES },
         approvalStatus: 'pending_review',
         isDeleted: false
-      }).session(session);
-      if (!product) throw createHttpError('This supply is not awaiting review or was already reviewed.', 409);
+      }).select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').session(session);
+      if (!product) throw createHttpError('This regulated supply is not awaiting FDA compliance review or was already reviewed.', 409);
 
       supplier = await Supplier.findById(product.supplier).session(session);
       if (!supplier) throw createHttpError('Supplier not found.', 404);
+      if (req.body.action === 'approve') {
+        validateFdaComplianceDetails({
+          category: product.category,
+          fdaRegistrationNumber: product.fdaRegistrationNumber,
+          regulatoryDocuments: product.regulatoryDocuments
+        });
+      }
       if (req.body.action === 'approve' && !isSupplierAvailable(supplier)) {
-        throw createHttpError('Verify and activate the supplier account before approving its supplies.', 409);
+        throw createHttpError('Verify and activate the supplier account before accepting its FDA compliance evidence.', 409);
       }
 
       product.approvalStatus = review.status;
@@ -1493,21 +1538,21 @@ const adminReviewProduct = async (req, res) => {
         performedBy: req.user._id,
         userRole: req.user.role,
         relatedEntity: { type: 'SupplierProduct', id: product._id },
-        description: `Supply "${product.name}" ${review.label}${reason ? ` (${reason})` : ''}`,
+        description: `FDA compliance evidence for "${product.name}" ${review.label}${reason ? ` (${reason})` : ''}`,
         supplier: supplier._id,
         metadata: { approvalStatus: review.status }
       }], { session });
     });
 
-    await settleSupplierSecondaryEffects('Admin supply review', [
+    await settleSupplierSecondaryEffects('Admin FDA compliance review', [
       createNotification({
         recipient: supplier.user,
         sender: req.user._id,
         type: 'supplier_product_review',
-        title: `Supply ${req.body.action === 'request_changes' ? 'Changes Requested' : review.label.replace(/^./, value => value.toUpperCase())}`,
+        title: `FDA Compliance ${req.body.action === 'request_changes' ? 'Changes Requested' : review.label.replace(/^./, value => value.toUpperCase())}`,
         message: req.body.action === 'approve'
-          ? `${product.name} is now published to verified stores as a Platform Verified Supply.`
-          : `${product.name} was ${review.label}. Reason: ${reason}`,
+          ? `${product.name}'s submitted FDA details were verified by Pawzzle and the supply is now published to verified stores.`
+          : `${product.name}'s FDA compliance submission was ${review.label}. Reason: ${reason}`,
         relatedId: product._id,
         relatedModel: 'SupplierProduct',
         targetUrl: '/supplier/dashboard?tab=products'

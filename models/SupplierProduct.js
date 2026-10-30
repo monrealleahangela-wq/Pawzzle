@@ -90,11 +90,14 @@ const supplierProductSchema = new mongoose.Schema({
   dimensions: { type: String },   // e.g., "10x5x3 cm"
   expirationDate: { type: Date },
 
-  // Product compliance information reviewed by the Platform Administrator.
+  // FDA compliance evidence supplied for food and medicine categories and
+  // reviewed internally by the Pawzzle Platform Administrator.
   ingredients: { type: String, trim: true, default: '' },
   nutritionalInformation: { type: String, trim: true, default: '' },
   intendedSpecies: [{ type: String, trim: true }],
   safetyNotes: { type: String, trim: true, default: '' },
+  fdaRegistrationNumber: { type: String, trim: true, default: '', select: false },
+  fdaRegistrationExpiry: { type: Date, select: false },
   regulatoryDocuments: [{
     documentType: { type: String, trim: true, default: 'supporting_document' },
     documentUrl: { type: String, required: true, select: false },
@@ -102,8 +105,8 @@ const supplierProductSchema = new mongoose.Schema({
     uploadedAt: { type: Date, default: Date.now }
   }],
 
-  // Optional rollout flag preserves legacy catalog entries while requiring
-  // every new or materially edited item to pass Platform Admin review.
+  // Kept for backward compatibility. It is true only when a food or medicine
+  // category needs internal FDA evidence review before publication.
   requiresPlatformReview: { type: Boolean, default: false },
   approvalStatus: {
     type: String,

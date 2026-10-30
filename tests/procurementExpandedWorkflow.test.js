@@ -8,6 +8,7 @@ const {
   determineInspectionOutcome
 } = require('../utils/procurementCart');
 const { amountCentavos } = require('../services/paymentReconciliationService');
+const { requiresFdaComplianceReview } = require('../utils/supplierProductApproval');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
@@ -32,15 +33,15 @@ test('live-pet procurement represents one exact animal and rejects bulk quantiti
   assert.match(purchaseOrder, /itemType:[\s\S]*'live_pet'[\s\S]*pet:[\s\S]*ref: 'Pet'/);
 });
 
-test('supplier live-pet catalog reuses Pet identity and is isolated from the customer marketplace', () => {
+test('supplier live-pet catalog reuses Pet identity, bypasses FDA review, and is isolated from the customer marketplace', () => {
   const supplierController = read('controllers/supplierController.js');
   const petModel = read('models/Pet.js');
   assert.match(supplierController, /new Pet\(buildSupplierPet/);
   assert.match(supplierController, /pet\.save\(\{ session \}\)/);
   assert.match(supplierController, /listingContext: 'supplier_catalog'/);
-  assert.match(supplierController, /approvalStatus: 'pending_review'/);
+  assert.equal(requiresFdaComplianceReview('live_pets'), false);
+  assert.match(supplierController, /buildSupplierProductApprovalState/);
   assert.match(supplierController, /status: 'unavailable'[^]*isAvailable: false/);
-  assert.match(supplierController, /review\.status === 'approved'[^]*pet\.status = publishPet \? 'available' : 'unavailable'/);
   assert.match(petModel, /listingContext:[\s\S]*\['marketplace', 'supplier_catalog'\]/);
   assert.match(petModel, /sourceSupplier:[\s\S]*ref: 'Supplier'/);
 });
