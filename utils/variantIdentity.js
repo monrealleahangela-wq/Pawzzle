@@ -92,14 +92,18 @@ const assertVariantIdentityAvailable = async ({
   ownerId,
   combinationKey,
   normalizedSku,
-  excludeId
+  excludeId,
+  session
 }) => {
   if (!Model || typeof Model.exists !== 'function') throw new TypeError('A variant model is required.');
   const excludingCurrent = excludeId ? { _id: { $ne: excludeId } } : {};
-  const [combinationExists, skuExists] = await Promise.all([
-    Model.exists({ [parentField]: parentId, combinationKey, ...excludingCurrent }),
-    Model.exists({ [ownerField]: ownerId, normalizedSku, ...excludingCurrent })
-  ]);
+  const combinationQuery = Model.exists({ [parentField]: parentId, combinationKey, ...excludingCurrent });
+  const skuQuery = Model.exists({ [ownerField]: ownerId, normalizedSku, ...excludingCurrent });
+  if (session) {
+    combinationQuery.session(session);
+    skuQuery.session(session);
+  }
+  const [combinationExists, skuExists] = await Promise.all([combinationQuery, skuQuery]);
   if (combinationExists) {
     throw variantError('This attribute combination already exists for the parent product.', 'DUPLICATE_VARIANT_COMBINATION');
   }

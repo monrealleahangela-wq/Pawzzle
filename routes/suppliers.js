@@ -15,6 +15,14 @@ const {
   adminVerifySupplier, adminGetSupplierDetails,
   adminUpdateSupplier, adminDeactivateSupplier
 } = require('../controllers/supplierController');
+const {
+  createSupplierVariant,
+  createVariantProduct,
+  discontinueSupplierVariant,
+  getVariantCapabilities,
+  listSupplierVariants,
+  updateSupplierVariant
+} = require('../controllers/supplierVariantController');
 
 // ── Supplier self-service routes ──────────────────────────
 const supplierDocumentUpload = uploadDoc.fields([
@@ -32,6 +40,12 @@ router.get('/dashboard', authenticate, requirePasswordChangeCompleted, getSuppli
 // ── Supplier product management ───────────────────────────
 router.post('/products', authenticate, requirePasswordChangeCompleted, addProduct);
 router.get('/products', authenticate, requirePasswordChangeCompleted, getMyProducts);
+router.get('/products/variant-capabilities', authenticate, requirePasswordChangeCompleted, getVariantCapabilities);
+router.post('/variant-products', authenticate, requirePasswordChangeCompleted, createVariantProduct);
+router.get('/products/:productId/variants', authenticate, requirePasswordChangeCompleted, listSupplierVariants);
+router.post('/products/:productId/variants', authenticate, requirePasswordChangeCompleted, createSupplierVariant);
+router.put('/products/:productId/variants/:variantId', authenticate, requirePasswordChangeCompleted, updateSupplierVariant);
+router.patch('/products/:productId/variants/:variantId/discontinue', authenticate, requirePasswordChangeCompleted, discontinueSupplierVariant);
 router.put('/products/:id', authenticate, requirePasswordChangeCompleted, updateProduct);
 router.delete('/products/:id', authenticate, requirePasswordChangeCompleted, deleteProduct);
 

@@ -45,6 +45,11 @@ test('new supply approval state is represented without changing legacy publicati
         { category: { $nin: FDA_REVIEW_CATEGORIES } },
         { requiresPlatformReview: { $ne: true } },
         { approvalStatus: 'approved' }
+      ] },
+      { $or: [
+        { productMode: 'simple' },
+        { productMode: { $exists: false } },
+        { productMode: null }
       ] }
     ]
   });

@@ -113,7 +113,9 @@ supplierProductVariantSchema.pre('validate', async function normalizeAndValidate
   }
 
   if (!this.supplierProduct) return;
-  const parent = await SupplierProduct.findById(this.supplierProduct).select('_id supplier productMode').lean();
+  const parentQuery = SupplierProduct.findById(this.supplierProduct).select('_id supplier productMode').lean();
+  if (this.$session()) parentQuery.session(this.$session());
+  const parent = await parentQuery;
   if (!parent) {
     this.invalidate('supplierProduct', 'Parent supplier product does not exist.');
     return;
@@ -134,7 +136,8 @@ supplierProductVariantSchema.pre('save', async function rejectDuplicateSupplierV
     ownerId: this.supplier,
     combinationKey: this.combinationKey,
     normalizedSku: this.normalizedSku,
-    excludeId: this.isNew ? undefined : this._id
+    excludeId: this.isNew ? undefined : this._id,
+    session: this.$session()
   });
 });
 

@@ -20,7 +20,7 @@ test('one Supplier model represents platform and store-added pathways without a 
   const model = read('models/Supplier.js');
   const user = read('models/User.js');
   const supplierModels = fs.readdirSync(path.join(__dirname, '..', 'models')).filter(name => /^Supplier.*\.js$/.test(name));
-  assert.deepEqual(supplierModels.sort(), ['Supplier.js', 'SupplierProduct.js']);
+  assert.deepEqual(supplierModels.sort(), ['Supplier.js', 'SupplierProduct.js', 'SupplierProductVariant.js']);
   assert.match(model, /supplierType:[\s\S]*\['platform', 'store_added'\]/);
   assert.match(model, /storeAssociations:[\s\S]*pending_activation[\s\S]*active[\s\S]*inactive/);
   assert.match(model, /applicationDocuments:[\s\S]*business_registration[\s\S]*bir_certificate/);

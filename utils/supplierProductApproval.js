@@ -59,11 +59,20 @@ const publishedSupplierProductClause = {
   ]
 };
 
+const simpleSupplierProductClause = {
+  $or: [
+    { productMode: 'simple' },
+    { productMode: { $exists: false } },
+    { productMode: null }
+  ]
+};
+
 const withPublishedSupplierProduct = filter => ({
-  $and: [filter || {}, publishedSupplierProductClause]
+  $and: [filter || {}, publishedSupplierProductClause, simpleSupplierProductClause]
 });
 
 const isSupplierProductPublished = product => Boolean(product)
+  && product.productMode !== 'variant'
   && (!requiresFdaComplianceReview(product)
     || product.requiresPlatformReview !== true
     || product.approvalStatus === 'approved');
@@ -93,6 +102,7 @@ module.exports = {
   requiresFdaComplianceReview,
   buildSupplierProductApprovalState,
   publishedSupplierProductClause,
+  simpleSupplierProductClause,
   withPublishedSupplierProduct,
   isSupplierProductPublished,
   hasReviewedContentUpdate

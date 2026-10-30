@@ -586,7 +586,13 @@ export const supplierService = {
   getDashboard: () => api.get('/suppliers/dashboard'),
   // Products
   addProduct: (data) => api.post('/suppliers/products', data),
+  addVariantProduct: (data) => api.post('/suppliers/variant-products', data),
   getProducts: (params) => api.get('/suppliers/products', { params }),
+  getVariantCapabilities: () => api.get('/suppliers/products/variant-capabilities'),
+  getVariants: (productId) => api.get(`/suppliers/products/${productId}/variants`),
+  addVariant: (productId, data) => api.post(`/suppliers/products/${productId}/variants`, data),
+  updateVariant: (productId, variantId, data) => api.put(`/suppliers/products/${productId}/variants/${variantId}`, data),
+  discontinueVariant: (productId, variantId, reason) => api.patch(`/suppliers/products/${productId}/variants/${variantId}/discontinue`, { reason }),
   updateProduct: (id, data) => api.put(`/suppliers/products/${id}`, data),
   deleteProduct: (id) => api.delete(`/suppliers/products/${id}`),
   // Orders (supplier side)

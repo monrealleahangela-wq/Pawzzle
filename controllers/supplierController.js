@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Supplier = require('../models/Supplier');
 const SupplierProduct = require('../models/SupplierProduct');
+const SupplierProductVariant = require('../models/SupplierProductVariant');
 const Product = require('../models/Product');
 const ServiceSupply = require('../models/ServiceSupply');
 const Pet = require('../models/Pet');
@@ -16,6 +17,12 @@ const { getResolutionQuantities } = require('../utils/procurementResolution');
 const { sanitizeReceivingReport, sanitizeOrderReceivingReport } = require('../utils/procurementEvidence');
 const { sendSupplierInvitation, sendSupplierApplicationUpdate } = require('../utils/emailService');
 const { supplierProductDuplicateResponse } = require('../utils/supplierProductDuplicate');
+const { claimSku, releaseSku, replaceSkuClaim } = require('../services/skuClaimService');
+const {
+  assertSupplierVariantWritesEnabled,
+  featureRequested,
+  getSupplierVariantReadiness
+} = require('../services/supplierVariantReadinessService');
 const {
   FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
@@ -709,8 +716,21 @@ const addProduct = async (req, res) => {
       }, { session });
     };
 
+    const variantRegistryReady = featureRequested()
+      ? (await getSupplierVariantReadiness()).enabled
+      : false;
+    const persistWithSkuClaim = () => mongoose.connection.transaction(async session => {
+      await persistCatalogEntry(session);
+      await claimSku({
+        namespaceType: 'supplier', owner: supplier._id, sku: product.sku,
+        entityType: 'supplier_product', entity: product._id, session
+      });
+    });
     if (itemType === 'live_pet') {
-      await mongoose.connection.transaction(persistCatalogEntry);
+      if (variantRegistryReady) await persistWithSkuClaim();
+      else await mongoose.connection.transaction(persistCatalogEntry);
+    } else if (variantRegistryReady) {
+      await persistWithSkuClaim();
     } else {
       await persistCatalogEntry(null);
     }
@@ -752,9 +772,24 @@ const getMyProducts = async (req, res) => {
 
     const skip = (page - 1) * limit;
     const products = await SupplierProduct.find(filter).select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
+    const variantParents = products.filter(product => product.productMode === 'variant').map(product => product._id);
+    const childVariants = variantParents.length
+      ? await SupplierProductVariant.find({ supplierProduct: { $in: variantParents } })
+        .select('+regulatoryReview.reviewedBy').sort({ createdAt: 1 }).lean()
+      : [];
+    const variantsByParent = childVariants.reduce((map, variant) => {
+      const key = String(variant.supplierProduct);
+      if (!map[key]) map[key] = [];
+      map[key].push(variant);
+      return map;
+    }, {});
+    const serializedProducts = products.map(product => ({
+      ...product.toObject(),
+      variants: variantsByParent[String(product._id)] || []
+    }));
     const total = await SupplierProduct.countDocuments(filter);
 
-    res.json({ products, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
+    res.json({ products: serializedProducts, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
   } catch (error) {
     console.error('Get supplier products error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -797,15 +832,27 @@ const updateProduct = async (req, res) => {
     if (updates.fdaRegistrationNumber !== undefined) updates.fdaRegistrationNumber = String(updates.fdaRegistrationNumber || '').trim();
     if (updates.regulatoryDocuments !== undefined) updates.regulatoryDocuments = normalizeRegulatoryDocuments(updates.regulatoryDocuments);
 
+    const variantRegistryReady = featureRequested()
+      ? (await getSupplierVariantReadiness()).enabled
+      : false;
     await mongoose.connection.transaction(async session => {
       product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id })
         .select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').session(session);
       if (!product) throw createHttpError('Product not found.', 404);
+      if (product.productMode === 'variant') await assertSupplierVariantWritesEnabled();
       reviewedContentChanged = hasReviewedContentUpdate(req.body, product);
-      previousValue = { price: product.wholesalePrice, stock: product.availableStock,
+      previousValue = { sku: product.sku, price: product.wholesalePrice, stock: product.availableStock,
         minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive,
         approvalStatus: product.approvalStatus, published: isSupplierProductPublished(product) };
       Object.assign(product, updates);
+
+      if (variantRegistryReady && updates.sku !== undefined && String(previousValue?.sku || product.sku) !== String(updates.sku)) {
+        await replaceSkuClaim({
+          namespaceType: 'supplier', owner: supplier._id,
+          previousSku: previousValue.sku, nextSku: updates.sku,
+          entityType: 'supplier_product', entity: product._id, session
+        });
+      }
 
       if (['pet_food', 'pet_treats'].includes(product.category)
           && (!String(product.ingredients || '').trim() || !String(product.nutritionalInformation || '').trim())) {
@@ -818,6 +865,22 @@ const updateProduct = async (req, res) => {
           regulatoryDocuments: product.regulatoryDocuments
         });
         applySupplierProductApprovalState(product, req.user._id);
+      }
+      if (product.productMode === 'variant'
+          && reviewedContentChanged
+          && requiresFdaComplianceReview(product.category)) {
+        await SupplierProductVariant.updateMany({ supplierProduct: product._id }, {
+          $set: {
+            'regulatoryReview.scope': 'variant',
+            'regulatoryReview.status': 'pending_review',
+            'regulatoryReview.submittedAt': new Date(),
+            'regulatoryReview.reason': ''
+          },
+          $unset: {
+            'regulatoryReview.reviewedAt': 1,
+            'regulatoryReview.reviewedBy': 1
+          }
+        }, { session });
       }
 
       if (product.itemType === 'live_pet') {
@@ -900,10 +963,14 @@ const deleteProduct = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ user: req.user._id });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
+    const variantRegistryReady = featureRequested()
+      ? (await getSupplierVariantReadiness()).enabled
+      : false;
 
     await mongoose.connection.transaction(async session => {
       product = await SupplierProduct.findOne({ _id: req.params.id, supplier: supplier._id }).session(session);
       if (!product) throw createHttpError('Product not found.', 404);
+      if (product.productMode === 'variant') await assertSupplierVariantWritesEnabled();
       if (product.isDeleted) throw createHttpError('Product was already removed.', 409);
 
       const activeCommitment = await hasUnreleasedProductCommitment({
@@ -935,6 +1002,12 @@ const deleteProduct = async (req, res) => {
         await pet.save({ session });
       }
       await product.save({ session });
+      if (variantRegistryReady) {
+        await releaseSku({
+          entityType: 'supplier_product', entity: product._id,
+          reason: 'Supplier product archived', session
+        });
+      }
     });
 
     await settleSupplierSecondaryEffects('Delete supplier product', [

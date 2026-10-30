@@ -13,6 +13,15 @@ import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const FDA_REVIEW_CATEGORIES = ['pet_food', 'pet_treats', 'medical_supplies', 'health_supplements'];
 const requiresFdaReview = category => FDA_REVIEW_CATEGORIES.includes(category);
+const VARIANT_ATTRIBUTE_TYPES = [
+  ['flavor', 'Flavor'], ['size', 'Size'], ['weight', 'Weight'],
+  ['volume', 'Volume'], ['color', 'Color'], ['packaging', 'Packaging']
+];
+const emptyVariant = () => ({
+  attributes: [{ code: 'size', label: 'Size', valueCode: '', valueLabel: '' }],
+  sku: '', wholesalePrice: 0, availableStock: 0, minimumOrderQuantity: 1,
+  unitOfMeasure: 'piece', weight: '', weightUnit: 'g', images: [], isActive: true
+});
 
 const SupplierDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -26,13 +35,15 @@ const SupplierDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [applicationFiles, setApplicationFiles] = useState({ businessRegistration: null, birCertificate: null });
   const [resolutionDrafts, setResolutionDrafts] = useState({});
+  const [variantCapabilities, setVariantCapabilities] = useState({ enabled: false, reasons: ['Checking variant readiness...'] });
 
   const initialProduct = {
-    itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
+    productMode: 'simple', itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
     wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
     unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [],
     ingredients: '', nutritionalInformation: '', intendedSpecies: [], safetyNotes: '',
     fdaRegistrationNumber: '', fdaRegistrationExpiry: '', regulatoryDocuments: [],
+    variants: [],
     pet: { name: '', species: 'dog', breed: '', age: 0, ageUnit: 'years', gender: 'male', size: 'medium', color: '', description: '', vaccinationStatus: 'none', healthCondition: 'healthy', healthNotes: '', dewormed: false, spayedNeutered: false }
   };
   const [productForm, setProductForm] = useState(initialProduct);
@@ -62,6 +73,12 @@ const SupplierDashboard = () => {
       setDashboard(dashRes.data);
       const prodRes = await supplierService.getProducts();
       setProducts(prodRes.data.products || []);
+      try {
+        const capabilityRes = await supplierService.getVariantCapabilities();
+        setVariantCapabilities(capabilityRes.data);
+      } catch (_error) {
+        setVariantCapabilities({ enabled: false, reasons: ['Variant readiness could not be verified.'] });
+      }
       const ordRes = await supplierService.getOrders();
       setOrders(ordRes.data.orders || []);
     } catch (e) {
@@ -117,15 +134,29 @@ const SupplierDashboard = () => {
     if (needsFdaReview && !editingProduct && !(productForm.regulatoryDocuments || []).length) {
       return toast.error('Upload at least one FDA registration or compliance document.');
     }
+    if (productForm.productMode === 'variant') {
+      if (!variantCapabilities.enabled) return toast.error('Variant management is not active until its database safety checks are complete.');
+      if (!(productForm.variants || []).length) return toast.error('Add at least one explicit variant combination.');
+      if (productForm.variants.some(variant => !variant.sku || !variant.attributes?.length || variant.attributes.some(attribute => !attribute.valueLabel))) {
+        return toast.error('Complete the SKU and attribute values for every variant.');
+      }
+    }
     setSubmitting(true);
     try {
       if (editingProduct) {
         await supplierService.updateProduct(editingProduct._id, productForm);
+        if (productForm.productMode === 'variant') {
+          for (const variant of productForm.variants || []) {
+            if (variant._id) await supplierService.updateVariant(editingProduct._id, variant._id, variant);
+            else await supplierService.addVariant(editingProduct._id, variant);
+          }
+        }
         toast.success(needsFdaReview
           ? 'Supply updated and submitted for FDA compliance review.'
           : 'Supply updated and published. FDA review is not required for this category.');
       } else {
-        await supplierService.addProduct(productForm);
+        if (productForm.productMode === 'variant') await supplierService.addVariantProduct(productForm);
+        else await supplierService.addProduct(productForm);
         toast.success(needsFdaReview
           ? 'Supply submitted for FDA compliance review.'
           : 'Supply published. FDA review is not required for this category.');
@@ -139,6 +170,33 @@ const SupplierDashboard = () => {
     finally { setSubmitting(false); }
   };
 
+  const updateVariant = (variantIndex, updater) => setProductForm(current => ({
+    ...current,
+    variants: (current.variants || []).map((variant, index) => (
+      index === variantIndex ? updater(variant) : variant
+    ))
+  }));
+
+  const setVariantField = (variantIndex, field, value) => updateVariant(variantIndex, variant => ({
+    ...variant,
+    [field]: value
+  }));
+
+  const setVariantAttribute = (variantIndex, attributeIndex, field, value) => updateVariant(variantIndex, variant => ({
+    ...variant,
+    attributes: variant.attributes.map((attribute, index) => {
+      if (index !== attributeIndex) return attribute;
+      if (field === 'code') {
+        const definition = VARIANT_ATTRIBUTE_TYPES.find(([code]) => code === value);
+        return { ...attribute, code: value, label: definition?.[1] || value };
+      }
+      const normalizedValue = field === 'valueLabel'
+        ? value.toLowerCase().trim().replace(/\s+/g, '_')
+        : attribute.valueCode;
+      return { ...attribute, [field]: value, valueCode: normalizedValue };
+    })
+  }));
+
   const handleDeleteProduct = async (id) => {
     if (!await pawzzleConfirm('This product will be removed from your supplier catalog.', {
       title: 'Delete this product?',
@@ -150,6 +208,25 @@ const SupplierDashboard = () => {
       toast.success('Product removed');
       setProducts(prev => prev.filter(p => p._id !== id));
     } catch (e) { toast.error(e.response?.data?.message || 'Failed to delete'); }
+  };
+
+  const handleDiscontinueVariant = async (productId, variantId) => {
+    if (!variantCapabilities.enabled) return toast.error('Variant management is not active yet.');
+    if (!await pawzzleConfirm('This keeps the variant for history but permanently removes it from availability.', {
+      title: 'Discontinue this variant?',
+      confirmLabel: 'Discontinue variant',
+      tone: 'danger'
+    })) return;
+    try {
+      const response = await supplierService.discontinueVariant(productId, variantId, 'Discontinued by supplier');
+      updateVariant((productForm.variants || []).findIndex(item => item._id === variantId), item => ({ ...item, ...response.data }));
+      setProducts(current => current.map(product => product._id === productId
+        ? { ...product, variants: (product.variants || []).map(item => item._id === variantId ? response.data : item) }
+        : product));
+      toast.success('Variant discontinued. Its history and SKU claim were preserved.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to discontinue variant.');
+    }
   };
 
   const handleOrderAction = async (orderId, status, notes = '') => {
@@ -235,6 +312,22 @@ const SupplierDashboard = () => {
       const urls = res.data.urls || res.data.imageUrls || [];
       setProductForm(prev => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (e) { toast.error('Upload failed'); }
+  };
+
+  const handleVariantImageUpload = async (variantIndex, event) => {
+    const files = event.target.files;
+    if (!files?.length) return;
+    const fd = new FormData();
+    for (let index = 0; index < files.length; index++) fd.append('images', files[index]);
+    try {
+      const response = await uploadService.uploadMultipleImages(fd);
+      const urls = response.data.urls || response.data.imageUrls || [];
+      updateVariant(variantIndex, variant => ({ ...variant, images: [...(variant.images || []), ...urls].slice(0, 10) }));
+    } catch (_error) {
+      toast.error('Variant image upload failed.');
+    } finally {
+      event.target.value = '';
+    }
   };
 
   const handleComplianceUpload = async event => {
@@ -506,6 +599,14 @@ const SupplierDashboard = () => {
                       <p className={`text-sm font-black ${p.availableStock <= 0 ? 'text-rose-600' : p.availableStock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{p.itemType === 'live_pet' ? (p.availableStock === 1 ? 'Available' : 'Unavailable') : p.availableStock}</p>
                     </div>
                   </div>
+                  {p.productMode === 'variant' && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Variants</p><span className="text-[9px] font-black text-primary-700">{p.variants?.length || 0}</span></div>
+                    {(p.variants || []).map(variant => <div key={variant._id} className="rounded-lg border border-slate-100 bg-white p-2 text-[9px]">
+                      <div className="flex items-start justify-between gap-2"><span className="font-black text-slate-800">{(variant.attributes || []).map(attribute => attribute.valueLabel).join(' · ')}</span><span className={`rounded-full px-1.5 py-0.5 font-black uppercase ${variant.isDiscontinued ? 'bg-slate-100 text-slate-500' : variant.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-primary-50 text-primary-700'}`}>{variant.isDiscontinued ? 'Discontinued' : variant.isActive ? 'Available' : 'Paused'}</span></div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-500"><span>SKU {variant.sku}</span><span>{formatPeso(variant.wholesalePrice)}</span><span>Stock {variant.availableStock}</span><span>MOQ {variant.minimumOrderQuantity}</span></div>
+                      {requiresFdaReview(p.category) && <span className="mt-1 inline-block font-bold uppercase text-primary-700">FDA: {String(variant.regulatoryReview?.status || 'pending_review').replace('_', ' ')}</span>}
+                    </div>)}
+                  </div>}
                   {p.reviewReason && <p className="mt-3 rounded-xl bg-rose-50 p-2 text-[10px] font-semibold text-rose-700">Review note: {p.reviewReason}</p>}
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => { setProductForm(p); setEditingProduct(p); setShowProductModal(true); }}
@@ -622,6 +723,18 @@ const SupplierDashboard = () => {
               <div className="grid grid-cols-3 gap-2">
                 {[['pet_supply','Pet Supply'],['product','Other Product'],['live_pet','Live Pet']].map(([value,label]) => <button key={value} type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, itemType: value, category: value === 'live_pet' ? 'live_pets' : value === 'product' ? 'general_product' : (p.category === 'live_pets' || p.category === 'general_product' ? 'pet_food' : p.category), availableStock: value === 'live_pet' ? 1 : p.availableStock, minimumOrderQuantity: value === 'live_pet' ? 1 : p.minimumOrderQuantity }))} className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase ${productForm.itemType === value ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500'} disabled:cursor-not-allowed`}>{label}</button>)}
               </div>
+              {productForm.itemType !== 'live_pet' && <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Product configuration</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, productMode: 'simple', variants: [] }))} className={`rounded-xl border px-3 py-3 text-left ${productForm.productMode !== 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed`}>
+                    <span className="block text-[10px] font-black uppercase">Simple product</span><span className="mt-1 block text-[10px] font-medium normal-case">One SKU, price, and stock quantity.</span>
+                  </button>
+                  <button type="button" disabled={Boolean(editingProduct) || !variantCapabilities.enabled} onClick={() => setProductForm(p => ({ ...p, productMode: 'variant', variants: p.variants?.length ? p.variants : [emptyVariant()] }))} className={`rounded-xl border px-3 py-3 text-left ${productForm.productMode === 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed disabled:opacity-60`}>
+                    <span className="block text-[10px] font-black uppercase">Product with variants</span><span className="mt-1 block text-[10px] font-medium normal-case">Explicit combinations such as Chicken · 1 kg.</span>
+                  </button>
+                </div>
+                {!variantCapabilities.enabled && <p className="mt-3 rounded-xl border border-primary-100 bg-white p-3 text-[10px] font-semibold leading-4 text-primary-900">Variant creation is safely disabled while database indexes, transactional SKU claims, and legacy SKU coverage are being verified. Simple products remain available.</p>}
+              </div>}
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.itemType === 'live_pet' ? 'Pet / Catalog Name' : 'Product Name'}</label>
@@ -629,7 +742,7 @@ const SupplierDashboard = () => {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">SKU</label>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.productMode === 'variant' ? 'Parent catalog SKU' : 'SKU'}</label>
                   <input type="text" value={productForm.sku} onChange={e => setProductForm(p => ({ ...p, sku: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />
                 </div>
@@ -640,32 +753,60 @@ const SupplierDashboard = () => {
                     {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
-                <div className="space-y-1">
+                {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Wholesale Price (₱)</label>
                   <input type="number" value={productForm.wholesalePrice} onChange={e => setProductForm(p => ({ ...p, wholesalePrice: parseFloat(e.target.value) || 0 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
-                </div>
-                <div className="space-y-1">
+                </div>}
+                {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</label>
                   <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: parseInt(e.target.value) || 0 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
-                </div>
-                <div className="space-y-1">
+                </div>}
+                {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Order Qty</label>
                   <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
-                </div>
-                <label className="space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unit of measure
+                </div>}
+                {productForm.productMode !== 'variant' && <label className="space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unit of measure
                   <select value={productForm.itemType === 'live_pet' ? 'piece' : productForm.unitOfMeasure} disabled={productForm.itemType === 'live_pet'} onChange={e => setProductForm(p => ({ ...p, unitOfMeasure: e.target.value }))} className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold normal-case text-slate-900 disabled:opacity-60">
                     {['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set', 'ml', 'gram', 'tube'].map(unit => <option key={unit} value={unit}>{unit}</option>)}
                   </select>
-                </label>
+                </label>}
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
                   <input type="number" value={productForm.deliveryLeadTimeDays} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: parseInt(e.target.value) || 1 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
                 </div>
               </div>
+              {productForm.productMode === 'variant' && <div className="space-y-3 rounded-2xl border border-primary-200 bg-primary-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div><h4 className="text-xs font-black uppercase text-primary-900">Explicit variant combinations</h4><p className="mt-1 text-[10px] text-primary-800">Add only combinations that you actually stock. Every row has its own SKU, price, stock, MOQ, and availability.</p></div>
+                  <button type="button" onClick={() => setProductForm(p => ({ ...p, variants: [...(p.variants || []), emptyVariant()] }))} className="inline-flex items-center gap-1 rounded-xl bg-primary-700 px-3 py-2 text-[9px] font-black uppercase text-white"><Plus className="h-3.5 w-3.5" /> Add combination</button>
+                </div>
+                {(productForm.variants || []).map((variant, variantIndex) => <div key={variant._id || variantIndex} className="rounded-2xl border border-primary-100 bg-white p-4">
+                  <div className="flex items-center justify-between gap-2"><p className="text-[10px] font-black uppercase text-slate-700">Variant {variantIndex + 1}</p><div className="flex items-center gap-2">{variant._id && !variant.isDiscontinued && <button type="button" disabled={!variantCapabilities.enabled} onClick={() => handleDiscontinueVariant(editingProduct._id, variant._id)} className="rounded-lg border border-rose-100 px-2 py-1 text-[8px] font-black uppercase text-rose-600 disabled:opacity-40">Discontinue</button>}{!variant._id && <button type="button" onClick={() => setProductForm(p => ({ ...p, variants: p.variants.filter((_, index) => index !== variantIndex) }))} className="rounded-lg p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button>}</div></div>
+                  <div className="mt-3 space-y-2">
+                    {(variant.attributes || []).map((attribute, attributeIndex) => <div key={`${variantIndex}-${attributeIndex}`} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] gap-2">
+                      <select value={attribute.code} onChange={e => setVariantAttribute(variantIndex, attributeIndex, 'code', e.target.value)} className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800">{VARIANT_ATTRIBUTE_TYPES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select>
+                      <input value={attribute.valueLabel} onChange={e => setVariantAttribute(variantIndex, attributeIndex, 'valueLabel', e.target.value)} placeholder="Example: Chicken or 1 kg" className="min-w-0 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-900" />
+                      <button type="button" disabled={variant.attributes.length === 1} onClick={() => updateVariant(variantIndex, item => ({ ...item, attributes: item.attributes.filter((_, index) => index !== attributeIndex) }))} className="rounded-xl border border-slate-200 p-2.5 text-slate-500 disabled:opacity-30"><X className="h-4 w-4" /></button>
+                    </div>)}
+                    <button type="button" onClick={() => updateVariant(variantIndex, item => ({ ...item, attributes: [...item.attributes, { code: 'flavor', label: 'Flavor', valueCode: '', valueLabel: '' }] }))} className="text-[9px] font-black uppercase text-primary-700">+ Add attribute</button>
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="text-[9px] font-black uppercase text-slate-500">Variant SKU<input value={variant.sku} onChange={e => setVariantField(variantIndex, 'sku', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Wholesale price<input type="number" min="0" value={variant.wholesalePrice} onChange={e => setVariantField(variantIndex, 'wholesalePrice', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Supplier stock<input type="number" min="0" step="1" value={variant.availableStock} onChange={e => setVariantField(variantIndex, 'availableStock', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Minimum order<input type="number" min="1" step="1" value={variant.minimumOrderQuantity} onChange={e => setVariantField(variantIndex, 'minimumOrderQuantity', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Unit<select value={variant.unitOfMeasure} onChange={e => setVariantField(variantIndex, 'unitOfMeasure', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case">{['piece','pack','box','kg','liter','bag','bottle','set','ml','gram','tube'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Package weight<div className="mt-1 flex"><input type="number" min="0.001" value={variant.weight} onChange={e => setVariantField(variantIndex, 'weight', e.target.value)} className="min-w-0 flex-1 rounded-l-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /><select value={variant.weightUnit} onChange={e => setVariantField(variantIndex, 'weightUnit', e.target.value)} className="rounded-r-xl border border-l-0 border-slate-200 px-2 text-xs"><option>g</option><option>kg</option></select></div></label>
+                    <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-[9px] font-black uppercase text-slate-600"><input type="checkbox" checked={variant.isActive !== false && !variant.isDiscontinued} disabled={variant.isDiscontinued} onChange={e => setVariantField(variantIndex, 'isActive', e.target.checked)} className="h-4 w-4 accent-primary-700" /> Available to supplier catalog</label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">{(variant.images || []).map((image, imageIndex) => <div key={`${image}-${imageIndex}`} className="relative h-14 w-14 overflow-hidden rounded-lg border border-slate-200"><img src={getImageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => updateVariant(variantIndex, item => ({ ...item, images: item.images.filter((_, index) => index !== imageIndex) }))} className="absolute right-0 top-0 rounded-bl bg-slate-900/80 p-1 text-white"><X className="h-3 w-3" /></button></div>)}<label className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-[8px] font-black uppercase text-slate-600"><Plus className="h-3.5 w-3.5" /> Variant image<input type="file" accept="image/*" multiple className="hidden" onChange={event => handleVariantImageUpload(variantIndex, event)} /></label></div>
+                  {requiresFdaReview(productForm.category) && <p className="mt-3 rounded-xl bg-primary-50 p-3 text-[10px] font-semibold text-primary-900">This regulated variant starts as Pending FDA review. It does not inherit parent approval.</p>}
+                </div>)}
+              </div>}
               {productForm.itemType === 'live_pet' && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
                 <div><h4 className="text-xs font-black uppercase text-amber-900">Exact animal information</h4><p className="mt-1 text-[10px] text-amber-800">Each catalog entry represents one unique animal. Quantity is permanently limited to one.</p></div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
