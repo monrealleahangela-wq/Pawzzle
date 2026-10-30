@@ -32,26 +32,32 @@ test('all required sections remain reachable on the responsive canonical form', 
   expect(screen.getByRole('heading', { name: /build a trusted pet business/i })).toBeVisible();
   expect(screen.getAllByText(/dti or sec registration/i).length).toBeGreaterThan(0);
   fireEvent.click(screen.getByRole('button', { name: /start business details/i }));
-  expect(screen.getByLabelText(/store name/i)).toBeVisible();
-  expect(screen.getByLabelText(/registered business name/i)).toBeVisible();
-  expect(screen.getByText(/what do you sell/i)).toBeVisible();
+  expect(screen.getByLabelText(/public store name/i)).toBeVisible();
+  expect(screen.getByLabelText(/legal business name/i)).toBeVisible();
+  expect(screen.getByText(/what will your store offer/i)).toBeVisible();
+  expect(screen.getByPlaceholderText(/pawzzle pet supplies/i)).toHaveClass('input-premium');
 
   fireEvent.click(screen.getByRole('button', { name: /owner & team/i }));
   expect(screen.getByLabelText(/full legal name/i)).toBeVisible();
   expect(screen.getByLabelText(/representative.*email|email address/i)).toBeVisible();
+  expect(screen.getByRole('button', { name: /yes, i have staff/i })).toBeVisible();
+  expect(screen.queryByText(/deployed|solo op|operational protocol/i)).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /location & tax/i }));
-  expect(screen.getByLabelText(/registration authority/i)).toBeVisible();
-  expect(screen.getByLabelText(/primary contact number/i)).toBeVisible();
-  expect(screen.getByText(/bir \/ tax information/i)).toBeVisible();
+  expect(screen.getByLabelText(/registration issued by/i)).toBeVisible();
+  expect(screen.getByLabelText(/business contact number/i)).toBeVisible();
+  expect(screen.getByText(/bir and tax information/i)).toBeVisible();
+  expect(screen.getByRole('button', { name: /choose on map/i })).toBeVisible();
 
   fireEvent.click(screen.getByRole('button', { name: /documents/i }));
   expect(screen.getByText(/dti \/ sec certificate/i)).toBeVisible();
   expect(screen.getByText(/bir form 2303/i)).toBeVisible();
+  expect(screen.getByText(/store payout details/i)).toBeVisible();
 
   fireEvent.click(screen.getByRole('button', { name: /^review references and declaration$/i }));
-  expect(screen.getAllByPlaceholderText(/contact name/i)).toHaveLength(2);
-  expect(screen.getByLabelText(/applicant full name/i)).toBeVisible();
+  expect(screen.getAllByPlaceholderText(/person's full name/i)).toHaveLength(2);
+  expect(screen.getByLabelText(/your full legal name/i)).toBeVisible();
+  expect(screen.getByRole('button', { name: /submit application for review/i })).toBeVisible();
 });
 
 test('rejected application reopens with every nested persisted section prepopulated', async () => {
@@ -71,8 +77,8 @@ test('rejected application reopens with every nested persisted section prepopula
   render(<StoreApplication />);
   fireEvent.click(await screen.findByRole('button', { name: /re-apply with corrected documents/i }));
   fireEvent.click(screen.getByRole('button', { name: /^business store identity$/i }));
-  expect(screen.getByLabelText(/store name/i)).toHaveValue('Saved Store');
-  expect(screen.getByLabelText(/registered business name/i)).toHaveValue('Saved Store OPC');
+  expect(screen.getByLabelText(/public store name/i)).toHaveValue('Saved Store');
+  expect(screen.getByLabelText(/legal business name/i)).toHaveValue('Saved Store OPC');
   fireEvent.click(screen.getByRole('button', { name: /owner & team/i }));
   expect(screen.getByLabelText(/full legal name/i)).toHaveValue('Saved Owner');
 });

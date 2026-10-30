@@ -1,0 +1,127 @@
+.store-application-fields {
+  --store-field-border: #cbd5e1;
+  --store-field-focus: #92400e;
+  --store-field-focus-ring: rgba(146, 64, 14, 0.14);
+}
+
+.store-application-fields .input-premium {
+  display: block;
+  width: 100%;
+  min-height: 3.5rem;
+  border: 1.5px solid var(--store-field-border);
+  border-radius: 1rem;
+  background-color: #fff;
+  padding: 0.875rem 1rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.store-application-fields .input-premium:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.store-application-fields .input-premium:focus {
+  border-color: var(--store-field-focus);
+  box-shadow: 0 0 0 4px var(--store-field-focus-ring);
+}
+
+.store-application-fields .input-premium::placeholder {
+  color: #64748b;
+  font-weight: 500;
+  opacity: 1;
+}
+
+.store-application-fields .input-premium:disabled {
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.store-application-fields .input-premium[aria-invalid="true"],
+.store-application-fields .input-premium.border-rose-500 {
+  border-color: #e11d48;
+  background-color: #fff7f7;
+}
+
+.store-application-fields textarea.input-premium {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.store-application-fields select.input-premium {
+  cursor: pointer;
+  padding-right: 2.75rem;
+}
+
+.store-application-fields .store-field-with-icon {
+  padding-left: 2.75rem;
+}
+
+.store-application-fields .store-field-with-action {
+  padding-right: 3.25rem;
+}
+
+.store-application-fields input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  accent-color: #92400e;
+}
+
+.store-field-label {
+  display: block;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.store-field-label__status {
+  margin-left: 0.35rem;
+  color: #92400e;
+  font-size: 0.625rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.store-field-label__status--optional {
+  color: #64748b;
+}
+
+.store-field-help {
+  display: block;
+  margin-top: 0.45rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.store-field-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border: 1px solid #fed7aa;
+  border-radius: 1rem;
+  background: #fff7ed;
+  padding: 0.875rem 1rem;
+  color: #7c2d12;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .store-application-fields .input-premium {
+    min-height: 3.25rem;
+    border-radius: 0.875rem;
+    font-size: 1rem;
+  }
+}

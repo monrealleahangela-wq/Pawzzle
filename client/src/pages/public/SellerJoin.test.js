@@ -32,6 +32,9 @@ test('seller join shows the canonical application journey without duplicating th
   expect(screen.getByText(/same application used by existing pawzzle customers/i)).toBeVisible();
   expect(screen.queryByLabelText(/store name/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/submit your application/i)).not.toBeInTheDocument();
+  expect(screen.getByRole('note')).toHaveTextContent(/fields marked required must be completed/i);
+  expect(screen.getByPlaceholderText(/enter your first name/i)).toHaveClass('input-premium');
+  expect(screen.getByPlaceholderText(/create a secure password/i)).toHaveClass('store-field-with-action');
 });
 
 test('new seller account proceeds from account details to email verification', async () => {
@@ -40,8 +43,8 @@ test('new seller account proceeds from account details to email verification', a
   fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Store' } });
   fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Owner' } });
   fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'owner@example.com' } });
-  fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'SecurePass123!' } });
-  fireEvent.change(screen.getByLabelText(/^confirm password$/i, { selector: 'input' }), { target: { value: 'SecurePass123!' } });
+  fireEvent.change(screen.getByPlaceholderText(/create a secure password/i), { target: { value: 'SecurePass123!' } });
+  fireEvent.change(screen.getByPlaceholderText(/same password again/i), { target: { value: 'SecurePass123!' } });
   fireEvent.click(screen.getByRole('button', { name: /create account & verify email/i }));
 
   await waitFor(() => expect(authService.sendRegisterOTP).toHaveBeenCalledWith({

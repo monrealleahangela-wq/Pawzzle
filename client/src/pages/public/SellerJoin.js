@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, Eye, EyeOff, LockKeyhole, Mail, RefreshCw, Shie
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import StoreApplicationJourney from '../../components/stores/StoreApplicationJourney';
+import '../../components/stores/StoreApplicationFields.css';
 
 const initialRegistration = {
   firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
@@ -129,20 +130,24 @@ const SellerJoin = () => {
             </div>
 
             {step === 1 ? (
-              <form onSubmit={handleAccountSubmit} className="space-y-6 p-6 sm:p-9">
+              <form onSubmit={handleAccountSubmit} className="store-application-fields space-y-6 p-6 sm:p-9">
+                <div className="store-field-note" role="note">
+                  <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>Enter your personal account details below. Fields marked <strong>Required</strong> must be completed before we can send your verification code.</span>
+                </div>
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">First name<span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="given-name" type="text" name="firstName" required value={registration.firstName} onChange={handleRegistrationChange} className="input-premium pl-11" /></span></label>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Last name<span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="family-name" type="text" name="lastName" required value={registration.lastName} onChange={handleRegistrationChange} className="input-premium pl-11" /></span></label>
+                  <label className="store-field-label">First name <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="given-name" type="text" name="firstName" required value={registration.firstName} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="Enter your first name" /></span><span className="store-field-help">Use the first name shown on your valid ID.</span></label>
+                  <label className="store-field-label">Last name <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="family-name" type="text" name="lastName" required value={registration.lastName} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="Enter your last name" /></span><span className="store-field-help">Use the last name shown on your valid ID.</span></label>
                 </div>
 
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Email address<span className="relative mt-2 block"><Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="email" type="email" name="email" required value={registration.email} onChange={handleRegistrationChange} className="input-premium pl-11" placeholder="owner@example.com" /></span></label>
+                <label className="store-field-label">Email address <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="email" type="email" name="email" required value={registration.email} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="name@example.com" /></span><span className="store-field-help">We will send a 6-digit verification code to this email.</span></label>
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   {[
                     { name: 'password', label: 'Password', shown: showPassword, toggle: () => setShowPassword(value => !value) },
                     { name: 'confirmPassword', label: 'Confirm password', shown: showConfirmPassword, toggle: () => setShowConfirmPassword(value => !value) }
                   ].map(field => (
-                    <label key={field.name} className="text-[10px] font-black uppercase tracking-widest text-slate-500">{field.label}<span className="relative mt-2 block"><input autoComplete="new-password" type={field.shown ? 'text' : 'password'} name={field.name} required minLength={8} value={registration[field.name]} onChange={handleRegistrationChange} className="input-premium pr-12" /><button type="button" onClick={field.toggle} aria-label={field.shown ? `Hide ${field.label.toLowerCase()}` : `Show ${field.label.toLowerCase()}`} aria-pressed={field.shown} className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-primary-700">{field.shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></span></label>
+                    <label key={field.name} className="store-field-label">{field.label} <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><input autoComplete="new-password" type={field.shown ? 'text' : 'password'} name={field.name} required minLength={8} value={registration[field.name]} onChange={handleRegistrationChange} className="input-premium store-field-with-action" placeholder={field.name === 'password' ? 'Create a secure password' : 'Enter the same password again'} /><button type="button" onClick={field.toggle} aria-label={field.shown ? `Hide ${field.label.toLowerCase()}` : `Show ${field.label.toLowerCase()}`} aria-pressed={field.shown} className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-primary-700">{field.shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></span><span className="store-field-help">{field.name === 'password' ? 'Use at least 8 characters. A mix of letters, numbers, and symbols is recommended.' : 'This must exactly match the password you created.'}</span></label>
                   ))}
                 </div>
 
@@ -154,7 +159,7 @@ const SellerJoin = () => {
                 <div className="rounded-2xl border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">We sent a 6-digit code to <strong>{registration.email}</strong>. Enter it below to unlock the complete store application.</div>
                 <div className="flex justify-center gap-2 sm:gap-3" onPaste={handleOtpPaste}>
                   {otpDigits.map((digit, index) => (
-                    <input key={index} ref={element => { otpRefs.current[index] = element; }} aria-label={`Verification digit ${index + 1}`} inputMode="numeric" autoComplete={index === 0 ? 'one-time-code' : 'off'} maxLength={1} value={digit} onChange={event => updateOtpDigit(index, event.target.value)} onKeyDown={event => { if (event.key === 'Backspace' && !otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus(); }} className="h-14 w-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-black outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-100 sm:h-16 sm:w-14" />
+                    <input key={index} ref={element => { otpRefs.current[index] = element; }} aria-label={`Verification digit ${index + 1}`} inputMode="numeric" autoComplete={index === 0 ? 'one-time-code' : 'off'} maxLength={1} value={digit} onChange={event => updateOtpDigit(index, event.target.value)} onKeyDown={event => { if (event.key === 'Backspace' && !otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus(); }} className="h-14 w-11 rounded-xl border-2 border-slate-300 bg-white text-center text-xl font-black text-slate-950 shadow-sm outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-100 sm:h-16 sm:w-14" />
                   ))}
                 </div>
                 <button type="button" onClick={handleVerifyOtp} disabled={otpLoading} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary-600 px-5 py-4 text-[10px] font-black uppercase tracking-[0.24em] text-white shadow-xl shadow-primary-200 transition hover:bg-slate-950 disabled:opacity-60">{otpLoading ? 'Verifying account…' : 'Verify & continue to application'}{!otpLoading && <ArrowRight className="h-4 w-4" />}</button>

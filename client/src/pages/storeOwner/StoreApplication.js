@@ -7,6 +7,7 @@ import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locatio
 import MapPicker from '../../components/MapPicker';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
+import '../../components/stores/StoreApplicationFields.css';
 import {
   createStoreApplicationForm,
   firstInvalidStep,
@@ -438,7 +439,7 @@ const StoreApplication = () => {
         onStageSelect={setCurrentStep}
       />
 
-      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in" noValidate>
+      <form onSubmit={handleSubmit} className="store-application-fields space-y-6 animate-fade-in" noValidate>
         {Object.keys(fieldErrors).length > 0 && (
           <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900">
             <p className="text-sm font-black">Please complete the highlighted application details.</p>
@@ -487,20 +488,26 @@ const StoreApplication = () => {
 
         {currentStep === 1 && (
           <div data-step="1" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
+            <div className="store-field-note" role="note">
+              <Building className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Tell us how your business should appear on Pawzzle. Fields marked <strong>Required</strong> must be completed; fields marked <strong>Optional</strong> may be skipped.</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label htmlFor="store-application-business-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  Store Name * {isFieldBroken('businessName') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">ACTION REQUIRED</span>}
+                <label htmlFor="store-application-business-name" className="store-field-label flex items-center gap-2">
+                  Public store name <span className="store-field-label__status">Required</span> {isFieldBroken('businessName') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Please correct</span>}
                 </label>
-                <input id="store-application-business-name" data-field="businessName" aria-invalid={Boolean(fieldErrors.businessName)} type="text" className={`input-premium ${fieldErrors.businessName || isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Official Business Title" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
+                <input id="store-application-business-name" data-field="businessName" aria-invalid={Boolean(fieldErrors.businessName)} type="text" className={`input-premium ${fieldErrors.businessName || isFieldBroken('businessName') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Example: Pawzzle Pet Supplies" value={formData.businessName} onChange={(e) => handleChange('businessName', e.target.value)} required />
+                <span className="store-field-help">This is the store name customers will see.</span>
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="store-application-registered-name" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Registered Business Name *</label>
-                <input id="store-application-registered-name" data-field="registeredBusinessName" aria-invalid={Boolean(fieldErrors.registeredBusinessName)} type="text" className={`input-premium ${fieldErrors.registeredBusinessName ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.registeredBusinessName} onChange={(e) => { handleChange('registeredBusinessName', e.target.value); handleChange('businessRegistration.registeredName', e.target.value); }} required />
+                <label htmlFor="store-application-registered-name" className="store-field-label">Legal business name <span className="store-field-label__status">Required</span></label>
+                <input id="store-application-registered-name" data-field="registeredBusinessName" aria-invalid={Boolean(fieldErrors.registeredBusinessName)} type="text" className={`input-premium ${fieldErrors.registeredBusinessName ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Enter the name on your registration certificate" value={formData.registeredBusinessName} onChange={(e) => { handleChange('registeredBusinessName', e.target.value); handleChange('businessRegistration.registeredName', e.target.value); }} required />
+                <span className="store-field-help">Copy the exact name shown on your DTI, SEC, or CDA document.</span>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  Store Logo (optional) {isFieldBroken('storeLogo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">RESUBMIT REQUIRED</span>}
+                <label className="store-field-label flex items-center gap-2">
+                  Store logo <span className="store-field-label__status store-field-label__status--optional">Optional</span> {isFieldBroken('storeLogo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Upload again</span>}
                 </label>
                 <div className="flex items-center gap-4">
                   <div className={`w-16 h-16 rounded-2xl border-2 border-dashed flex items-center justify-center relative overflow-hidden group transition-all ${isFieldBroken('storeLogo') ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-slate-50'}`}>
@@ -512,22 +519,22 @@ const StoreApplication = () => {
                     <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleFileChange('storeLogo', e.target.files[0])} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Hi-Res Recommended</p>
-                    <p className="text-[7px] text-slate-400 uppercase">PNG, JPG up to 5MB</p>
+                    <p className="text-xs font-bold text-slate-600">Choose a clear square logo</p>
+                    <p className="text-[10px] text-slate-500">PNG or JPG, up to 5 MB</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div data-field="operationalModules" tabIndex="-1" className={`space-y-4 rounded-2xl ${fieldErrors.operationalModules ? 'ring-2 ring-rose-200 p-3' : ''}`}>
-              <label htmlFor="store-application-description" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                What do you sell? (Select all that apply) *
+              <label htmlFor="store-application-description" className="store-field-label flex items-center gap-2">
+                What will your store offer? <span className="store-field-label__status">Required</span>
               </label>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                  { id: 'pets', label: 'Pets', icon: Heart, description: 'Sell live pets and animals' },
-                  { id: 'products', label: 'Products', icon: Truck, description: 'Sell pet food and supplies' },
-                  { id: 'services', label: 'Services', icon: Calendar, description: 'Grooming, Vet, Boarding, etc.' }
+                  { id: 'pets', label: 'Pets', icon: Heart, description: 'Offer pets for sale or reservation' },
+                  { id: 'products', label: 'Pet products', icon: Truck, description: 'Sell food, supplies, and accessories' },
+                  { id: 'services', label: 'Pet services', icon: Calendar, description: 'Offer grooming, veterinary care, training, or boarding' }
                 ].map((mod) => (
                   <button
                     key={mod.id}
@@ -618,8 +625,8 @@ const StoreApplication = () => {
               <div className="p-6 bg-primary-50 border border-primary-100 rounded-[2rem] space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-primary-900 uppercase tracking-tighter">Supplier Requirements</h3>
-                    <p className="text-[9px] font-bold text-primary-600 uppercase tracking-widest">Do you require platform-vetted suppliers?</p>
+                    <h3 className="text-sm font-black text-primary-900">Supplier support</h3>
+                    <p className="text-xs font-medium text-primary-700">Would you like to order stock from suppliers approved by Pawzzle?</p>
                   </div>
                   <button
                     type="button"
@@ -632,20 +639,20 @@ const StoreApplication = () => {
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Inventory Plans</label>
+                    <label className="store-field-label">How will you manage your stock? <span className="store-field-label__status store-field-label__status--optional">Optional</span></label>
                     <textarea 
                       className="input-premium bg-white min-h-[80px]" 
-                      placeholder="Outline how you plan to manage stock..." 
+                      placeholder="Example: We will reorder pet food weekly and track expiry dates."
                       value={formData.inventoryPlans}
                       onChange={(e) => handleChange('inventoryPlans', e.target.value)}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Product Categories</label>
+                    <label className="store-field-label">Product categories <span className="store-field-label__status store-field-label__status--optional">Optional</span></label>
                     <input 
                       type="text" 
                       className="input-premium bg-white" 
-                      placeholder="e.g. Dog Food, Toys, Accessories (comma separated)" 
+                      placeholder="Example: Dog food, toys, grooming supplies"
                       value={formData.productCategories.join(', ')}
                       onChange={(e) => handleChange('productCategories', e.target.value.split(',').map(s => s.trim()))}
                     />
@@ -655,19 +662,20 @@ const StoreApplication = () => {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                Business Description * {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">NEEDS CLARIFICATION</span>}
+              <label className="store-field-label flex items-center gap-2">
+                About your business <span className="store-field-label__status">Required</span> {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Please clarify</span>}
               </label>
-               <textarea id="store-application-description" data-field="businessDescription" aria-invalid={Boolean(fieldErrors.businessDescription)} className={`input-premium min-h-[120px] ${fieldErrors.businessDescription || isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Experience, specialties, and vision..." required />
+               <textarea id="store-application-description" data-field="businessDescription" aria-invalid={Boolean(fieldErrors.businessDescription)} className={`input-premium min-h-[120px] ${fieldErrors.businessDescription || isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Describe what your business offers, your experience, and the customers you serve." required />
+               <span className="store-field-help">Write a short, clear introduction that will help reviewers understand your business.</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label htmlFor="store-application-business-type" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  Business Classification * {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">INVALID SELECTION</span>}
+                <label htmlFor="store-application-business-type" className="store-field-label flex items-center gap-2">
+                  Main business type <span className="store-field-label__status">Required</span> {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Choose again</span>}
                 </label>
                 <select id="store-application-business-type" data-field="businessType" aria-invalid={Boolean(fieldErrors.businessType)} className={`input-premium ${fieldErrors.businessType || isFieldBroken('businessType') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessType} onChange={(e) => handleChange('businessType', e.target.value)} required>
-                  <option value="">Select Primary Classification</option>
+                  <option value="">Choose the option that best describes your business</option>
                   <option value="pet_store">Pet Store</option>
                   <option value="breeder">Independent Breeder</option>
                   <option value="veterinary">Veterinary Clinic</option>
@@ -678,7 +686,7 @@ const StoreApplication = () => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Business Structure *</label>
+                <label className="store-field-label">Legal business structure <span className="store-field-label__status">Required</span></label>
                 <select className="input-premium" value={formData.legalStructure} onChange={(e) => { const value = e.target.value; handleChange('legalStructure', value); if (['sole_proprietorship', 'single_proprietorship'].includes(value)) handleChange('businessRegistration.authority', 'dti'); else if (['one_person_corporation', 'corporation', 'partnership'].includes(value)) handleChange('businessRegistration.authority', 'sec'); else if (value === 'cooperative') handleChange('businessRegistration.authority', 'cda'); }} required>
                   <option value="sole_proprietorship">Sole Proprietorship</option>
                   <option value="one_person_corporation">One Person Corporation</option>
@@ -689,12 +697,12 @@ const StoreApplication = () => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nature / Line of Business *</label>
-                <input data-field="natureOfBusiness" aria-invalid={Boolean(fieldErrors.natureOfBusiness)} className={`input-premium ${fieldErrors.natureOfBusiness ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.natureOfBusiness} onChange={(e) => handleChange('natureOfBusiness', e.target.value)} placeholder="e.g. Pet supplies and grooming" required />
+                <label className="store-field-label">Main products or services <span className="store-field-label__status">Required</span></label>
+                <input data-field="natureOfBusiness" aria-invalid={Boolean(fieldErrors.natureOfBusiness)} className={`input-premium ${fieldErrors.natureOfBusiness ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.natureOfBusiness} onChange={(e) => handleChange('natureOfBusiness', e.target.value)} placeholder="Example: Pet supplies and grooming services" required />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Year Business Started *</label>
-                <input type="number" min="1800" max={new Date().getFullYear()} className="input-premium" value={formData.yearBusinessStarted} onChange={(e) => handleChange('yearBusinessStarted', e.target.value)} required />
+                <label className="store-field-label">Year the business started <span className="store-field-label__status">Required</span></label>
+                <input type="number" min="1800" max={new Date().getFullYear()} className="input-premium" placeholder="Example: 2022" value={formData.yearBusinessStarted} onChange={(e) => handleChange('yearBusinessStarted', e.target.value)} required />
               </div>
             </div>
           </div>
@@ -702,33 +710,37 @@ const StoreApplication = () => {
 
         {currentStep === 2 && (
           <div data-step="2" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
+            <div className="store-field-note" role="note">
+              <Users className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Provide the details of the person responsible for this application, then tell us whether other people work in the business.</span>
+            </div>
             <section className="space-y-4">
-              <div><h3 className="text-sm font-black text-slate-900">Owner / Authorized Representative</h3><p className="text-[10px] text-slate-500">Use the legal name and current contact details of the person responsible for this application.</p></div>
+              <div><h3 className="text-base font-black text-slate-900">Business owner or authorized representative</h3><p className="mt-1 text-xs text-slate-600">Use the legal name and active contact details of the person responsible for this application.</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="text-xs font-bold text-slate-600">Full legal name *<input data-field="representative.fullName" aria-invalid={Boolean(fieldErrors['representative.fullName'])} className="input-premium mt-1" value={formData.representative.fullName} onChange={(e) => handleChange('representative.fullName', e.target.value)} required /></label>
-                <label className="text-xs font-bold text-slate-600">Role / position *<input data-field="representative.role" aria-invalid={Boolean(fieldErrors['representative.role'])} className="input-premium mt-1" value={formData.representative.role} onChange={(e) => handleChange('representative.role', e.target.value)} required /></label>
-                <label className="text-xs font-bold text-slate-600">Contact number *<input data-field="representative.phone" aria-invalid={Boolean(fieldErrors['representative.phone'])} className="input-premium mt-1" value={formData.representative.phone} onChange={(e) => handleChange('representative.phone', e.target.value)} required /></label>
-                <label className="text-xs font-bold text-slate-600">Email address *<input data-field="representative.email" aria-invalid={Boolean(fieldErrors['representative.email'])} type="email" className="input-premium mt-1" value={formData.representative.email} onChange={(e) => handleChange('representative.email', e.target.value)} required /></label>
+                <label className="store-field-label">Full legal name <span className="store-field-label__status">Required</span><input data-field="representative.fullName" aria-invalid={Boolean(fieldErrors['representative.fullName'])} className="input-premium mt-2" placeholder="Enter the full name shown on the ID" value={formData.representative.fullName} onChange={(e) => handleChange('representative.fullName', e.target.value)} required /></label>
+                <label className="store-field-label">Role in the business <span className="store-field-label__status">Required</span><input data-field="representative.role" aria-invalid={Boolean(fieldErrors['representative.role'])} className="input-premium mt-2" placeholder="Example: Owner or General Manager" value={formData.representative.role} onChange={(e) => handleChange('representative.role', e.target.value)} required /></label>
+                <label className="store-field-label">Mobile number <span className="store-field-label__status">Required</span><input data-field="representative.phone" aria-invalid={Boolean(fieldErrors['representative.phone'])} type="tel" className="input-premium mt-2" placeholder="Example: 0917 123 4567" value={formData.representative.phone} onChange={(e) => handleChange('representative.phone', e.target.value)} required /></label>
+                <label className="store-field-label">Email address <span className="store-field-label__status">Required</span><input data-field="representative.email" aria-invalid={Boolean(fieldErrors['representative.email'])} type="email" className="input-premium mt-2" placeholder="name@example.com" value={formData.representative.email} onChange={(e) => handleChange('representative.email', e.target.value)} required /></label>
               </div>
-              <label className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-xs text-slate-700"><input type="checkbox" checked={formData.representative.isAuthorizedRepresentative} onChange={(e) => handleChange('representative.isAuthorizedRepresentative', e.target.checked)} /> I am an authorized representative, not the registered owner.</label>
-              {formData.representative.isAuthorizedRepresentative && <label className="block rounded-xl border border-dashed border-slate-300 p-3 text-xs"><span className="mb-2 block font-bold">Proof of authority *</span><input data-field="authorityDocument" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileChange('authorityDocument', e.target.files[0])} required={!documentAvailability.authorityDocument} />{documentAvailability.authorityDocument && !files.authorityDocument && <span className="mt-2 block text-emerald-700">Saved document will be retained.</span>}</label>}
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700"><input type="checkbox" checked={formData.representative.isAuthorizedRepresentative} onChange={(e) => handleChange('representative.isAuthorizedRepresentative', e.target.checked)} /> I am applying on behalf of the registered business owner.</label>
+              {formData.representative.isAuthorizedRepresentative && <label className="block rounded-xl border border-dashed border-slate-300 p-4 text-xs"><span className="mb-2 block font-bold">Upload proof that you are authorized to apply <span className="store-field-label__status">Required</span></span><input data-field="authorityDocument" type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => handleFileChange('authorityDocument', e.target.files[0])} required={!documentAvailability.authorityDocument} />{documentAvailability.authorityDocument && !files.authorityDocument && <span className="mt-2 block text-emerald-700">Your previously uploaded document will be kept.</span>}</label>}
             </section>
             <div className="border-t border-slate-100" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <Users className="h-3 w-3 text-primary-500" /> Professional Workforce
+                  <Users className="h-3 w-3 text-primary-500" /> Employees and staff
                 </h3>
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black text-slate-500 uppercase">Operational Protocol</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase italic leading-relaxed">
-                    Will your business operate with staff members or employees?
+                  <p className="text-sm font-bold text-slate-700">Does anyone else work in this business?</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Choose the answer that best describes your current staffing setup.
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {[
-                      { id: 'yes', label: 'DEPLOYED' },
-                      { id: 'no', label: 'SOLO OP' },
-                      { id: 'planning', label: 'SCALING SOON' }
+                      { id: 'yes', label: 'Yes, I have staff' },
+                      { id: 'no', label: 'No, I work alone' },
+                      { id: 'planning', label: 'Not yet, but hiring soon' }
                     ].map(opt => (
                       <button
                         key={opt.id}
@@ -748,7 +760,7 @@ const StoreApplication = () => {
                 {formData.staffingConfiguration.hasStaff !== 'no' && (
                   <div className="space-y-6 animate-in slide-in-from-top duration-300">
                     <div className="space-y-3">
-                      <p className="text-[10px] font-black text-slate-500 uppercase">Staff Quantity range</p>
+                      <p className="text-sm font-bold text-slate-700">How many staff members do you have or plan to hire?</p>
                       <div className="flex gap-2">
                         {['1-5', '6-15', '16+'].map(q => (
                           <button
@@ -768,7 +780,7 @@ const StoreApplication = () => {
 
                     <div className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black text-slate-900 uppercase">Visible to Customers?</label>
+                        <label className="text-xs font-bold text-slate-800">Show staff profiles to customers</label>
                         <button
                           type="button"
                           onClick={() => setFormData(prev => ({
@@ -781,7 +793,7 @@ const StoreApplication = () => {
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black text-slate-900 uppercase">Verification Required?</label>
+                        <label className="text-xs font-bold text-slate-800">Require professional credential verification</label>
                         <button
                           type="button"
                           onClick={() => setFormData(prev => ({
@@ -799,18 +811,18 @@ const StoreApplication = () => {
               </div>
 
               <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Role Classifications</h3>
+                <h3 className="text-sm font-black text-slate-800">What roles are part of your team?</h3>
                 <div className="space-y-6">
                   <div>
-                    <p className="text-[9px] font-black text-primary-600 uppercase mb-3">Service Professionals</p>
+                    <p className="text-xs font-black text-primary-700 mb-3">Pet care professionals</p>
                     <div className="grid grid-cols-2 gap-2">
                        {[
                          { id: 'vets', label: 'Veterinarians' },
                          { id: 'groomers', label: 'Groomers' },
                          { id: 'trainers', label: 'Trainers' },
                          { id: 'boarding_specialists', label: 'Boarding' },
-                         { id: 'medical_assistants', label: 'Med Assistants' },
-                         { id: 'pet_handlers', label: 'Handlers' }
+                         { id: 'medical_assistants', label: 'Medical assistants' },
+                         { id: 'pet_handlers', label: 'Pet handlers' }
                        ].map(role => (
                          <button
                            key={role.id}
@@ -829,14 +841,14 @@ const StoreApplication = () => {
                   </div>
 
                   <div>
-                    <p className="text-[9px] font-black text-secondary-600 uppercase mb-3">Operational Support</p>
+                    <p className="text-xs font-black text-secondary-700 mb-3">Store and office support</p>
                     <div className="grid grid-cols-2 gap-2">
                        {[
                          { id: 'inventory', label: 'Inventory' },
                          { id: 'logistics', label: 'Logistics' },
                          { id: 'sales', label: 'Sales' },
-                         { id: 'service_mgmt', label: 'Services Mgmt' },
-                         { id: 'admin', label: 'Admin Support' }
+                         { id: 'service_mgmt', label: 'Service management' },
+                         { id: 'admin', label: 'Office administration' }
                        ].map(role => (
                          <button
                            key={role.id}
@@ -861,6 +873,10 @@ const StoreApplication = () => {
 
         {currentStep === 3 && (
           <div data-step="3" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
+            <div className="store-field-note" role="note">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Enter the information exactly as it appears on your registration documents. You can choose your store location on the map or type the address manually.</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -868,20 +884,21 @@ const StoreApplication = () => {
                 </h3>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label htmlFor="store-application-registration-authority" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                      Registration Authority *
+                    <label htmlFor="store-application-registration-authority" className="store-field-label flex items-center gap-2">
+                      Registration issued by <span className="store-field-label__status">Required</span>
                     </label>
-                    <select id="store-application-registration-authority" className="input-premium" value={formData.businessRegistration.authority} onChange={(e) => handleChange('businessRegistration.authority', e.target.value)} required><option value="dti">DTI</option><option value="sec">SEC</option><option value="cda">CDA</option><option value="other">Other</option></select>
+                    <select id="store-application-registration-authority" className="input-premium" value={formData.businessRegistration.authority} onChange={(e) => handleChange('businessRegistration.authority', e.target.value)} required><option value="dti">DTI — Department of Trade and Industry</option><option value="sec">SEC — Securities and Exchange Commission</option><option value="cda">CDA — Cooperative Development Authority</option><option value="other">Another registration authority</option></select>
                   </div>
-                  <label className="text-xs font-bold text-slate-600">Registration / certificate number *<input data-field="businessRegistration.certificateNumber" aria-invalid={Boolean(fieldErrors['businessRegistration.certificateNumber'])} className="input-premium mt-1" value={formData.businessRegistration.certificateNumber} onChange={(e) => handleChange('businessRegistration.certificateNumber', e.target.value)} required /></label>
-                  <div className="grid grid-cols-2 gap-3"><label className="text-[9px] font-bold text-slate-500">Registration date<input type="date" className="input-premium mt-1" value={formData.businessRegistration.registrationDate} onChange={(e) => handleChange('businessRegistration.registrationDate', e.target.value)} /></label><label className="text-[9px] font-bold text-slate-500">Expiration (if shown)<input type="date" className="input-premium mt-1" value={formData.businessRegistration.expirationDate} onChange={(e) => handleChange('businessRegistration.expirationDate', e.target.value)} /></label></div>
-                  <label className="text-xs font-bold text-slate-600">Primary contact number *<input data-field="contactInfo.phone" aria-invalid={Boolean(fieldErrors['contactInfo.phone'])} className="input-premium mt-1" value={formData.contactInfo.phone} onChange={(e) => handleChange('contactInfo.phone', e.target.value)} required /></label>
-                  <label className="text-xs font-bold text-slate-600">Business email *<input data-field="contactInfo.email" aria-invalid={Boolean(fieldErrors['contactInfo.email'])} type="email" className="input-premium mt-1" value={formData.contactInfo.email} onChange={(e) => handleChange('contactInfo.email', e.target.value)} required /></label>
+                  <label className="store-field-label">Registration or certificate number <span className="store-field-label__status">Required</span><input data-field="businessRegistration.certificateNumber" aria-invalid={Boolean(fieldErrors['businessRegistration.certificateNumber'])} className="input-premium mt-2" placeholder="Enter the number shown on the certificate" value={formData.businessRegistration.certificateNumber} onChange={(e) => handleChange('businessRegistration.certificateNumber', e.target.value)} required /></label>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="store-field-label">Registration date <span className="store-field-label__status store-field-label__status--optional">If shown</span><input type="date" className="input-premium mt-2" value={formData.businessRegistration.registrationDate} onChange={(e) => handleChange('businessRegistration.registrationDate', e.target.value)} /></label><label className="store-field-label">Expiration date <span className="store-field-label__status store-field-label__status--optional">If shown</span><input type="date" className="input-premium mt-2" value={formData.businessRegistration.expirationDate} onChange={(e) => handleChange('businessRegistration.expirationDate', e.target.value)} /></label></div>
+                  <label className="store-field-label">Business contact number <span className="store-field-label__status">Required</span><input data-field="contactInfo.phone" aria-invalid={Boolean(fieldErrors['contactInfo.phone'])} type="tel" className="input-premium mt-2" placeholder="Example: 0917 123 4567" value={formData.contactInfo.phone} onChange={(e) => handleChange('contactInfo.phone', e.target.value)} required /></label>
+                  <label className="store-field-label">Business email address <span className="store-field-label__status">Required</span><input data-field="contactInfo.email" aria-invalid={Boolean(fieldErrors['contactInfo.email'])} type="email" className="input-premium mt-2" placeholder="store@example.com" value={formData.contactInfo.email} onChange={(e) => handleChange('contactInfo.email', e.target.value)} required /></label>
                   <div className={`p-6 rounded-2xl border border-dashed transition-all ${isFieldBroken('governmentId') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                     <input type="file" onChange={(e) => handleFileChange('governmentId', e.target.files[0])} className="hidden" id="govIdFile" />
                     <label htmlFor="govIdFile" className="cursor-pointer flex flex-col items-center gap-2">
                       <Shield className="h-5 w-5 text-slate-400" />
-                      <p className="text-[10px] font-black text-slate-900 uppercase">Valid Government ID</p>
+                      <p className="text-xs font-black text-slate-900">Upload one valid government ID</p>
+                      <p className="text-[10px] text-slate-500">Use a clear photo or scanned copy.</p>
                       {files.governmentId && <span className="text-[10px] text-emerald-600 font-black truncate max-w-[200px]">{files.governmentId.name}</span>}
                     </label>
                   </div>
@@ -890,7 +907,7 @@ const StoreApplication = () => {
 
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <Building className="h-3 w-3 text-primary-500" /> Base Registry {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UPDATE LOCATION</span>}
+                    <Building className="h-3 w-3 text-primary-500" /> Store location {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">Update address</span>}
                   </h3>
                   <div className="flex bg-slate-100 p-1 rounded-xl">
                     <button
@@ -898,14 +915,14 @@ const StoreApplication = () => {
                       onClick={() => setAddressInputType('map')}
                       className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
                     >
-                      MAP GPS
+                      Choose on map
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddressInputType('manual')}
                       className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
                     >
-                      MANUAL
+                      Enter address
                     </button>
                   </div>
                 </div>
@@ -942,26 +959,26 @@ const StoreApplication = () => {
                 ) : (
                   <div className="grid grid-cols-2 gap-4 animate-fade-in">
                     <div className="space-y-1.5">
-                      <label htmlFor="store-application-city" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">City *</label>
+                      <label htmlFor="store-application-city" className="store-field-label">City or municipality <span className="store-field-label__status">Required</span></label>
                       <select id="store-application-city" data-field="contactInfo.address.city" aria-invalid={Boolean(fieldErrors['contactInfo.address.city'])} className={`input-premium ${fieldErrors['contactInfo.address.city'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.city} onChange={(e) => handleChange('contactInfo.address.city', e.target.value)} required>
                         <option value="">Select City</option>
                         {cities.map(city => <option key={city.value} value={city.value}>{city.label}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="store-application-barangay" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Barangay *</label>
+                      <label htmlFor="store-application-barangay" className="store-field-label">Barangay <span className="store-field-label__status">Required</span></label>
                       <select id="store-application-barangay" data-field="contactInfo.address.barangay" aria-invalid={Boolean(fieldErrors['contactInfo.address.barangay'])} className={`input-premium ${fieldErrors['contactInfo.address.barangay'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.barangay} onChange={(e) => handleChange('contactInfo.address.barangay', e.target.value)} disabled={!formData.contactInfo.address.city} required>
                         <option value="">Select Barangay</option>
                         {barangays.map(bg => <option key={bg.value} value={bg.value}>{bg.label}</option>)}
                       </select>
                     </div>
                     <div className="col-span-2 space-y-1.5">
-                      <label htmlFor="store-application-unit-building" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Unit / Building / House No.</label>
-                      <input id="store-application-unit-building" type="text" className="input-premium" value={formData.contactInfo.address.unitBuilding || ''} onChange={(e) => handleChange('contactInfo.address.unitBuilding', e.target.value)} />
+                      <label htmlFor="store-application-unit-building" className="store-field-label">House, unit, or building number <span className="store-field-label__status store-field-label__status--optional">Optional</span></label>
+                      <input id="store-application-unit-building" type="text" className="input-premium" placeholder="Example: Unit 2B or House 18" value={formData.contactInfo.address.unitBuilding || ''} onChange={(e) => handleChange('contactInfo.address.unitBuilding', e.target.value)} />
                     </div>
                     <div className="col-span-2 space-y-1.5">
                       <div className="flex items-center justify-between ml-1">
-                        <label htmlFor="store-application-street" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Street Address *</label>
+                        <label htmlFor="store-application-street" className="store-field-label">Street name and subdivision <span className="store-field-label__status">Required</span></label>
                         <button 
                           type="button"
                           onClick={handleGetCurrentLocation}
@@ -972,31 +989,31 @@ const StoreApplication = () => {
                           {locating ? 'Detecting...' : 'Use Current Location'}
                         </button>
                       </div>
-                      <input id="store-application-street" data-field="contactInfo.address.street" aria-invalid={Boolean(fieldErrors['contactInfo.address.street'])} type="text" className={`input-premium ${fieldErrors['contactInfo.address.street'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
+                      <input id="store-application-street" data-field="contactInfo.address.street" aria-invalid={Boolean(fieldErrors['contactInfo.address.street'])} type="text" className={`input-premium ${fieldErrors['contactInfo.address.street'] || isFieldBroken('address') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Example: Aguinaldo Highway, Green Village" value={formData.contactInfo.address.street} onChange={(e) => handleChange('contactInfo.address.street', e.target.value)} required />
                     </div>
-                    <label className="text-xs font-bold text-slate-600">Province *<input data-field="contactInfo.address.province" aria-invalid={Boolean(fieldErrors['contactInfo.address.province'])} className="input-premium mt-1" value={formData.contactInfo.address.province} onChange={(e) => handleChange('contactInfo.address.province', e.target.value)} required /></label>
-                    <label className="text-xs font-bold text-slate-600">Postal code *<input data-field="contactInfo.address.zipCode" aria-invalid={Boolean(fieldErrors['contactInfo.address.zipCode'])} className="input-premium mt-1" value={formData.contactInfo.address.zipCode} onChange={(e) => handleChange('contactInfo.address.zipCode', e.target.value)} required /></label>
-                    <input className="input-premium col-span-2" placeholder="Landmark (optional)" value={formData.contactInfo.address.landmark || ''} onChange={(e) => handleChange('contactInfo.address.landmark', e.target.value)} />
+                    <label className="store-field-label">Province <span className="store-field-label__status">Required</span><input data-field="contactInfo.address.province" aria-invalid={Boolean(fieldErrors['contactInfo.address.province'])} className="input-premium mt-2" placeholder="Example: Cavite" value={formData.contactInfo.address.province} onChange={(e) => handleChange('contactInfo.address.province', e.target.value)} required /></label>
+                    <label className="store-field-label">Postal code <span className="store-field-label__status">Required</span><input data-field="contactInfo.address.zipCode" aria-invalid={Boolean(fieldErrors['contactInfo.address.zipCode'])} inputMode="numeric" className="input-premium mt-2" placeholder="Example: 4102" value={formData.contactInfo.address.zipCode} onChange={(e) => handleChange('contactInfo.address.zipCode', e.target.value)} required /></label>
+                    <label className="store-field-label col-span-2">Nearby landmark <span className="store-field-label__status store-field-label__status--optional">Optional</span><input className="input-premium mt-2" placeholder="Example: Beside the public market" value={formData.contactInfo.address.landmark || ''} onChange={(e) => handleChange('contactInfo.address.landmark', e.target.value)} /></label>
                   </div>
                 )}
                 {fieldErrors['contactInfo.address.coordinates'] && <p data-field="contactInfo.address.coordinates" tabIndex="-1" className="md:col-span-2 text-xs font-bold text-rose-700">{fieldErrors['contactInfo.address.coordinates']}</p>}
             </div>
             <section className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-4">
-              <div><h3 className="text-sm font-black text-slate-900">BIR / Tax Information</h3><p className="text-[10px] text-slate-600">Your selection is a declaration only. Platform Admin verifies the final status from Form 2303.</p></div>
+              <div><h3 className="text-base font-black text-slate-900">BIR and tax information</h3><p className="mt-1 text-xs text-slate-600">Choose your current BIR registration status. Pawzzle will verify registered details using your BIR Form 2303.</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="text-[9px] font-black uppercase text-slate-500">BIR registration status<select className="input-premium mt-1" value={formData.taxProfile.birRegistrationStatus} onChange={(e) => handleChange('taxProfile.birRegistrationStatus', e.target.value)}><option value="registered">Registered</option><option value="pending_registration">Registration pending</option><option value="not_registered">Not registered</option></select></label>
+                <label className="store-field-label">Current BIR registration status<select className="input-premium mt-2" value={formData.taxProfile.birRegistrationStatus} onChange={(e) => handleChange('taxProfile.birRegistrationStatus', e.target.value)}><option value="registered">Registered with BIR</option><option value="pending_registration">BIR registration is in progress</option><option value="not_registered">Not yet registered with BIR</option></select></label>
                 {formData.taxProfile.birRegistrationStatus === 'registered' && <>
-                  <label className="text-[9px] font-black uppercase text-slate-500">TIN *<input className="input-premium mt-1" placeholder="000-000-000" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required /></label>
-                  <label className="text-[9px] font-black uppercase text-slate-500">Branch code *<input className="input-premium mt-1" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required /></label>
-                  <label className="text-[9px] font-black uppercase text-slate-500">BIR registered name *<input className="input-premium mt-1" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required /></label>
-                  <label className="text-[9px] font-black uppercase text-slate-500">BIR line of business *<input className="input-premium mt-1" value={formData.taxProfile.lineOfBusiness} onChange={(e) => handleChange('taxProfile.lineOfBusiness', e.target.value)} required /></label>
-                  <label className="text-[9px] font-black uppercase text-slate-500 md:col-span-2">Declared tax registration status<select className="input-premium mt-1" value={formData.taxProfile.declaredTaxStatus} onChange={(e) => handleChange('taxProfile.declaredTaxStatus', e.target.value)} required><option value="">Select the status shown on BIR registration</option><option value="vat_registered">VAT Registered</option><option value="non_vat_registered">Non-VAT Registered</option></select></label>
-                  <div className="md:col-span-2 flex items-center justify-between"><strong className="text-[10px] text-slate-700">BIR registered business address</strong><button type="button" className="text-[9px] font-black uppercase text-primary-700" onClick={() => handleChange('taxProfile.registeredAddress', { unitBuilding: formData.contactInfo.address.unitBuilding || '', street: formData.contactInfo.address.street, barangay: formData.contactInfo.address.barangay, city: formData.contactInfo.address.city, province: formData.contactInfo.address.province, postalCode: formData.contactInfo.address.zipCode, country: 'PH' })}>Use store address</button></div>
-                  <input className="input-premium md:col-span-2" placeholder="Registered street address *" value={formData.taxProfile.registeredAddress.street} onChange={(e) => handleChange('taxProfile.registeredAddress.street', e.target.value)} required />
-                  <input className="input-premium" placeholder="Barangay *" value={formData.taxProfile.registeredAddress.barangay} onChange={(e) => handleChange('taxProfile.registeredAddress.barangay', e.target.value)} required />
-                  <input className="input-premium" placeholder="City / municipality *" value={formData.taxProfile.registeredAddress.city} onChange={(e) => handleChange('taxProfile.registeredAddress.city', e.target.value)} required />
-                  <input className="input-premium" placeholder="Province *" value={formData.taxProfile.registeredAddress.province} onChange={(e) => handleChange('taxProfile.registeredAddress.province', e.target.value)} required />
-                  <input className="input-premium" placeholder="Postal code *" value={formData.taxProfile.registeredAddress.postalCode} onChange={(e) => handleChange('taxProfile.registeredAddress.postalCode', e.target.value)} required />
+                  <label className="store-field-label">Taxpayer Identification Number (TIN) <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Example: 000-000-000" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required /></label>
+                  <label className="store-field-label">BIR branch code <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter the code on Form 2303" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required /></label>
+                  <label className="store-field-label">Business name registered with BIR <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Copy the name from Form 2303" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required /></label>
+                  <label className="store-field-label">Line of business registered with BIR <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Copy the line of business from Form 2303" value={formData.taxProfile.lineOfBusiness} onChange={(e) => handleChange('taxProfile.lineOfBusiness', e.target.value)} required /></label>
+                  <label className="store-field-label md:col-span-2">Tax type shown on Form 2303 <span className="store-field-label__status">Required</span><select className="input-premium mt-2" value={formData.taxProfile.declaredTaxStatus} onChange={(e) => handleChange('taxProfile.declaredTaxStatus', e.target.value)} required><option value="">Choose VAT or Non-VAT</option><option value="vat_registered">VAT registered</option><option value="non_vat_registered">Non-VAT registered</option></select></label>
+                  <div className="md:col-span-2 flex items-center justify-between gap-3"><strong className="text-xs text-slate-700">Business address registered with BIR</strong><button type="button" className="text-[10px] font-black text-primary-700" onClick={() => handleChange('taxProfile.registeredAddress', { unitBuilding: formData.contactInfo.address.unitBuilding || '', street: formData.contactInfo.address.street, barangay: formData.contactInfo.address.barangay, city: formData.contactInfo.address.city, province: formData.contactInfo.address.province, postalCode: formData.contactInfo.address.zipCode, country: 'PH' })}>Copy store address</button></div>
+                  <label className="store-field-label md:col-span-2">Street address <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter the street address on Form 2303" value={formData.taxProfile.registeredAddress.street} onChange={(e) => handleChange('taxProfile.registeredAddress.street', e.target.value)} required /></label>
+                  <label className="store-field-label">Barangay <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter barangay" value={formData.taxProfile.registeredAddress.barangay} onChange={(e) => handleChange('taxProfile.registeredAddress.barangay', e.target.value)} required /></label>
+                  <label className="store-field-label">City or municipality <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter city or municipality" value={formData.taxProfile.registeredAddress.city} onChange={(e) => handleChange('taxProfile.registeredAddress.city', e.target.value)} required /></label>
+                  <label className="store-field-label">Province <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter province" value={formData.taxProfile.registeredAddress.province} onChange={(e) => handleChange('taxProfile.registeredAddress.province', e.target.value)} required /></label>
+                  <label className="store-field-label">Postal code <span className="store-field-label__status">Required</span><input className="input-premium mt-2" inputMode="numeric" placeholder="Enter postal code" value={formData.taxProfile.registeredAddress.postalCode} onChange={(e) => handleChange('taxProfile.registeredAddress.postalCode', e.target.value)} required /></label>
                 </>}
               </div>
             </section>
@@ -1005,9 +1022,13 @@ const StoreApplication = () => {
 
         {currentStep === 4 && (
           <div data-step="4" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
+            <div className="store-field-note" role="note">
+              <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Upload clear and readable copies of your business documents. Payout details are optional now and can be completed before receiving store payouts.</span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-6">
-                <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Compliance Vault</h3>
+                <h3 className="text-base font-black text-slate-900">Business documents</h3>
                 <div className="space-y-4">
                     { [
                       { id: 'businessRegistration', label: 'DTI / SEC Certificate', required: true },
@@ -1023,12 +1044,12 @@ const StoreApplication = () => {
                           <div>
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label} {doc.required ? '*' : '(optional)'}</p>
                             {documentAvailability[doc.id] && !files[doc.id] && <p className="text-[8px] font-bold text-emerald-700">Saved document retained</p>}
-                            {isFieldBroken(doc.id) && <p className="text-[7px] text-rose-600 font-black uppercase mt-0.5">RESUBMISSION REQUIRED</p>}
+                            {isFieldBroken(doc.id) && <p className="text-[9px] text-rose-600 font-black mt-0.5">Please upload a corrected copy.</p>}
                           </div>
                         </div>
                         <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />
                         <label htmlFor={doc.id} className={`cursor-pointer px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-sm ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-white text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white'}`}>
-                          {isFieldBroken(doc.id) ? 'Redo Upload' : files[doc.id] ? 'Replace' : 'Upload'}
+                          {isFieldBroken(doc.id) ? 'Upload again' : files[doc.id] ? 'Replace file' : 'Choose file'}
                         </label>
                       </div>
                     ))}
@@ -1037,31 +1058,32 @@ const StoreApplication = () => {
 
               <div className="space-y-8">
                 <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                  Settlement Information {isFieldBroken('paymentInfo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">DATA MISMATCH</span>}
+                  Store payout details <span className="store-field-label__status store-field-label__status--optional">Optional</span> {isFieldBroken('paymentInfo') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">Please correct</span>}
                 </h3>
+                <p className="-mt-5 text-xs leading-relaxed text-slate-500">Enter the account where approved store payouts should be sent. You may leave this blank and add it later.</p>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Bank Name</label>
-                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="e.g. BDO, BPI, UnionBank" value={formData.paymentInfo.bankName} onChange={(e) => handleChange('paymentInfo.bankName', e.target.value)} />
+                    <label className="store-field-label">Bank name</label>
+                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Example: BDO, BPI, or UnionBank" value={formData.paymentInfo.bankName} onChange={(e) => handleChange('paymentInfo.bankName', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Name</label>
-                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.paymentInfo.bankAccountName} onChange={(e) => handleChange('paymentInfo.bankAccountName', e.target.value)} />
+                    <label className="store-field-label">Bank account holder name</label>
+                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Enter the name registered to the bank account" value={formData.paymentInfo.bankAccountName} onChange={(e) => handleChange('paymentInfo.bankAccountName', e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Account Number</label>
-                    <input type="text" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.paymentInfo.bankAccountNumber} onChange={(e) => handleChange('paymentInfo.bankAccountNumber', e.target.value)} />
+                    <label className="store-field-label">Bank account number</label>
+                    <input type="text" inputMode="numeric" className={`input-premium ${isFieldBroken('paymentInfo') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} placeholder="Enter the account number" value={formData.paymentInfo.bankAccountNumber} onChange={(e) => handleChange('paymentInfo.bankAccountNumber', e.target.value)} />
                   </div>
                   
                   <div className="pt-4 mt-4 border-t border-slate-100">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block mb-3">Alternative Payment Method</label>
-                    <div className="flex gap-4">
-                      <select className="input-premium w-1/3" value={formData.paymentInfo.alternativePaymentMethod.provider} onChange={(e) => handleChange('paymentInfo.alternativePaymentMethod.provider', e.target.value)}>
+                    <label className="store-field-label block mb-3">E-wallet for payouts</label>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(140px,0.35fr)_1fr]">
+                      <select className="input-premium" value={formData.paymentInfo.alternativePaymentMethod.provider} onChange={(e) => handleChange('paymentInfo.alternativePaymentMethod.provider', e.target.value)}>
                         <option value="GCash">GCash</option>
                         <option value="PayMaya">PayMaya</option>
                         <option value="Other">Other</option>
                       </select>
-                      <input type="text" className="input-premium flex-1" placeholder="Account Number" value={formData.paymentInfo.alternativePaymentMethod.accountNumber} onChange={(e) => handleChange('paymentInfo.alternativePaymentMethod.accountNumber', e.target.value)} />
+                      <input type="text" inputMode="numeric" className="input-premium" placeholder="Enter the mobile or account number" value={formData.paymentInfo.alternativePaymentMethod.accountNumber} onChange={(e) => handleChange('paymentInfo.alternativePaymentMethod.accountNumber', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -1072,27 +1094,31 @@ const StoreApplication = () => {
 
         {currentStep === 5 && (
           <div data-step="5" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
+            <div className="store-field-note" role="note">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>Provide two people who can confirm that your business is legitimate. Review your information before submitting it for administrator approval.</span>
+            </div>
             <div className="space-y-6">
               <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary-500" /> Professional Network {isFieldBroken('references') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">UNVERIFIED CONTACTS</span>}
+                <Users className="h-4 w-4 text-primary-500" /> Business references {isFieldBroken('references') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">Please correct</span>}
               </h3>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-4">Verification requires two commercial character references.</p>
+              <p className="text-xs text-slate-600 mb-4">Add two business contacts who know you or your business and can respond if Pawzzle contacts them.</p>
               {formData.references.map((ref, idx) => (
                 <div key={idx} data-field={idx === 0 ? 'references' : undefined} className={`p-4 sm:p-6 rounded-2xl border grid grid-cols-1 sm:grid-cols-2 gap-4 relative mt-4 transition-all ${fieldErrors.references || Object.keys(fieldErrors).some(key => key.startsWith(`references.${idx}.`)) || isFieldBroken('references') ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100' : 'bg-slate-50 border-slate-100'}`}>
-                  <span className={`absolute -top-3 left-4 px-2 py-0.5 border rounded text-[7px] font-black uppercase ${isFieldBroken('references') ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Reference Protocol {idx + 1}</span>
-                  <input aria-label={`Reference ${idx + 1} contact name`} type="text" className="input-premium bg-white" placeholder="Contact Name" value={ref.name} onChange={(e) => handleReferenceChange(idx, 'name', e.target.value)} required />
-                  <input aria-label={`Reference ${idx + 1} business or organization`} type="text" className="input-premium bg-white" placeholder="Business / Organization" value={ref.business} onChange={(e) => handleReferenceChange(idx, 'business', e.target.value)} required />
-                  <input aria-label={`Reference ${idx + 1} phone`} type="tel" className="input-premium bg-white" placeholder="Secure Line" value={ref.phone} onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)} required />
-                  <input aria-label={`Reference ${idx + 1} email`} type="email" className="input-premium bg-white" placeholder="Email Communication" value={ref.email} onChange={(e) => handleReferenceChange(idx, 'email', e.target.value)} required />
+                  <span className={`absolute -top-3 left-4 px-2 py-0.5 border rounded text-[9px] font-black ${isFieldBroken('references') ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}>Reference {idx + 1}</span>
+                  <label className="store-field-label">Contact person's full name <span className="store-field-label__status">Required</span><input aria-label={`Reference ${idx + 1} contact name`} type="text" className="input-premium mt-2 bg-white" placeholder="Enter the person's full name" value={ref.name} onChange={(e) => handleReferenceChange(idx, 'name', e.target.value)} required /></label>
+                  <label className="store-field-label">Business or organization <span className="store-field-label__status">Required</span><input aria-label={`Reference ${idx + 1} business or organization`} type="text" className="input-premium mt-2 bg-white" placeholder="Enter their business or organization" value={ref.business} onChange={(e) => handleReferenceChange(idx, 'business', e.target.value)} required /></label>
+                  <label className="store-field-label">Mobile or telephone number <span className="store-field-label__status">Required</span><input aria-label={`Reference ${idx + 1} phone`} type="tel" className="input-premium mt-2 bg-white" placeholder="Example: 0917 123 4567" value={ref.phone} onChange={(e) => handleReferenceChange(idx, 'phone', e.target.value)} required /></label>
+                  <label className="store-field-label">Email address <span className="store-field-label__status">Required</span><input aria-label={`Reference ${idx + 1} email`} type="email" className="input-premium mt-2 bg-white" placeholder="name@example.com" value={ref.email} onChange={(e) => handleReferenceChange(idx, 'email', e.target.value)} required /></label>
                 </div>
               ))}
             </div>
 
             <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-3">
-              <h3 className="text-sm font-black text-slate-900">Review & Declaration</h3>
-              <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information provided is accurate and matches the submitted documents. I understand that my declared VAT status is not authoritative until Platform Admin verifies it.</p>
-              <label className="text-xs font-bold text-slate-600">Applicant full name *<input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-1 bg-white" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
-              <label className="flex items-start gap-3 text-xs font-bold text-slate-700"><input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I accept this declaration and submit the application for manual review. *</label>
+              <h3 className="text-base font-black text-slate-900">Final review and declaration</h3>
+              <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information I provided is accurate and matches my uploaded documents. I understand that Pawzzle administrators will verify these details before approving the store.</p>
+              <label className="store-field-label">Your full legal name <span className="store-field-label__status">Required</span><input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-2 bg-white" placeholder="Enter your full legal name as your signature" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
+              <label className="flex items-start gap-3 rounded-xl border border-primary-200 bg-white p-4 text-xs font-bold text-slate-700"><input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I confirm the information is correct and agree to submit this application for manual review. <span className="text-primary-700">Required</span></label>
             </div>
 
             <button 
@@ -1101,7 +1127,7 @@ const StoreApplication = () => {
               disabled={loading} 
               className="w-full py-6 bg-primary-600 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-2xl shadow-primary-200 disabled:opacity-50 active:scale-95"
             >
-              {loading ? 'Transmitting Intelligence...' : user.role === 'admin' ? 'Submit Expansion Request' : 'Finalize Application Protocol'}
+              {loading ? 'Submitting application...' : user.role === 'admin' ? 'Submit expansion request' : 'Submit application for review'}
             </button>
           </div>
         )}
@@ -1114,7 +1140,7 @@ const StoreApplication = () => {
             </div>
             {currentStep < 5 ? (
               <button type="button" onClick={() => validateAndShowErrors(currentStep) && setCurrentStep(prev => prev + 1)} className="h-12 px-8 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-2">
-                Next Module <ArrowRight className="h-3 w-3" />
+                Next section <ArrowRight className="h-3 w-3" />
               </button>
             ) : <div className="w-32" />}
           </div>
