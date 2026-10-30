@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
-import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Info, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
+import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
+import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
 import {
   createStoreApplicationForm,
   firstInvalidStep,
@@ -430,52 +431,14 @@ const StoreApplication = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
-        <div className="space-y-4">
-           <h1 className="text-5xl sm:text-7xl font-black text-neutral-900 uppercase tracking-tighter leading-none">
-             Venture <br />
-             <span className="text-primary italic">Onboarding .</span>
-           </h1>
-           <p className="text-[12px] font-black text-neutral-400 uppercase tracking-[0.4em]">Register your business within the ecosystem</p>
-        </div>
-        <div className="flex gap-3">
-          {[0, 1, 2, 3, 4, 5].map(s => (
-            <div key={s} className={`h-2 w-12 rounded-full transition-all duration-700 ${currentStep >= s ? 'bg-primary shadow-premium' : 'bg-neutral-100'}`} />
-          ))}
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6 pb-20">
+      <StoreApplicationJourney
+        activeStage={storeApplicationStageForStep(currentStep)}
+        accountComplete
+        onStageSelect={setCurrentStep}
+      />
 
-      {/* Progress Steps Header */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 p-3 bg-white rounded-2xl shadow-soft border border-slate-50">
-        {[
-          { icon: Info, label: 'Start' },
-          { icon: Building, label: 'Business' },
-          { icon: Users, label: 'Owner & Team' },
-          { icon: MapPin, label: 'Location & Tax' },
-          { icon: FileText, label: 'Documents' },
-          { icon: Shield, label: 'Review' }
-        ].map((step, idx) => (
-          <button type="button" key={idx} onClick={() => setCurrentStep(idx)} aria-current={currentStep === idx ? 'step' : undefined} className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] transition-all duration-500 ${currentStep === idx ? 'bg-neutral-900 text-white shadow-strong scale-[1.05]' : 'opacity-60 hover:opacity-100'}`}>
-            <step.icon className="h-4 w-4" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{step.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-8 animate-fade-in" noValidate>
-        <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-            <Info className="h-4 w-4 text-primary-600" />
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-primary-900 uppercase tracking-widest mb-0.5">Requirements</p>
-            <p className="text-[9px] text-primary-800 font-bold leading-none uppercase opacity-60">
-              Registration document · confirmed store location · tax details when applicable · 2 references.
-            </p>
-          </div>
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in" noValidate>
         {Object.keys(fieldErrors).length > 0 && (
           <div role="alert" aria-live="assertive" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900">
             <p className="text-sm font-black">Please complete the highlighted application details.</p>
@@ -492,64 +455,32 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 0 && (
-          <div data-step="0" className="card !rounded-[2rem] sm:!rounded-[4rem] p-6 sm:p-12 lg:p-20 space-y-10 sm:space-y-16 animate-fade-up border-none shadow-strong bg-white/50 backdrop-blur-3xl">
-            <div className="flex flex-col lg:flex-row items-start gap-16">
-              <div className="lg:w-1/2 space-y-10">
-                <div className="w-24 h-24 bg-neutral-900 text-white rounded-[2rem] flex items-center justify-center shadow-premium ring-8 ring-primary/5">
-                  <Shield size={40} />
-                </div>
-                <div className="space-y-6">
-                  <h2 className="text-4xl font-black text-neutral-900 uppercase tracking-tighter leading-tight">
-                    Onboarding <br />
-                    <span className="text-primary italic">Protocol 1.0 .</span>
-                  </h2>
-                  <p className="text-[13px] font-bold text-neutral-400 uppercase tracking-widest leading-relaxed">
-                    Welcome to the ecosystem. To maintain platform integrity, all ventures must undergo a multi-phase verification process.
-                  </p>
-                </div>
+          <div data-step="0" className="card space-y-8 p-6 animate-fade-up sm:p-10">
+            <div className="flex flex-col gap-5 border-b border-slate-100 pb-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white"><Shield className="h-6 w-6" /></span>
+                <div><p className="text-[9px] font-black uppercase tracking-[0.22em] text-primary-700">Application overview</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Prepare once, then complete each section</h2></div>
               </div>
-
-              <div className="lg:w-1/2 grid grid-cols-1 gap-6">
-                {[
-                  { icon: FileText, title: 'Document Verification', desc: 'DTI/SEC, BIR, and Local Government permits are required.' },
-                  { icon: Shield, title: 'Network Review', desc: 'Applications are manually vetted by our administrative node.' },
-                  { icon: Users, title: 'Operational Structure', desc: 'Defining your workforce and operational scope is mandatory.' }
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-6 p-8 bg-neutral-50 rounded-[2.5rem] border border-transparent hover:border-primary/10 hover:bg-white hover:shadow-soft transition-all duration-500 group">
-                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-neutral-300 group-hover:bg-neutral-900 group-hover:text-white transition-all shadow-inner">
-                      <item.icon size={24} />
-                    </div>
-                    <div>
-                      <h4 className="text-[11px] font-black text-neutral-900 uppercase tracking-widest mb-2">{item.title}</h4>
-                      <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-[0.2em]">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <span className="rounded-xl bg-emerald-50 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-700">Account verified</span>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-10 pt-16 border-t border-slate-50">
-               <div className="flex -space-x-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-neutral-200 overflow-hidden shadow-soft">
-                       <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" />
-                    </div>
-                  ))}
-                  <div className="w-12 h-12 rounded-full border-4 border-white bg-neutral-900 text-white flex items-center justify-center text-[9px] font-black">
-                     +1.2k
-                  </div>
-               </div>
-               <div className="flex-1">
-                  <p className="text-[10px] font-black text-neutral-900 uppercase tracking-[0.3em]">Verified Ecosystem Node</p>
-                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Join a community of professional curators and sellers.</p>
-               </div>
-               <button 
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="btn-primary !rounded-[2rem] !px-12 !py-6 flex items-center gap-4 text-[11px] font-black uppercase tracking-[0.3em] active:scale-95 whitespace-nowrap"
-               >
-                  Initialize Onboarding <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform" />
-               </button>
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                { icon: FileText, title: 'Business evidence', desc: 'DTI or SEC registration is required. BIR Form 2303 is required only when the business is registered with BIR.' },
+                { icon: MapPin, title: 'Verified location', desc: 'Confirm the actual store pin and provide the complete business address used for operations.' },
+                { icon: Users, title: 'Owner and references', desc: 'Identify the authorized representative, team setup, and two business references for review.' }
+              ].map(item => (
+                <article key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                  <item.icon className="h-5 w-5 text-primary-600" />
+                  <h3 className="mt-4 text-sm font-black text-slate-950">{item.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.desc}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-2xl border border-primary-100 bg-primary-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div><p className="text-sm font-black text-primary-950">Your progress is saved with your Pawzzle account.</p><p className="mt-1 text-xs text-primary-800">Platform administrators manually review the submitted application and documents before store access is granted.</p></div>
+              <button type="button" onClick={() => setCurrentStep(1)} className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-primary-200 transition hover:bg-slate-950">Start business details <ArrowRight className="h-4 w-4" /></button>
             </div>
           </div>
         )}

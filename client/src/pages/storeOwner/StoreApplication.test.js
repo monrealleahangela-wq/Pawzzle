@@ -29,7 +29,9 @@ beforeEach(() => {
 test('all required sections remain reachable on the responsive canonical form', async () => {
   render(<StoreApplication />);
   await waitFor(() => expect(storeApplicationService.getUserApplication).toHaveBeenCalled());
-  fireEvent.click(screen.getByRole('button', { name: /initialize onboarding/i }));
+  expect(screen.getByRole('heading', { name: /build a trusted pet business/i })).toBeVisible();
+  expect(screen.getAllByText(/dti or sec registration/i).length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole('button', { name: /start business details/i }));
   expect(screen.getByLabelText(/store name/i)).toBeVisible();
   expect(screen.getByLabelText(/registered business name/i)).toBeVisible();
   expect(screen.getByText(/what do you sell/i)).toBeVisible();
@@ -47,7 +49,7 @@ test('all required sections remain reachable on the responsive canonical form', 
   expect(screen.getByText(/dti \/ sec certificate/i)).toBeVisible();
   expect(screen.getByText(/bir form 2303/i)).toBeVisible();
 
-  fireEvent.click(screen.getByRole('button', { name: /review/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^review references and declaration$/i }));
   expect(screen.getAllByPlaceholderText(/contact name/i)).toHaveLength(2);
   expect(screen.getByLabelText(/applicant full name/i)).toBeVisible();
 });
@@ -68,7 +70,7 @@ test('rejected application reopens with every nested persisted section prepopula
 
   render(<StoreApplication />);
   fireEvent.click(await screen.findByRole('button', { name: /re-apply with corrected documents/i }));
-  fireEvent.click(screen.getByRole('button', { name: /business/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^business store identity$/i }));
   expect(screen.getByLabelText(/store name/i)).toHaveValue('Saved Store');
   expect(screen.getByLabelText(/registered business name/i)).toHaveValue('Saved Store OPC');
   fireEvent.click(screen.getByRole('button', { name: /owner & team/i }));
