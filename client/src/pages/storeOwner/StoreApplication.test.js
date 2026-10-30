@@ -57,6 +57,9 @@ test('all required sections remain reachable on the responsive canonical form', 
   fireEvent.click(screen.getByRole('button', { name: /^review references and declaration$/i }));
   expect(screen.getAllByPlaceholderText(/person's full name/i)).toHaveLength(2);
   expect(screen.getByLabelText(/your full legal name/i)).toBeVisible();
+  const declarationCheckbox = screen.getByRole('checkbox', { name: /i confirm the information is correct/i });
+  expect(declarationCheckbox).toHaveClass('mt-0.5');
+  expect(declarationCheckbox.nextElementSibling).toHaveClass('flex-1', 'leading-5');
   expect(screen.getByRole('button', { name: /submit application for review/i })).toBeVisible();
 });
 

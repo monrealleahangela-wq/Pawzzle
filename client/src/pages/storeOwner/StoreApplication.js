@@ -1118,7 +1118,13 @@ const StoreApplication = () => {
               <h3 className="text-base font-black text-slate-900">Final review and declaration</h3>
               <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information I provided is accurate and matches my uploaded documents. I understand that Pawzzle administrators will verify these details before approving the store.</p>
               <label className="store-field-label">Your full legal name <span className="store-field-label__status">Required</span><input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-2 bg-white" placeholder="Enter your full legal name as your signature" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
-              <label className="flex items-start gap-3 rounded-xl border border-primary-200 bg-white p-4 text-xs font-bold text-slate-700"><input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required /> I confirm the information is correct and agree to submit this application for manual review. <span className="text-primary-700">Required</span></label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary-200 bg-white p-4">
+                <input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required />
+                <span className="min-w-0 flex-1 text-xs font-bold leading-5 text-slate-700">
+                  I confirm the information is correct and agree to submit this application for manual review.
+                  <span className="ml-2 inline-flex align-middle text-[10px] font-black uppercase tracking-wider text-primary-700">Required</span>
+                </span>
+              </label>
             </div>
 
             <button 
