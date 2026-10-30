@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const { PRODUCT_CATEGORY_VALUES, normalizeProductCategory } = require('../utils/productCategories');
 
 const productSchema = new mongoose.Schema({
+  productMode: {
+    type: String,
+    enum: ['simple', 'variant'],
+    default: 'simple'
+  },
   name: {
     type: String,
     required: true,

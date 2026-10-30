@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const supplierProductSchema = new mongoose.Schema({
+  productMode: {
+    type: String,
+    enum: ['simple', 'variant'],
+    default: 'simple'
+  },
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Supplier',
