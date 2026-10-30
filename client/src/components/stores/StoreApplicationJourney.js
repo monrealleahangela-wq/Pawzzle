@@ -46,14 +46,14 @@ const StoreApplicationJourney = ({
     <section className="overflow-hidden rounded-[2rem] border border-primary-100 bg-white shadow-xl shadow-slate-200/40 sm:rounded-[2.5rem]">
       <div className="relative overflow-hidden bg-slate-950 px-5 py-7 text-white sm:px-8 sm:py-9 lg:px-10">
         <div className="absolute -right-16 -top-24 h-64 w-64 rounded-full bg-primary-600/30 blur-3xl" />
-        <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-primary-300/10 blur-3xl" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.24em] text-amber-100">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.24em] text-primary-100">
               <Store className="h-3.5 w-3.5" /> Pawzzle Seller Network
             </div>
-            <h1 className="text-3xl font-black uppercase leading-[0.95] tracking-[-0.045em] sm:text-5xl">
-              Build a trusted <span className="text-amber-300">pet business.</span>
+            <h1 className="!text-white text-3xl font-black uppercase leading-[0.95] tracking-[-0.045em] sm:text-5xl">
+              Build a trusted <span className="!text-primary-200">pet business.</span>
             </h1>
             <p className="mt-4 max-w-xl text-sm font-medium leading-relaxed text-slate-300">
               Create your seller account, submit one complete store application, and follow the same verified onboarding process from registration through platform review.

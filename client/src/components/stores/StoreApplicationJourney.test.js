@@ -12,6 +12,8 @@ test('shared journey exposes the same application stages and requirements', () =
   for (const requirement of ['Verified Pawzzle account', 'DTI or SEC registration', 'Confirmed store map location', 'BIR details when registered', 'Two business references']) {
     expect(screen.getByText(requirement)).toBeInTheDocument();
   }
+  expect(screen.getByRole('heading', { name: /build a trusted pet business/i })).toHaveClass('!text-white');
+  expect(screen.getByText(/pet business/i)).toHaveClass('!text-primary-200');
   expect(storeApplicationStageForStep(4)).toBe('documents');
 });
 

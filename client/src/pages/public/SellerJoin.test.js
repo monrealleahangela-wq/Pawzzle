@@ -33,6 +33,7 @@ test('seller join shows the canonical application journey without duplicating th
   expect(screen.queryByLabelText(/store name/i)).not.toBeInTheDocument();
   expect(screen.queryByText(/submit your application/i)).not.toBeInTheDocument();
   expect(screen.getByRole('note')).toHaveTextContent(/fields marked required must be completed/i);
+  expect(screen.getByText(/before you begin/i)).toHaveClass('!text-primary-200');
   expect(screen.getByPlaceholderText(/enter your first name/i)).toHaveClass('input-premium');
   expect(screen.getByPlaceholderText(/create a secure password/i)).toHaveClass('store-field-with-action');
 });

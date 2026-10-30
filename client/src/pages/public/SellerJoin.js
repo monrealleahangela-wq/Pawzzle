@@ -170,7 +170,7 @@ const SellerJoin = () => {
 
           <aside className="space-y-4">
             <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/30"><BadgeCheck className="h-8 w-8 text-primary-600" /><h3 className="mt-4 text-lg font-black text-slate-950">One consistent application</h3><p className="mt-2 text-sm leading-relaxed text-slate-500">After email verification, you will continue to the same application used by existing Pawzzle customers upgrading to sellers.</p></div>
-            <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300">Before you begin</p><ul className="mt-4 space-y-3 text-xs font-semibold text-slate-300"><li>Prepare your DTI or SEC registration.</li><li>Know your exact store map location.</li><li>Have BIR details ready when registered.</li><li>Prepare two business references.</li></ul></div>
+            <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl"><p className="text-[9px] font-black uppercase tracking-[0.2em] !text-primary-200">Before you begin</p><ul className="mt-4 space-y-3 text-xs font-semibold text-slate-300"><li>Prepare your DTI or SEC registration.</li><li>Know your exact store map location.</li><li>Have BIR details ready when registered.</li><li>Prepare two business references.</li></ul></div>
           </aside>
         </div>
       </div>
