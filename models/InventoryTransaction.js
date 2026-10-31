@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const inventoryTransactionSchema = new mongoose.Schema({
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
+  productVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant', default: undefined, index: true },
   lot: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryLot', index: true },
   type: {
     type: String,
@@ -20,8 +21,13 @@ const inventoryTransactionSchema = new mongoose.Schema({
   reason: { type: String, trim: true },
   performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   occurredAt: { type: Date, default: Date.now, index: true }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
+});
 
 inventoryTransactionSchema.index({ store: 1, product: 1, occurredAt: -1 });
+inventoryTransactionSchema.index({ store: 1, product: 1, productVariant: 1, occurredAt: -1 });
 
 module.exports = mongoose.model('InventoryTransaction', inventoryTransactionSchema);

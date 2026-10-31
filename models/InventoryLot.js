@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const inventoryLotSchema = new mongoose.Schema({
   store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
+  productVariant: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant', default: undefined, index: true },
   lotNumber: { type: String, required: true, trim: true },
   manufacturer: { type: String, trim: true },
   receivedAt: { type: Date, required: true, default: Date.now },
@@ -25,9 +26,20 @@ const inventoryLotSchema = new mongoose.Schema({
   vaccineType: { type: String, trim: true },
   storageNotes: { type: String, trim: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-}, { timestamps: true });
+}, {
+  timestamps: true,
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
+});
 
-inventoryLotSchema.index({ store: 1, product: 1, lotNumber: 1 }, { unique: true });
+inventoryLotSchema.index(
+  { store: 1, product: 1, lotNumber: 1 },
+  { unique: true, name: 'inventory_lot_simple_unique', partialFilterExpression: { productVariant: { $exists: false } } }
+);
+inventoryLotSchema.index(
+  { store: 1, product: 1, productVariant: 1, lotNumber: 1 },
+  { unique: true, name: 'inventory_lot_variant_unique', partialFilterExpression: { productVariant: { $type: 'objectId' } } }
+);
 inventoryLotSchema.index({ store: 1, status: 1, expiresAt: 1 });
 
 inventoryLotSchema.pre('save', function (next) {

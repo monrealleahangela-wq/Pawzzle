@@ -123,10 +123,11 @@ test('variant procurement remains disabled without explicit readiness', async ()
   }
 });
 
-test('variant procurement activation also requires concurrency and seller inventory readiness', () => {
+test('variant procurement activation also requires concurrency and verified seller inventory readiness', () => {
   const source = read('services/variantProcurementReadinessService.js');
   assert.match(source, /SUPPLIER_VARIANT_PROCUREMENT_CONCURRENCY_VERIFIED/);
-  assert.match(source, /const sellerVariantInventoryReady = false/);
+  assert.match(source, /getVariantInventoryReadiness/);
+  assert.match(source, /const sellerVariantInventoryReady = inventoryReadiness\.enabled/);
   assert.match(source, /enabled: requested && mappingWritesEnabled && concurrencyVerified && sellerVariantInventoryReady/);
 });
 

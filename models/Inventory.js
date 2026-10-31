@@ -11,6 +11,11 @@ const inventorySchema = new mongoose.Schema({
     ref: 'Product',
     required: true
   },
+  productVariant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ProductVariant',
+    default: undefined
+  },
   quantity: {
     type: Number,
     required: true,
@@ -80,11 +85,29 @@ const inventorySchema = new mongoose.Schema({
     projectedDaysRemaining: Number
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  autoIndex: String(process.env.NODE_ENV || '').toLowerCase() !== 'production',
+  autoCreate: String(process.env.NODE_ENV || '').toLowerCase() !== 'production'
 });
 
-// Index for efficient queries
-inventorySchema.index({ store: 1, product: 1 }, { unique: true });
+// Phase 3 index definitions are migration-ready only. Production auto-indexing
+// is disabled above so the legacy unique index is never replaced implicitly.
+inventorySchema.index(
+  { store: 1, product: 1 },
+  {
+    unique: true,
+    name: 'inventory_simple_balance_unique',
+    partialFilterExpression: { productVariant: { $exists: false } }
+  }
+);
+inventorySchema.index(
+  { store: 1, product: 1, productVariant: 1 },
+  {
+    unique: true,
+    name: 'inventory_variant_balance_unique',
+    partialFilterExpression: { productVariant: { $type: 'objectId' } }
+  }
+);
 inventorySchema.index({ store: 1, quantity: 1 });
 inventorySchema.index({ store: 1, 'quantity': 1, 'reorderLevel': 1 });
 

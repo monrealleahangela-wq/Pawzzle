@@ -35,7 +35,7 @@ test('receiveLot claims idempotency and mutates inventory in one session boundar
   assert.match(receiveLot, /InventoryLot\.findOne\([\s\S]*?\.session\(session\)/);
   assert.match(receiveLot, /lot\.save\(\{ session \}\)/);
   assert.match(receiveLot, /movement\.save\(\{ session \}\)/);
-  assert.match(receiveLot, /refreshBalance\(store, product, \{ session \}\)/);
+  assert.match(receiveLot, /refreshBalance\(store, product, \{ productVariant, session \}\)/);
 });
 
 test('initial receiving finalizes report, inventory and purchase order in one transaction', () => {

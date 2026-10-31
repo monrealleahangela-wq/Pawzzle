@@ -16,12 +16,12 @@ class StockSyncService {
 
       if (storeId) {
         // Get inventory for specific store
-        const query = Inventory.findOne({ product: productId, store: storeId, isActive: true });
+        const query = Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
         const inventory = await (session ? query.session(session) : query);
         totalQuantity = inventory ? inventory.quantity : 0;
       } else {
         // Sum all inventory across all stores
-        const query = Inventory.find({ product: productId, isActive: true });
+        const query = Inventory.find({ product: productId, productVariant: { $exists: false }, isActive: true });
         const inventories = await (session ? query.session(session) : query);
         totalQuantity = inventories.reduce((sum, inv) => sum + inv.quantity, 0);
       }
@@ -47,7 +47,7 @@ class StockSyncService {
     try {
       if (storeId) {
         // Update specific store inventory
-        const inventory = await Inventory.findOne({ product: productId, store: storeId, isActive: true });
+        const inventory = await Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
 
         if (inventory) {
           inventory.quantity = newStock;
@@ -66,7 +66,7 @@ class StockSyncService {
         }
       } else {
         // For multi-store, distribute stock proportionally or update first store
-        const inventories = await Inventory.find({ product: productId, isActive: true });
+        const inventories = await Inventory.find({ product: productId, productVariant: { $exists: false }, isActive: true });
 
         if (inventories.length === 0) {
           // No inventory records exist, create one with default store
@@ -96,7 +96,7 @@ class StockSyncService {
       console.log('🔧 Reducing stock:', { productId, quantity, storeId });
 
       // Update inventory
-      let inventory = await Inventory.findOne({ product: productId, store: storeId, isActive: true });
+      let inventory = await Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
 
       if (!inventory) {
         console.warn('⚠️ Inventory record not found, trying to fallback to product stock:', { productId, storeId });
@@ -173,7 +173,7 @@ class StockSyncService {
     try {
       const { session } = options;
       // Update inventory
-      const query = Inventory.findOne({ product: productId, store: storeId, isActive: true });
+      const query = Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
       const inventory = await (session ? query.session(session) : query);
 
       if (!inventory) {
@@ -211,7 +211,7 @@ class StockSyncService {
       let stockStatus = 'in_stock';
 
       if (storeId) {
-        const inventory = await Inventory.findOne({ product: productId, store: storeId, isActive: true });
+        const inventory = await Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
         inventoryQuantity = inventory ? inventory.quantity : 0;
 
         // Determine stock status based on inventory
@@ -256,7 +256,7 @@ class StockSyncService {
   static async initializeInventoryForProduct(productId, storeId, initialStock = 0) {
     try {
       // Check if inventory already exists
-      const existingInventory = await Inventory.findOne({ product: productId, store: storeId });
+      const existingInventory = await Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false } });
 
       if (existingInventory) {
         // Update existing inventory

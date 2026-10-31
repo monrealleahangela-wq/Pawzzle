@@ -11,10 +11,12 @@ const listLots = async (req, res) => {
     if (!store) return res.status(400).json({ message: 'Store is required.' });
     const filter = { store };
     if (req.query.productId) filter.product = req.query.productId;
+    if (req.query.productVariantId) filter.productVariant = req.query.productVariantId;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.vaccine === 'true') filter.isVaccine = true;
     const lots = await InventoryLot.find(filter)
       .populate('product', 'name sku category images')
+      .populate('productVariant', 'sku attributes price images isActive isDiscontinued')
       .populate('supplier', 'businessName')
       .sort({ expiresAt: 1, createdAt: -1 });
     res.json({ lots });
@@ -33,7 +35,8 @@ const getExpiryAlerts = async (req, res) => {
     const lots = await InventoryLot.find({
       store, quantityAvailable: { $gt: 0 }, expiresAt: { $lte: cutoff },
       status: { $in: ['available', 'expired'] }
-    }).populate('product', 'name sku category').sort({ expiresAt: 1 });
+    }).populate('product', 'name sku category')
+      .populate('productVariant', 'sku attributes price isActive isDiscontinued').sort({ expiresAt: 1 });
     const alerts = lots.map((lot) => ({
       ...lot.toObject(),
       daysUntilExpiry: Math.ceil((new Date(lot.expiresAt) - now) / 86400000),
@@ -60,7 +63,10 @@ const receiveLot = async (req, res) => {
   try {
     const store = await resolveStore(req);
     if (!store) return res.status(400).json({ message: 'Store is required.' });
-    const inventory = await Inventory.findOne({ store, product: req.body.productId, isActive: true });
+    const identity = req.body.productVariantId
+      ? { productVariant: req.body.productVariantId }
+      : { productVariant: { $exists: false } };
+    const inventory = await Inventory.findOne({ store, product: req.body.productId, ...identity, isActive: true });
     const restockBlockReason = manualRestockBlockReason({
       currentQuantity: inventory?.quantity || 0,
       operation: 'add',
@@ -68,7 +74,9 @@ const receiveLot = async (req, res) => {
     });
     if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
     const lot = await InventoryLedgerService.receiveLot({
-      ...req.body, store, product: req.body.productId, performedBy: req.user._id
+      ...req.body, store, product: req.body.productId,
+      productVariant: req.body.productVariantId || undefined,
+      performedBy: req.user._id
     });
     res.status(201).json({ message: 'Inventory lot received.', lot });
   } catch (error) {
@@ -82,9 +90,11 @@ const listTransactions = async (req, res) => {
     if (!store) return res.status(400).json({ message: 'Store is required.' });
     const filter = { store };
     if (req.query.productId) filter.product = req.query.productId;
+    if (req.query.productVariantId) filter.productVariant = req.query.productVariantId;
     if (req.query.lotId) filter.lot = req.query.lotId;
     const transactions = await InventoryTransaction.find(filter)
-      .populate('product', 'name sku').populate('lot', 'lotNumber expiresAt')
+      .populate('product', 'name sku').populate('productVariant', 'sku attributes price')
+      .populate('lot', 'lotNumber expiresAt productVariant')
       .populate('performedBy', 'firstName lastName role')
       .sort({ occurredAt: -1 }).limit(Math.min(Number(req.query.limit) || 100, 500));
     res.json({ transactions });

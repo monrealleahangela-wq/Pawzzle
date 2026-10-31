@@ -42,6 +42,7 @@ const ProductInventory = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [variantCapabilities, setVariantCapabilities] = useState({ enabled: false, reasons: [] });
 
   // Filters
   const [productFilters, setProductFilters] = useState({ category: '', search: '' });
@@ -63,6 +64,7 @@ const ProductInventory = () => {
 
   // Form States
   const initialProductState = {
+    productMode: 'simple',
     name: '',
     category: PRODUCT_CATEGORIES[0].value,
     brand: '',
@@ -85,6 +87,7 @@ const ProductInventory = () => {
     video: '',
     coverImage: '',
     variants: [], // { combination: '', price: '', stock: '', sku: '', type: 'Size' }
+    normalizedVariants: [],
     fulfillmentType: 'pickup_only',
     pickupInstructions: '',
     visibility: 'published',
@@ -96,6 +99,12 @@ const ProductInventory = () => {
     ingredients: '',
     usageInstructions: ''
   };
+
+  useEffect(() => {
+    adminProductService.getVariantCapabilities()
+      .then(response => setVariantCapabilities(response.data || { enabled: false, reasons: [] }))
+      .catch(() => setVariantCapabilities({ enabled: false, reasons: ['Variant readiness could not be verified.'] }));
+  }, []);
 
   const [productForm, setProductForm] = useState(initialProductState);
   const [activeSections, setActiveSections] = useState({
@@ -142,13 +151,17 @@ const ProductInventory = () => {
 
       setInventory(serverInventory.map(item => ({
         _id: item.product?._id,
-        name: item.product?.name,
+        productVariantId: item.productVariant?._id,
+        name: item.productVariant
+          ? `${item.product?.name} — ${(item.productVariant.attributes || []).map(attribute => attribute.valueLabel).join(' / ')}`
+          : item.product?.name,
+        sku: item.productVariant?.sku || item.product?.sku,
         category: item.product?.category,
         brand: item.product?.brand,
         currentStock: item.quantity || 0,
         reorderLevel: item.reorderLevel || 0,
         inventoryId: item.inventoryId || item._id,
-        images: item.product?.images || [],
+        images: item.productVariant?.images?.length ? item.productVariant.images : (item.product?.images || []),
         supplierName: item.supplier?.name || item.supplierRef?.businessName || null
       })));
 
@@ -212,6 +225,15 @@ const ProductInventory = () => {
         stockQuantity: product.stockQuantity || '',
         sku: product.sku || ''
       });
+      if (product.productMode === 'variant') {
+        adminProductService.getProductVariants(product._id).then(response => {
+          const rows = (response.data?.variants || []).map(variant => ({
+            ...variant,
+            attributes: (variant.attributes || []).map(attribute => ({ ...attribute }))
+          }));
+          setProductForm(current => ({ ...current, normalizedVariants: rows }));
+        }).catch(() => toast.error('Unable to load this product’s variants.'));
+      }
     } else {
       setEditingProduct(null);
       setProductForm(initialProductState);
@@ -229,8 +251,11 @@ const ProductInventory = () => {
     if (Number(productForm.price) <= 0) {
       return toast.warn('Price must be greater than 0.');
     }
-    if (productForm.stockQuantity === '' || Number(productForm.stockQuantity) < 0) {
+    if (productForm.productMode !== 'variant' && (productForm.stockQuantity === '' || Number(productForm.stockQuantity) < 0)) {
       return toast.warn('Stock quantity must be zero or greater.');
+    }
+    if (productForm.productMode === 'variant' && !(productForm.normalizedVariants || []).length) {
+      return toast.warn('Add at least one explicit variant combination.');
     }
     if (productForm.images.length < 1) {
       return toast.warn('Media Error: Minimum 1 image required.');
@@ -263,13 +288,46 @@ const ProductInventory = () => {
           : Number(productForm.packagingWeight),
         packagingWeightUnit: productForm.packagingWeightUnit || 'g'
       };
+      if (productForm.productMode === 'variant') {
+        payload.stockQuantity = 0;
+        payload.normalizedVariants = productForm.normalizedVariants.map(variant => ({
+          ...variant,
+          attributes: (variant.attributes || []).map(attribute => ({
+            code: String(attribute.label).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+            label: String(attribute.label).trim(),
+            valueCode: String(attribute.valueLabel).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+            valueLabel: String(attribute.valueLabel).trim()
+          })),
+          price: Number(variant.price),
+          weight: variant.weight ? Number(variant.weight) : undefined
+        }));
+      }
 
       if (editingProduct) {
         if (isAdminOrStaff) await adminProductService.updateProduct(editingProduct._id, payload);
         else await productService.updateProduct(editingProduct._id, payload);
+        if (isAdminOrStaff && editingProduct.productMode === 'variant') {
+          for (const variant of payload.normalizedVariants || []) {
+            if (variant._id && variant.markDiscontinued) {
+              await adminProductService.discontinueProductVariant(editingProduct._id, variant._id, { reason: 'Discontinued by store from product editor' });
+              continue;
+            }
+            const variantPayload = { ...variant };
+            delete variantPayload._id;
+            delete variantPayload.__v;
+            delete variantPayload.product;
+            delete variantPayload.store;
+            delete variantPayload.createdAt;
+            delete variantPayload.updatedAt;
+            delete variantPayload.markDiscontinued;
+            if (variant._id) await adminProductService.updateProductVariant(editingProduct._id, variant._id, variantPayload);
+            else await adminProductService.createProductVariant(editingProduct._id, variantPayload);
+          }
+        }
         toast.success('Product updated successfully.');
       } else {
-        if (isAdminOrStaff) await adminProductService.createProduct(payload);
+        if (isAdminOrStaff && productForm.productMode === 'variant') await adminProductService.createVariantProduct(payload);
+        else if (isAdminOrStaff) await adminProductService.createProduct(payload);
         else await productService.createProduct(payload);
         toast.success(`Product “${productForm.name}” added successfully.`);
       }
@@ -314,6 +372,32 @@ const ProductInventory = () => {
       toast.success('Product images uploaded successfully.');
     } catch (error) {
       toast.error('Unable to upload the images. Please use valid image files and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVariantImageUpload = async (files, variantIndex) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+    if (selectedFiles.some(file => !file.type?.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      return toast.warn('Use image files up to 5 MB each.');
+    }
+    setSubmitting(true);
+    const formData = new FormData();
+    selectedFiles.slice(0, 10).forEach(file => formData.append('images', file));
+    try {
+      const response = await uploadService.uploadMultipleImages(formData);
+      const urls = (response.data.urls || response.data.imageUrls || []).slice(0, 10);
+      setProductForm(current => ({
+        ...current,
+        normalizedVariants: current.normalizedVariants.map((variant, index) => index === variantIndex
+          ? { ...variant, images: urls }
+          : variant)
+      }));
+      toast.success('Variant image uploaded successfully.');
+    } catch (error) {
+      toast.error('Unable to upload the variant image. Please use a valid image file and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -451,6 +535,11 @@ const ProductInventory = () => {
         </div>
 
         <div className="relative z-10 flex w-full flex-wrap gap-2.5 sm:w-auto">
+          {variantCapabilities.enabled && canUpdate && (
+            <button type="button" onClick={() => { handleOpenProductModal(); setProductForm({ ...initialProductState, productMode: 'variant' }); }} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 text-[13px] font-bold text-white transition-all hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+              <Plus className="h-4 w-4" /> Add Variant Listing
+            </button>
+          )}
           {canAdjustStock && (
             <button type="button" onClick={() => handleOpenInventoryModal()} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-[13px] font-bold text-slate-600 transition-all hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
               <Zap className="h-4 w-4 text-primary-600" /> Update Stock
@@ -698,7 +787,11 @@ const ProductInventory = () => {
                             <span className="inline-flex h-10 items-center rounded-xl border border-amber-200 bg-amber-50 px-4 text-[9px] font-black uppercase tracking-wide text-amber-700" title="A user with procurement access must place the supplier order.">
                               Procurement Required
                             </span>
-                          )) : canAdjustStock && (
+                          )) : item.productVariantId ? (
+                            <span className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-4 text-[9px] font-black uppercase tracking-wide text-slate-600" title="Variant inventory changes are recorded through the exact-variant ledger.">
+                              Ledger Managed
+                            </span>
+                          ) : canAdjustStock && (
                             <button onClick={() => handleOpenInventoryModal(item)} className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-black uppercase tracking-wide text-slate-600 transition-all hover:border-slate-900 hover:bg-slate-900 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group-hover:shadow-sm">
                               Adjust Stock
                             </button>
@@ -722,7 +815,9 @@ const ProductInventory = () => {
         onClose={() => setShowProductModal(false)}
         onSubmit={handleProductSubmit}
         onImageUpload={handleImageUpload}
+        onVariantImageUpload={handleVariantImageUpload}
         loading={submitting}
+        variantCapabilities={variantCapabilities}
         onAdvanced={() => { setModalTab('edit'); setShowAdvancedProductEditor(true); }}
       />}
 

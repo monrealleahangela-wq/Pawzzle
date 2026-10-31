@@ -20,6 +20,7 @@ jest.mock('../../services/apiService', () => ({
   productService: { getAllProducts: jest.fn() },
   adminProductService: {
     getAllProducts: jest.fn(),
+    getVariantCapabilities: jest.fn(),
     updateProduct: jest.fn(),
     deleteProduct: jest.fn()
   },
@@ -46,6 +47,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   window.localStorage.setItem('user', JSON.stringify({ role: 'admin' }));
   adminProductService.getAllProducts.mockImplementation(() => new Promise(() => {}));
+  adminProductService.getVariantCapabilities.mockResolvedValue({ data: { enabled: false, reasons: ['test gate'] } });
 });
 
 test('store inventory keeps stock management but has no manual product creation action', () => {

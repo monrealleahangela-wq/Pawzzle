@@ -1661,6 +1661,59 @@ const applyReceivingItem = async ({
     reportItem.inventoryApplicationStatus = 'deferred_variant_inventory';
     reportItem.idempotencyKey = reportItem.idempotencyKey || idempotencyKey;
     await assertVariantReceivingStockApplicationEnabled();
+
+    const currentInventory = await Inventory.findOne({
+      store: order.store,
+      product: resolved.sellerProduct._id,
+      productVariant: resolved.sellerVariant._id
+    }).session(session);
+    const currentQuantity = Number(currentInventory?.quantity || 0);
+    const maximumQuantity = Number(currentInventory?.maxStock ?? 1000);
+    if (currentQuantity + Number(reportItem.acceptedQuantity) > maximumQuantity) {
+      throw Object.assign(new Error(
+        `Receiving ${reportItem.acceptedQuantity} unit(s) of "${orderItem.productName}" would exceed this variant's inventory capacity of ${maximumQuantity}.`
+      ), { statusCode: 409 });
+    }
+
+    await recordReceivedSupplierQuantity({
+      orderItem,
+      acceptedQuantity: receivedQuantityTarget,
+      session
+    });
+    const lot = reportItem.lotDetails || {};
+    await InventoryLedgerService.receiveLot({
+      store: order.store,
+      product: resolved.sellerProduct._id,
+      productVariant: resolved.sellerVariant._id,
+      lotNumber: lot.lotNumber || `PO-${order.orderNumber}-${orderItem._id}`,
+      quantity: reportItem.acceptedQuantity,
+      unitCost: orderItem.unitPrice,
+      expiresAt: lot.expiresAt || orderItem.supplierProduct?.expirationDate,
+      manufacturer: lot.manufacturer,
+      supplier: supplier?._id,
+      purchaseOrder: order._id,
+      purchaseOrderItem: orderItem._id,
+      isVaccine: Boolean(lot.isVaccine),
+      vaccineType: lot.vaccineType,
+      storageNotes: lot.storageNotes,
+      performedBy: userId,
+      idempotencyKey
+    }, { session });
+    await Inventory.updateOne({
+      store: order.store,
+      product: resolved.sellerProduct._id,
+      productVariant: resolved.sellerVariant._id
+    }, {
+      $set: {
+        supplierRef: supplier?._id,
+        supplierProductRef: orderItem.supplierProduct?._id || orderItem.supplierProduct,
+        lastPurchaseOrderRef: order._id,
+        supplier: supplier ? { name: supplier.businessName, contact: supplier.contactPerson, email: supplier.email, phone: supplier.phone } : {}
+      }
+    }, { session });
+    reportItem.inventoryApplied = true;
+    reportItem.inventoryApplicationStatus = 'applied';
+    return;
   }
 
   if (orderItem.itemType === 'live_pet') {

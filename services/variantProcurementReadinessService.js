@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const SupplierVariantMapping = require('../models/SupplierVariantMapping');
 const { getSupplierVariantReadiness } = require('./supplierVariantReadinessService');
+const { getVariantInventoryReadiness } = require('./variantInventoryReadinessService');
 
 const REQUIRED_INDEXES = Object.freeze({
   SupplierVariantMapping: [{
@@ -42,13 +43,16 @@ const getVariantProcurementReadiness = async () => {
   const mappingWritesRequested = flagEnabled('SUPPLIER_VARIANT_MAPPING_ENABLED');
   const mappingWritesEnabled = mappingWritesRequested && phase1.enabled && mappingIndexesReady;
   const concurrencyVerified = flagEnabled('SUPPLIER_VARIANT_PROCUREMENT_CONCURRENCY_VERIFIED');
-  const sellerVariantInventoryReady = false;
+  const inventoryReadiness = await getVariantInventoryReadiness();
+  const sellerVariantInventoryReady = inventoryReadiness.enabled;
+  const receivingRequested = flagEnabled('SUPPLIER_VARIANT_RECEIVING_ENABLED');
   if (!mappingWritesRequested) reasons.push('SUPPLIER_VARIANT_MAPPING_ENABLED is not true.');
   if (!concurrencyVerified) reasons.push('Variant procurement concurrency verification has not been recorded.');
-  if (!sellerVariantInventoryReady) reasons.push('Variant-aware seller inventory is not implemented.');
+  if (!sellerVariantInventoryReady) reasons.push('Variant-aware seller inventory readiness is not satisfied.');
+  if (!receivingRequested) reasons.push('SUPPLIER_VARIANT_RECEIVING_ENABLED is not true.');
 
   return {
-    enabled: requested && mappingWritesEnabled && concurrencyVerified && sellerVariantInventoryReady && reasons.length === 0,
+    enabled: requested && mappingWritesEnabled && concurrencyVerified && sellerVariantInventoryReady,
     requested,
     phase1,
     mappingIndexesReady,
@@ -56,7 +60,10 @@ const getVariantProcurementReadiness = async () => {
     mappingWritesEnabled,
     concurrencyVerified,
     sellerVariantInventoryReady,
-    receivingStockApplicationEnabled: false,
+    inventoryReadiness,
+    receivingRequested,
+    receivingStockApplicationEnabled: requested && mappingWritesEnabled && concurrencyVerified
+      && sellerVariantInventoryReady && receivingRequested,
     reasons
   };
 };
@@ -87,11 +94,14 @@ const assertVariantProcurementEnabled = async () => {
 
 const assertVariantReceivingStockApplicationEnabled = async () => {
   const readiness = await getVariantProcurementReadiness();
-  const error = new Error('Variant receiving was validated, but stock application is deferred until variant-aware seller inventory is implemented.');
-  error.statusCode = 503;
-  error.code = 'VARIANT_INVENTORY_DESTINATION_NOT_READY';
-  error.readiness = readiness;
-  throw error;
+  if (!readiness.receivingStockApplicationEnabled) {
+    const error = new Error('Variant receiving is disabled until variant inventory indexes, migration readiness, mappings, and concurrency checks are verified.');
+    error.statusCode = 503;
+    error.code = 'VARIANT_INVENTORY_DESTINATION_NOT_READY';
+    error.readiness = readiness;
+    throw error;
+  }
+  return readiness;
 };
 
 module.exports = {

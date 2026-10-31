@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
+const ProductVariant = require('../models/ProductVariant');
 const Store = require('../models/Store');
 const StockSyncService = require('../services/stockSyncService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
@@ -117,6 +118,7 @@ const getStoreInventory = async (req, res) => {
 
     const inventory = await Inventory.find(filter)
       .populate('product', 'name brand category sku price images')
+      .populate('productVariant', 'sku attributes price images isActive isDiscontinued')
       .sort({ 'quantity': 1 }) // Low stock first
       .skip(skip)
       .limit(parseInt(limit));
@@ -176,6 +178,12 @@ const updateInventoryQuantity = async (req, res) => {
     const inventory = await Inventory.findById(id).populate('product');
     if (!inventory) {
       return res.status(404).json({ message: 'Inventory item not found' });
+    }
+    if (inventory.productVariant) {
+      return res.status(409).json({
+        code: 'VARIANT_LEDGER_ADJUSTMENT_REQUIRED',
+        message: 'Variant balances cannot be edited directly. Receive mapped supplier stock or use a ledger-backed variant adjustment.'
+      });
     }
 
     // Verify store access (Super admin bypasses this)
@@ -256,6 +264,9 @@ const addToInventory = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+    if (product.productMode === 'variant') {
+      return res.status(409).json({ message: 'Variant products require an exact variant inventory destination.' });
+    }
 
     // Resolve the admin's store (auto-create if needed)
     const storeId = await resolveAdminStore(req.user);
@@ -263,7 +274,8 @@ const addToInventory = async (req, res) => {
     // Check if inventory item already exists
     const existingInventory = await Inventory.findOne({
       store: storeId,
-      product: productId
+      product: productId,
+      productVariant: { $exists: false }
     });
 
     if (existingInventory) {
@@ -320,12 +332,14 @@ const getLowStockAlerts = async (req, res) => {
       $expr: { $lte: ['$quantity', '$reorderLevel'] }
     })
       .populate('product', 'name brand category sku images')
+      .populate('productVariant', 'sku attributes price images isActive isDiscontinued')
       .sort({ quantity: 1 });
 
     res.json({
       alerts: lowStockItems.map(item => ({
         id: item._id,
         product: item.product,
+        productVariant: item.productVariant || null,
         currentStock: item.quantity,
         reorderLevel: item.reorderLevel,
         recommendedOrder: item.getRecommendedOrderQuantity(),
@@ -411,60 +425,50 @@ const getAdminInventory = async (req, res) => {
     if (category) productFilter.category = category;
 
     // 2. We need to fetch ALL products for this admin to calculate global statistics accurately
-    const allAdminProducts = await Product.find(productFilter).select('_id name category price brand images');
+    const allAdminProducts = await Product.find(productFilter).select('_id name category price brand images productMode updatedAt');
     const productIds = allAdminProducts.map(p => p._id);
 
     // 3. Fetch all inventory records for these products in this store
-    const allInventoryMap = await Inventory.find({
+    const allInventoryRows = await Inventory.find({
       store: storeId,
       product: { $in: productIds },
       isActive: true
     });
-
-    // Create a map for quick lookup
-    const invMap = {};
-    allInventoryMap.forEach(inv => {
-      invMap[inv.product.toString()] = inv;
-    });
-
-    // 4. Calculate Global Summary Statistics
-    const globalSummary = allAdminProducts.reduce((acc, prod) => {
-      const inv = invMap[prod._id.toString()];
-      const qty = inv ? inv.quantity : 0;
-      const reorder = inv ? inv.reorderLevel : 0;
-      const cost = inv ? inv.costPrice : 0;
-
-      acc.totalProducts += 1;
-      if (qty === 0) {
-        acc.outOfStockProducts += 1;
-      } else if (qty <= reorder) {
-        acc.lowStockProducts += 1;
+    const normalizedVariants = await ProductVariant.find({ product: { $in: productIds } })
+      .select('product sku attributes price images isActive isDiscontinued updatedAt').lean();
+    const inventoryByIdentity = new Map(allInventoryRows.map(inv => [
+      `${String(inv.product)}:${inv.productVariant ? String(inv.productVariant) : 'simple'}`, inv
+    ]));
+    let combinedList = [];
+    for (const product of allAdminProducts) {
+      const children = normalizedVariants.filter(variant => String(variant.product) === String(product._id));
+      const identities = product.productMode === 'variant' ? children : [null];
+      for (const variant of identities) {
+        const inv = inventoryByIdentity.get(`${String(product._id)}:${variant ? String(variant._id) : 'simple'}`);
+        combinedList.push({
+          product,
+          productVariant: variant,
+          quantity: inv ? inv.quantity : 0,
+          reorderLevel: inv ? inv.reorderLevel : 0,
+          costPrice: inv ? inv.costPrice : 0,
+          location: inv ? inv.location : null,
+          supplier: inv ? inv.supplier : null,
+          supplierRef: inv ? inv.supplierRef : null,
+          updatedAt: inv ? inv.updatedAt : (variant?.updatedAt || product.updatedAt),
+          inventoryId: inv ? inv._id : null,
+          isActive: inv ? inv.isActive : true
+        });
       }
-      acc.totalValue += (qty * cost);
+    }
+    const globalSummary = combinedList.reduce((acc, row) => {
+      acc.totalProducts += 1;
+      if (row.quantity === 0) acc.outOfStockProducts += 1;
+      else if (row.quantity <= row.reorderLevel) acc.lowStockProducts += 1;
+      acc.totalValue += row.quantity * row.costPrice;
       return acc;
-    }, {
-      totalProducts: 0,
-      lowStockProducts: 0,
-      outOfStockProducts: 0,
-      totalValue: 0
-    });
+    }, { totalProducts: 0, lowStockProducts: 0, outOfStockProducts: 0, totalValue: 0 });
 
-    // 5. Apply Status filtering on the combined data set
-    let combinedList = allAdminProducts.map(prod => {
-      const inv = invMap[prod._id.toString()];
-      return {
-        product: prod,
-        quantity: inv ? inv.quantity : 0,
-        reorderLevel: inv ? inv.reorderLevel : 0,
-        costPrice: inv ? inv.costPrice : 0,
-        location: inv ? inv.location : null,
-        supplier: inv ? inv.supplier : null,
-        supplierRef: inv ? inv.supplierRef : null,
-        updatedAt: inv ? inv.updatedAt : prod.updatedAt,
-        inventoryId: inv ? inv._id : null,
-        isActive: inv ? inv.isActive : true
-      };
-    });
+    // 5. Apply Status filtering on the exact sellable inventory identities.
 
     if (status) {
       combinedList = combinedList.filter(item => {
@@ -515,12 +519,14 @@ const getLowStockAlertsAdmin = async (req, res) => {
       $expr: { $lte: ['$quantity', '$reorderLevel'] }
     })
       .populate('product', 'name brand category sku images')
+      .populate('productVariant', 'sku attributes price images isActive isDiscontinued')
       .sort({ quantity: 1 });
 
     res.json({
       alerts: lowStockItems.map(item => ({
         id: item._id,
         product: item.product,
+        productVariant: item.productVariant || null,
         currentStock: item.quantity,
         reorderLevel: item.reorderLevel,
         recommendedOrder: item.getRecommendedOrderQuantity(),
@@ -547,6 +553,9 @@ const addToAdminInventory = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
+    if (product.productMode === 'variant') {
+      return res.status(409).json({ message: 'Variant products are stocked only through exact-variant receiving.' });
+    }
 
     // Security: Only allow users to add products belonging to their store
     // Super-admins can add any product to any store inventory
@@ -567,7 +576,7 @@ const addToAdminInventory = async (req, res) => {
 
     const storeId = await resolveAdminStore(req.user);
 
-    const existingInventory = await Inventory.findOne({ store: storeId, product: productId });
+    const existingInventory = await Inventory.findOne({ store: storeId, product: productId, productVariant: { $exists: false } });
     if (existingInventory) {
       // If it already exists, update based on the specified operation
       console.log(`🔄 Product already in inventory, applying ${req.body.operation || 'add'} operation for store:`, storeId);

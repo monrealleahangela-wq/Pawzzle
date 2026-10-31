@@ -30,6 +30,7 @@ const updateQuantityValidation = [
 
 const addToInventoryValidation = [
   body('productId').isMongoId().withMessage('Valid product ID is required'),
+  body('productVariantId').optional({ checkFalsy: true }).isMongoId().withMessage('Valid product variant ID is required'),
   body('quantity').isInt({ min: 0 }).withMessage('Quantity must be a non-negative integer'),
   body('operation').optional().isIn(['set', 'add', 'subtract']).withMessage('Invalid operation'),
   body('reorderLevel').optional({ checkFalsy: true }).isInt({ min: 0 }).withMessage('Reorder level must be a non-negative integer'),

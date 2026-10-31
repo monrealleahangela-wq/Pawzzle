@@ -3,8 +3,38 @@ const Inventory = require('../models/Inventory');
 const InventoryLot = require('../models/InventoryLot');
 const InventoryTransaction = require('../models/InventoryTransaction');
 const Product = require('../models/Product');
+const ProductVariant = require('../models/ProductVariant');
+const { assertVariantInventoryEnabled } = require('./variantInventoryReadinessService');
 
 const INBOUND_TYPES = new Set(['opening', 'receipt', 'return_in', 'transfer_in', 'adjustment_in', 'release']);
+
+const variantFilter = productVariant => (productVariant
+  ? { productVariant }
+  : { productVariant: { $exists: false } });
+
+const resolveInventoryIdentity = async ({ store, product, productVariant, session, requireActive = true }) => {
+  const productQuery = Product.findOne({ _id: product, store, isDeleted: { $ne: true } });
+  if (session) productQuery.session(session);
+  const parent = await productQuery;
+  if (!parent) throw new Error('Inventory product does not belong to the selected store.');
+  if (!productVariant) {
+    if (parent.productMode === 'variant') {
+      throw new Error('Variant products require an exact ProductVariant inventory destination.');
+    }
+    return { parent, variant: null };
+  }
+  if (parent.productMode !== 'variant') throw new Error('A simple product cannot use variant inventory.');
+  const variantQuery = ProductVariant.findOne({
+    _id: productVariant,
+    product: parent._id,
+    store,
+    ...(requireActive ? { isActive: true, isDiscontinued: false } : {})
+  }).select('+store');
+  if (session) variantQuery.session(session);
+  const variant = await variantQuery;
+  if (!variant) throw new Error('The inventory variant is unavailable or belongs to another product or store.');
+  return { parent, variant };
+};
 
 class InventoryLedgerService {
   static async receiveLot(data, options = {}) {
@@ -30,7 +60,7 @@ class InventoryLedgerService {
 
   static async receiveLotInSession(data, session) {
     const {
-      store, product, lotNumber, quantity, unitCost = 0, expiresAt,
+      store, product, productVariant, lotNumber, quantity, unitCost = 0, expiresAt,
       manufacturer, supplier, purchaseOrder, purchaseOrderItem,
       isVaccine = false, vaccineType, storageNotes, performedBy,
       idempotencyKey
@@ -41,6 +71,8 @@ class InventoryLedgerService {
     if (expiresAt && new Date(expiresAt) <= new Date()) {
       throw new Error('Cannot receive an already expired lot.');
     }
+    if (productVariant) await assertVariantInventoryEnabled();
+    await resolveInventoryIdentity({ store, product, productVariant, session });
 
     if (idempotencyKey) {
       const existing = await InventoryTransaction.findOne({ idempotencyKey }).session(session);
@@ -51,12 +83,14 @@ class InventoryLedgerService {
     // Claim the operation before changing stock. The claim, lot mutation,
     // ledger entry and derived balances all commit (or abort) together.
     const [movement] = await InventoryTransaction.create([{
-      store, product, type: 'receipt', quantity,
+      store, product, ...(productVariant ? { productVariant } : {}), type: 'receipt', quantity,
       signedQuantity: Number(quantity), unitCost, referenceType: 'PurchaseOrder',
       referenceId: purchaseOrder, performedBy, idempotencyKey
     }], { session });
 
-    let lot = await InventoryLot.findOne({ store, product, lotNumber: lotNumber.trim() }).session(session);
+    let lot = await InventoryLot.findOne({
+      store, product, ...variantFilter(productVariant), lotNumber: lotNumber.trim()
+    }).session(session);
     if (lot && ['recalled', 'quarantined', 'expired'].includes(lot.status)) {
       throw new Error(`Cannot receive into a ${lot.status} lot.`);
     }
@@ -68,7 +102,7 @@ class InventoryLedgerService {
       await lot.save({ session });
     } else {
       [lot] = await InventoryLot.create([{
-        store, product, lotNumber: lotNumber.trim(), quantityReceived: quantity,
+        store, product, ...(productVariant ? { productVariant } : {}), lotNumber: lotNumber.trim(), quantityReceived: quantity,
         quantityAvailable: quantity, unitCost, expiresAt, manufacturer, supplier,
         purchaseOrder, purchaseOrderItem, isVaccine, vaccineType, storageNotes,
         createdBy: performedBy
@@ -77,17 +111,19 @@ class InventoryLedgerService {
 
     movement.lot = lot._id;
     await movement.save({ session });
-    await this.refreshBalance(store, product, { session });
+    await this.refreshBalance(store, product, { productVariant, session });
     return lot;
   }
 
-  static async issueFEFO({ store, product, quantity, type = 'sale', referenceType, referenceId, performedBy, reason }) {
+  static async issueFEFO({ store, product, productVariant, quantity, type = 'sale', referenceType, referenceId, performedBy, reason }) {
     if (INBOUND_TYPES.has(type)) throw new Error('FEFO issue requires an outbound transaction type.');
     let remaining = Number(quantity);
     if (!(remaining > 0)) throw new Error('Issue quantity must be greater than zero.');
+    if (productVariant) await assertVariantInventoryEnabled();
+    await resolveInventoryIdentity({ store, product, productVariant });
 
     const lots = await InventoryLot.find({
-      store, product, status: 'available', quantityAvailable: { $gt: 0 },
+      store, product, ...variantFilter(productVariant), status: 'available', quantityAvailable: { $gt: 0 },
       $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
     }).sort({ expiresAt: 1, receivedAt: 1 });
 
@@ -101,27 +137,29 @@ class InventoryLedgerService {
       lot.quantityAvailable -= issued;
       await lot.save();
       const movement = await InventoryTransaction.create({
-        store, product, lot: lot._id, type, quantity: issued,
+        store, product, ...(productVariant ? { productVariant } : {}), lot: lot._id, type, quantity: issued,
         signedQuantity: -issued, unitCost: lot.unitCost, referenceType,
         referenceId, performedBy, reason
       });
       movements.push(movement);
       remaining -= issued;
     }
-    await this.refreshBalance(store, product);
+    await this.refreshBalance(store, product, { productVariant });
     return movements;
   }
 
   static async issueFromLot({
-    store, product, lotId, quantity, type = 'service_use',
+    store, product, productVariant, lotId, quantity, type = 'service_use',
     referenceType, referenceId, performedBy, reason
   }) {
     if (INBOUND_TYPES.has(type)) throw new Error('Lot issue requires an outbound transaction type.');
     const issued = Number(quantity);
     if (!(issued > 0)) throw new Error('Issue quantity must be greater than zero.');
+    if (productVariant) await assertVariantInventoryEnabled();
+    await resolveInventoryIdentity({ store, product, productVariant });
 
     const lot = await InventoryLot.findOne({
-      _id: lotId, store, product, status: 'available',
+      _id: lotId, store, product, ...variantFilter(productVariant), status: 'available',
       quantityAvailable: { $gte: issued },
       $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
     });
@@ -130,33 +168,41 @@ class InventoryLedgerService {
     lot.quantityAvailable -= issued;
     await lot.save();
     const movement = await InventoryTransaction.create({
-      store, product, lot: lot._id, type, quantity: issued,
+      store, product, ...(productVariant ? { productVariant } : {}), lot: lot._id, type, quantity: issued,
       signedQuantity: -issued, unitCost: lot.unitCost, referenceType,
       referenceId, performedBy, reason
     });
-    await this.refreshBalance(store, product);
+    await this.refreshBalance(store, product, { productVariant });
     return movement;
   }
 
   static async refreshBalance(store, product, options = {}) {
-    const { session } = options;
+    const { session, productVariant } = options;
+    await resolveInventoryIdentity({ store, product, productVariant, session, requireActive: false });
     const lots = await InventoryLot.find({
-      store, product, status: { $in: ['available', 'depleted'] }
+      store, product, ...variantFilter(productVariant), status: { $in: ['available', 'depleted'] }
     }).select('quantityAvailable unitCost').session(session || null);
     const quantity = lots.reduce((sum, lot) => sum + lot.quantityAvailable, 0);
     const totalCost = lots.reduce((sum, lot) => sum + lot.quantityAvailable * lot.unitCost, 0);
     const costPrice = quantity > 0 ? totalCost / quantity : 0;
 
     await Inventory.findOneAndUpdate(
-      { store, product },
+      { store, product, ...variantFilter(productVariant) },
       { $set: { quantity, costPrice, lastRestocked: new Date(), isActive: true } },
       { upsert: true, setDefaultsOnInsert: true, session }
     );
-    await Product.findByIdAndUpdate(product, {
-      $set: { stockQuantity: quantity, stockStatus: quantity > 0 ? 'in_stock' : 'out_of_stock' }
-    }, { session });
+    // Parent stock remains authoritative only for legacy simple products.
+    // Variant products derive availability exclusively from exact child balances.
+    if (!productVariant) {
+      await Product.findByIdAndUpdate(product, {
+        $set: { stockQuantity: quantity, stockStatus: quantity > 0 ? 'in_stock' : 'out_of_stock' }
+      }, { session });
+    }
     return { quantity, costPrice };
   }
 }
+
+InventoryLedgerService.resolveInventoryIdentity = resolveInventoryIdentity;
+InventoryLedgerService.variantFilter = variantFilter;
 
 module.exports = InventoryLedgerService;

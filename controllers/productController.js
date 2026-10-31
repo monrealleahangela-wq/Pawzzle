@@ -16,7 +16,7 @@ const { buildProductCategoryFilter, requireProductCategory } = require('../utils
 const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 
 const PRODUCT_LISTING_FIELDS = [
-  'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode',
+  'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode', 'productMode',
   'unit', 'weight', 'weightUnit', 'weightIncludesPackaging', 'packagingWeight',
   'packagingWeightUnit', 'images', 'video', 'brand', 'tags', 'stockStatus',
   'collectionGroup', 'visibility', 'fulfillmentType', 'pickupInstructions',
@@ -202,7 +202,14 @@ const createProduct = async (req, res) => {
 
     const storeId = await resolveAdminStore(req.user);
 
-    const initialStock = Number(req.body.stockQuantity || 0);
+    const requestedMode = req.body.productMode === 'variant' ? 'variant' : 'simple';
+    if (requestedMode === 'variant') {
+      return res.status(409).json({
+        code: 'VARIANT_PRODUCT_ENDPOINT_REQUIRED',
+        message: 'Create variant products through the gated variant-product workflow so parent and child SKU claims commit together.'
+      });
+    }
+    const initialStock = requestedMode === 'variant' ? 0 : Number(req.body.stockQuantity || 0);
     const listingData = pickProductListingFields(req.body);
     listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
@@ -217,7 +224,10 @@ const createProduct = async (req, res) => {
       ...normalizedWeight,
       ...normalizedPackaging,
       weightStatus: 'seller_provided',
-      variants: normalizeProductVariants(listingData.variants) || [],
+      productMode: requestedMode,
+      // Normalized variants live in ProductVariant. Legacy embedded rows are
+      // preserved for existing products but are never generated for new mode.
+      variants: requestedMode === 'variant' ? [] : (normalizeProductVariants(listingData.variants) || []),
       images,
       coverImage: images[0],
       addedBy: req.user.id || req.user._id,
@@ -230,11 +240,9 @@ const createProduct = async (req, res) => {
     await product.save();
 
     try {
-      await StockSyncService.initializeInventoryForProduct(
-        product._id,
-        storeId,
-        initialStock
-      );
+      if (requestedMode === 'simple') {
+        await StockSyncService.initializeInventoryForProduct(product._id, storeId, initialStock);
+      }
     } catch (inventoryError) {
       console.warn('Failed to initialize inventory for product:', inventoryError.message);
     }
@@ -291,7 +299,21 @@ const updateProduct = async (req, res) => {
         Object.prototype.hasOwnProperty.call(updateData, 'weightIncludesPackaging') ? updateData.weightIncludesPackaging : product.weightIncludesPackaging
       ));
     }
-    if (Object.prototype.hasOwnProperty.call(updateData, 'variants')) updateData.variants = normalizeProductVariants(updateData.variants);
+    if (Object.prototype.hasOwnProperty.call(updateData, 'productMode') && updateData.productMode !== product.productMode) {
+      return res.status(409).json({ message: 'Product type cannot be changed after creation. Create a separate listing instead.' });
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'variants')) {
+      if (product.productMode === 'variant') delete updateData.variants;
+      else updateData.variants = normalizeProductVariants(updateData.variants);
+    }
+    if (product.productMode === 'variant') {
+      if (Object.prototype.hasOwnProperty.call(updateData, 'sku') && updateData.sku !== product.sku) {
+        return res.status(409).json({ message: 'The parent SKU of a variant listing cannot be changed through the standard product editor.' });
+      }
+      updateData.visibility = 'draft';
+      updateData.stockQuantity = 0;
+      updateData.stockStatus = 'out_of_stock';
+    }
     
     // Explicitly update only mutable fields
     Object.assign(product, updateData);
@@ -367,7 +389,10 @@ const updateStock = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const inventory = await Inventory.findOne({ store: product.store, product: product._id, isActive: true });
+    if (product.productMode === 'variant') {
+      return res.status(409).json({ message: 'Variant stock is managed per exact ProductVariant through the inventory ledger.' });
+    }
+    const inventory = await Inventory.findOne({ store: product.store, product: product._id, productVariant: { $exists: false }, isActive: true });
     const restockBlockReason = manualRestockBlockReason({
       currentQuantity: inventory?.quantity ?? product.stockQuantity,
       operation: 'set',
