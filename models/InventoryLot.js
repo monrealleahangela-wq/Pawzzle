@@ -33,12 +33,8 @@ const inventoryLotSchema = new mongoose.Schema({
 });
 
 inventoryLotSchema.index(
-  { store: 1, product: 1, lotNumber: 1 },
-  { unique: true, name: 'inventory_lot_simple_unique', partialFilterExpression: { productVariant: { $exists: false } } }
-);
-inventoryLotSchema.index(
   { store: 1, product: 1, productVariant: 1, lotNumber: 1 },
-  { unique: true, name: 'inventory_lot_variant_unique', partialFilterExpression: { productVariant: { $type: 'objectId' } } }
+  { unique: true, name: 'inventory_lot_identity_unique' }
 );
 inventoryLotSchema.index({ store: 1, status: 1, expiresAt: 1 });
 

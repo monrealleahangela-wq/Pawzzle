@@ -137,6 +137,13 @@ export const orderService = {
   cancelOrder: (id) => api.patch(`/orders/${id}/cancel`)
 };
 
+export const orderReturnService = {
+  listForOrder: (orderId) => api.get(`/order-returns/order/${orderId}`),
+  request: (orderId, data) => api.post(`/order-returns/order/${orderId}`, data),
+  transition: (id, data) => api.post(`/order-returns/${id}/transition`, data),
+  inspect: (id, data) => api.post(`/order-returns/${id}/inspect`, data)
+};
+
 // Admin order services (filtered by user's store)
 export const adminOrderService = {
   getAllOrders: (params) => api.get('/admin/orders', { params }),

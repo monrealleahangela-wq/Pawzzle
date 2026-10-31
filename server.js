@@ -112,6 +112,7 @@ app.use('/api/pets', require('./routes/pets'));
 app.use('/api/pet-inquiries', require('./routes/petInquiries'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/order-returns', require('./routes/orderReturns'));
 app.use('/api/store-applications', require('./routes/storeApplications'));
 app.use('/api/stores', require('./routes/stores'));
 app.use('/api/services', require('./routes/services'));

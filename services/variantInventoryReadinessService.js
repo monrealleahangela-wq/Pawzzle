@@ -8,12 +8,10 @@ const { getSellerVariantReadiness } = require('./sellerVariantReadinessService')
 
 const REQUIRED_INDEXES = Object.freeze({
   Inventory: [
-    { name: 'inventory_simple_balance_unique', key: { store: 1, product: 1 }, unique: true, partialFilterExpression: { productVariant: { $exists: false } } },
-    { name: 'inventory_variant_balance_unique', key: { store: 1, product: 1, productVariant: 1 }, unique: true, partialFilterExpression: { productVariant: { $type: 'objectId' } } }
+    { name: 'inventory_balance_identity_unique', key: { store: 1, product: 1, productVariant: 1 }, unique: true }
   ],
   InventoryLot: [
-    { name: 'inventory_lot_simple_unique', key: { store: 1, product: 1, lotNumber: 1 }, unique: true, partialFilterExpression: { productVariant: { $exists: false } } },
-    { name: 'inventory_lot_variant_unique', key: { store: 1, product: 1, productVariant: 1, lotNumber: 1 }, unique: true, partialFilterExpression: { productVariant: { $type: 'objectId' } } }
+    { name: 'inventory_lot_identity_unique', key: { store: 1, product: 1, productVariant: 1, lotNumber: 1 }, unique: true }
   ],
   InventoryTransaction: [
     { name: 'idempotencyKey_1', key: { idempotencyKey: 1 }, unique: true }
@@ -27,7 +25,13 @@ const REQUIRED_INDEXES = Object.freeze({
   ]
 });
 
-const LEGACY_CONFLICTING_INDEX_NAMES = Object.freeze(['store_1_product_1']);
+const LEGACY_CONFLICTING_INDEX_NAMES = Object.freeze([
+  'store_1_product_1',
+  'inventory_simple_balance_unique',
+  'inventory_variant_balance_unique',
+  'inventory_lot_simple_unique',
+  'inventory_lot_variant_unique'
+]);
 const flagEnabled = name => String(process.env[name] || '').toLowerCase() === 'true';
 const sameKey = (left, right) => JSON.stringify(left || {}) === JSON.stringify(right || {});
 
@@ -50,7 +54,7 @@ const dryRunVariantInventoryMigration = async () => {
     return { connected: false, safe: false, collisions: [], legacyIndexes: [], reasons: ['MongoDB is not connected.'] };
   }
   const [balanceDuplicates, simpleBalanceDuplicates, lotDuplicates, simpleLotDuplicates,
-    invalidBalanceIdentities, invalidLotIdentities, inventoryIndexes] = await Promise.all([
+    invalidBalanceIdentities, invalidLotIdentities, inventoryIndexes, lotIndexes] = await Promise.all([
     Inventory.aggregate([
       { $match: { productVariant: { $type: 'objectId' } } },
       { $group: { _id: { store: '$store', product: '$product', productVariant: '$productVariant' }, count: { $sum: 1 }, ids: { $push: '$_id' } } },
@@ -81,9 +85,13 @@ const dryRunVariantInventoryMigration = async () => {
       { $match: { $expr: { $ne: [{ $type: '$productVariant' }, 'objectId'] } } },
       { $project: { _id: 1, store: 1, product: 1, productVariant: 1, lotNumber: 1 } }
     ]),
-    Inventory.collection.indexes()
+    Inventory.collection.indexes(),
+    InventoryLot.collection.indexes()
   ]);
-  const legacyIndexes = inventoryIndexes.filter(index => LEGACY_CONFLICTING_INDEX_NAMES.includes(index.name));
+  const legacyIndexes = [
+    ...inventoryIndexes.map(index => ({ collection: 'Inventory', ...index })),
+    ...lotIndexes.map(index => ({ collection: 'InventoryLot', ...index }))
+  ].filter(index => LEGACY_CONFLICTING_INDEX_NAMES.includes(index.name));
   const collisions = [
     ...balanceDuplicates.map(row => ({ type: 'balance', ...row })),
     ...simpleBalanceDuplicates.map(row => ({ type: 'simple_balance', ...row })),

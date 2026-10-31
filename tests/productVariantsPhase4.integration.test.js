@@ -61,6 +61,11 @@ test('isolated replica set enforces exact-variant reservation concurrency and id
     });
     await claimSku({ namespaceType: 'store', owner: store, sku: product.sku, entityType: 'product', entity: product._id });
     await claimSku({ namespaceType: 'store', owner: store, sku: variant.sku, entityType: 'product_variant', entity: variant._id });
+    await InventoryLot.create({
+      store, product: product._id, productVariant: variant._id,
+      lotNumber: 'CHECKOUT-LOT-1', quantityReceived: 1, quantityAvailable: 1,
+      createdBy: seller
+    });
     await Inventory.create({ store, product: product._id, productVariant: variant._id, quantity: 1, reservedQuantity: 0 });
 
     const makeOrder = customer => new Order({

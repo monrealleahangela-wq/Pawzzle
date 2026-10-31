@@ -12,6 +12,7 @@ const { createNotification } = require('../controllers/notificationController');
 const { internalCreateDelivery } = require('../controllers/deliveryController');
 const { removePurchasedItemsFromCart } = require('./checkoutCartService');
 const { consumeOrderReservations } = require('./inventoryReservationService');
+const { applyItemFulfillmentStage } = require('./variantOrderLifecycleService');
 const {
   releasePetReservation,
   reservePetForAdoption,
@@ -318,9 +319,15 @@ const fulfillOrderOnce = async (orderId) => {
       await internalCreateDelivery({ orderId: claimed._id });
     }
 
+    const fulfilledAt = new Date();
+    const fulfillmentOrder = await Order.findById(claimed._id);
+    if (fulfillmentOrder) {
+      applyItemFulfillmentStage(fulfillmentOrder, 'confirmed', claimed.addedBy);
+      await fulfillmentOrder.save();
+    }
     return Order.findByIdAndUpdate(claimed._id, {
       $set: {
-        'paymentDetails.fulfilledAt': new Date(),
+        'paymentDetails.fulfilledAt': fulfilledAt,
         'paymentDetails.fulfillmentStatus': 'completed'
       }
     }, { new: true });
@@ -355,7 +362,9 @@ const finalizeOrder = async (order, payment, { skipCartCleanup = false } = {}) =
     throw error;
   }
 
-  const existingPaymentId = order.paymentDetails?.paymentId;
+  const currentOrder = await Order.findById(order._id);
+  if (!currentOrder) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
+  const existingPaymentId = currentOrder.paymentDetails?.paymentId;
   if (existingPaymentId && existingPaymentId !== payment.id) {
     return Order.findByIdAndUpdate(order._id, {
       $addToSet: { 'paymentDetails.duplicatePaymentIds': payment.id },
@@ -363,9 +372,10 @@ const finalizeOrder = async (order, payment, { skipCartCleanup = false } = {}) =
     }, { new: true });
   }
 
-  const cancelled = order.status === 'cancelled';
-  await Order.findOneAndUpdate({
-    _id: order._id,
+  const cancelled = currentOrder.status === 'cancelled';
+  const updatedOrder = await Order.findOneAndUpdate({
+    _id: currentOrder._id,
+    status: cancelled ? 'cancelled' : { $ne: 'cancelled' },
     $or: [
       { 'paymentDetails.paymentId': { $exists: false } },
       { 'paymentDetails.paymentId': null },
@@ -379,11 +389,32 @@ const finalizeOrder = async (order, payment, { skipCartCleanup = false } = {}) =
       ...getPaymentFields(payment),
       ...(cancelled ? { 'paymentDetails.failureReason': 'Payment received after the order was cancelled; refund review is required.' } : {})
     }
-  });
+  }, { new: true });
 
-  if (cancelled) return Order.findById(order._id);
-  const fulfilled = await fulfillOrderOnce(order._id);
-  await RevenueService.recordPayment('order', order._id);
+  if (!updatedOrder) {
+    const racedOrder = await Order.findById(order._id);
+    if (racedOrder?.status === 'cancelled') {
+      await Order.updateOne({
+        _id: racedOrder._id,
+        $or: [
+          { 'paymentDetails.paymentId': { $exists: false } },
+          { 'paymentDetails.paymentId': null },
+          { 'paymentDetails.paymentId': payment.id }
+        ]
+      }, { $set: {
+        paymentStatus: 'paid',
+        paymentMethod: 'paymongo',
+        ...getPaymentFields(payment),
+        'paymentDetails.failureReason': 'Payment received after cancellation won the race; refund review is required.'
+      } });
+      return Order.findById(racedOrder._id);
+    }
+    throw Object.assign(new Error('Order payment state changed during reconciliation.'), { statusCode: 409 });
+  }
+
+  if (cancelled) return updatedOrder;
+  const fulfilled = await fulfillOrderOnce(updatedOrder._id);
+  await RevenueService.recordPayment('order', updatedOrder._id);
   if (!skipCartCleanup) {
     await removePurchasedItemsFromCart({
       customerId: order.customer?._id || order.customer,

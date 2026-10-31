@@ -37,6 +37,80 @@ const resolveInventoryIdentity = async ({ store, product, productVariant, sessio
 };
 
 class InventoryLedgerService {
+  static async issueReservedVariantInSession({
+    store, product, productVariant, quantity, order, orderItem, performedBy, idempotencyKey
+  }, session) {
+    if (!session) throw new Error('Exact-variant fulfillment requires a MongoDB transaction.');
+    if (!productVariant) throw new Error('Exact-variant fulfillment requires a ProductVariant identity.');
+    if (!(Number(quantity) > 0) || !idempotencyKey) throw new Error('A quantity and idempotency key are required.');
+    await assertVariantInventoryEnabled();
+    await resolveInventoryIdentity({ store, product, productVariant, session });
+    const existing = await InventoryTransaction.findOne({ idempotencyKey }).session(session);
+    if (existing) return { idempotent: true, transaction: existing };
+
+    let remaining = Number(quantity);
+    const lots = await InventoryLot.find({
+      store, product, ...variantFilter(productVariant), status: 'available', quantityAvailable: { $gt: 0 },
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }]
+    }).sort({ expiresAt: 1, receivedAt: 1 }).session(session);
+    const available = lots.reduce((sum, lot) => sum + Number(lot.quantityAvailable || 0), 0);
+    if (available < remaining) throw new Error(`Insufficient exact-variant lot stock. Available: ${available}.`);
+    for (const lot of lots) {
+      if (remaining <= 0) break;
+      const issued = Math.min(Number(lot.quantityAvailable), remaining);
+      lot.quantityAvailable -= issued;
+      await lot.save({ session });
+      remaining -= issued;
+    }
+    const [movement] = await InventoryTransaction.create([{
+      store, product, productVariant, type: 'sale', quantity: Number(quantity), signedQuantity: -Number(quantity),
+      referenceType: 'OrderItem', referenceId: orderItem || order, performedBy,
+      reason: `Exact-variant fulfillment for order ${order}`, idempotencyKey
+    }], { session });
+    await this.refreshBalance(store, product, { productVariant, session });
+    return { idempotent: false, transaction: movement };
+  }
+
+  static async restockVariantInSession({
+    store, product, productVariant, quantity, order, orderItem, performedBy,
+    idempotencyKey, reason, lotNumber
+  }, session) {
+    if (!session) throw new Error('Exact-variant restocking requires a MongoDB transaction.');
+    if (!productVariant) throw new Error('Exact-variant restocking requires a ProductVariant identity.');
+    if (!(Number(quantity) > 0) || !idempotencyKey) throw new Error('A quantity and idempotency key are required.');
+    await assertVariantInventoryEnabled();
+    await resolveInventoryIdentity({ store, product, productVariant, session, requireActive: false });
+    const existing = await InventoryTransaction.findOne({ idempotencyKey }).session(session);
+    if (existing) return { idempotent: true, transaction: existing };
+
+    const normalizedLotNumber = String(lotNumber || `RETURN-${order}-${orderItem}`).trim().slice(0, 120);
+    let lot = await InventoryLot.findOne({
+      store, product, ...variantFilter(productVariant), lotNumber: normalizedLotNumber
+    }).session(session);
+    if (lot && ['recalled', 'quarantined', 'expired'].includes(lot.status)) {
+      throw new Error(`Cannot restore stock into a ${lot.status} lot.`);
+    }
+    if (lot) {
+      lot.quantityReceived += Number(quantity);
+      lot.quantityAvailable += Number(quantity);
+      if (lot.status === 'depleted') lot.status = 'available';
+      await lot.save({ session });
+    } else {
+      [lot] = await InventoryLot.create([{
+        store, product, productVariant, lotNumber: normalizedLotNumber,
+        quantityReceived: Number(quantity), quantityAvailable: Number(quantity),
+        unitCost: 0, storageNotes: reason, createdBy: performedBy
+      }], { session });
+    }
+    const [movement] = await InventoryTransaction.create([{
+      store, product, productVariant, lot: lot._id, type: 'return_in', quantity: Number(quantity),
+      signedQuantity: Number(quantity), referenceType: 'OrderItem', referenceId: orderItem || order,
+      performedBy, reason, idempotencyKey
+    }], { session });
+    await this.refreshBalance(store, product, { productVariant, session });
+    return { idempotent: false, transaction: movement, lot };
+  }
+
   static async receiveLot(data, options = {}) {
     if (options.session) return this.receiveLotInSession(data, options.session);
 

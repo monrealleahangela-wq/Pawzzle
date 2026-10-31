@@ -8,6 +8,7 @@ const Store = require('../models/Store');
 const Voucher = require('../models/Voucher');
 const StockSyncService = require('./stockSyncService');
 const RevenueService = require('./revenueService');
+const { hasNormalizedVariants, restoreCancelledVariantStock } = require('./variantOrderLifecycleService');
 const { finalizePetReservation, releasePetReservation } = require('./petAvailabilityService');
 const {
   getRiderCapacitySummary,
@@ -198,10 +199,13 @@ const validatePickupEligibility = (order, customerId) => {
   return true;
 };
 
-const restoreOrderResources = async (order, session) => {
+const restoreOrderResources = async (order, session, actorId) => {
   const restoreStock = CANCELLATION_STOCK_DEDUCTED_STATUSES.includes(order.status);
+  if (restoreStock && order.paymentStatus === 'refunded' && hasNormalizedVariants(order)) {
+    await restoreCancelledVariantStock({ orderId: order._id, actorId, session });
+  }
   for (const item of order.items) {
-    if (item.itemType === 'product' && restoreStock) {
+    if (item.itemType === 'product' && restoreStock && !item.variantId) {
       const product = await Product.findById(item.itemId).session(session);
       if (!product) continue;
       const sellerStore = await Store.findOne({ owner: product.addedBy }).select('_id').session(session);
@@ -229,7 +233,7 @@ const restoreOrderResources = async (order, session) => {
   }
 };
 
-const cancelOrderDelivery = async ({ orderId, actorId, session: callerSession }) => {
+const cancelOrderDelivery = async ({ orderId, actorId, allowRefundedCancellation = false, session: callerSession }) => {
   let outcome;
   const execute = async session => {
     const order = await Order.findById(orderId).session(session);
@@ -239,7 +243,8 @@ const cancelOrderDelivery = async ({ orderId, actorId, session: callerSession })
       return;
     }
     if (order.paymentStatus === 'paid') throw fail('A paid order must be refunded through PayMongo before cancellation.', 409);
-    if (CUSTOMER_CANCELLATION_BLOCKED_STATUSES.includes(order.status)) {
+    const refundedCancellation = allowRefundedCancellation && order.paymentStatus === 'refunded';
+    if (CUSTOMER_CANCELLATION_BLOCKED_STATUSES.includes(order.status) && !refundedCancellation) {
       throw fail('Order cannot be cancelled once confirmed or processed.', 400);
     }
 
@@ -252,7 +257,7 @@ const cancelOrderDelivery = async ({ orderId, actorId, session: callerSession })
     const claimed = await Order.findOneAndUpdate({
       _id: order._id,
       status: order.status,
-      paymentStatus: { $ne: 'paid' }
+      paymentStatus: refundedCancellation ? 'refunded' : { $ne: 'paid' }
     }, {
       $set: { status: 'cancelled', updatedAt: now },
       $push: {
@@ -268,7 +273,7 @@ const cancelOrderDelivery = async ({ orderId, actorId, session: callerSession })
     }, { new: true, session });
     if (!claimed) throw fail('Order state changed. Refresh and try again.', 409);
 
-    await restoreOrderResources(order, session);
+    await restoreOrderResources(order, session, actorId);
 
     if (delivery) {
       await releaseRiderCapacity(delivery, session);

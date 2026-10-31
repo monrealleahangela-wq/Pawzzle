@@ -98,19 +98,10 @@ const inventorySchema = new mongoose.Schema({
 // Phase 3 index definitions are migration-ready only. Production auto-indexing
 // is disabled above so the legacy unique index is never replaced implicitly.
 inventorySchema.index(
-  { store: 1, product: 1 },
-  {
-    unique: true,
-    name: 'inventory_simple_balance_unique',
-    partialFilterExpression: { productVariant: { $exists: false } }
-  }
-);
-inventorySchema.index(
   { store: 1, product: 1, productVariant: 1 },
   {
     unique: true,
-    name: 'inventory_variant_balance_unique',
-    partialFilterExpression: { productVariant: { $type: 'objectId' } }
+    name: 'inventory_balance_identity_unique'
   }
 );
 inventorySchema.index({ store: 1, quantity: 1 });

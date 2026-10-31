@@ -223,6 +223,11 @@ const AdminOrders = () => {
                             </div>
                           )}
                         </div>
+                        {order.items.some(item => item.variantSnapshot?.sku) && (
+                          <p className="mt-2 max-w-[220px] truncate text-[10px] font-mono text-slate-500">
+                            {order.items.filter(item => item.variantSnapshot?.sku).map(item => `${item.variantSnapshot.sku} × ${item.quantity}`).join(', ')}
+                          </p>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium text-slate-900">{formatPeso(order.totalAmount)}</p>

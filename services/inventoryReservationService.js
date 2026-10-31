@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Inventory = require('../models/Inventory');
 const InventoryReservation = require('../models/InventoryReservation');
 const Product = require('../models/Product');
+const InventoryLedgerService = require('./inventoryLedgerService');
+const { processExpiredReservationBatch } = require('./reservationExpirationJobService');
 const { resolveCustomerProductSelection, variantFilter } = require('./customerProductVariantService');
 
 const DEFAULT_TTL_MINUTES = 20;
@@ -56,15 +58,7 @@ const releaseOrderReservations = async ({ orderId, reason = 'Checkout cancelled'
   session => releaseReservationRows({ filter: { order: orderId }, reason, session })
 );
 
-const releaseExpiredReservations = async () => {
-  const orderIds = await InventoryReservation.distinct('order', { status: 'active', expiresAt: { $lte: new Date() } });
-  for (const orderId of orderIds) {
-    await mongoose.connection.transaction(session => releaseReservationRows({
-      filter: { order: orderId, expiresAt: { $lte: new Date() } }, reason: 'Checkout reservation expired', status: 'expired', session
-    }));
-  }
-  return orderIds.length;
-};
+const releaseExpiredReservations = async () => processExpiredReservationBatch({ limit: 100 });
 
 const assertOrderReservationsPayable = async (orderId, { requireReservation = false } = {}) => {
   await releaseExpiredReservations();
@@ -106,13 +100,26 @@ const consumeOrderReservations = async ({ orderId, paymentId }) => mongoose.conn
     const inventory = await Inventory.findOneAndUpdate({
       store: row.store, product: row.product, ...variantFilter(row.productVariant),
       quantity: { $gte: row.quantity }, reservedQuantity: { $gte: row.quantity }
-    }, { $inc: { quantity: -row.quantity, reservedQuantity: -row.quantity } }, { new: true, session });
+    }, { $inc: { reservedQuantity: -row.quantity } }, { new: true, session });
     if (!inventory) throw new Error('Reserved inventory could not be consumed safely.');
+    if (row.productVariant) {
+      await InventoryLedgerService.issueReservedVariantInSession({
+        store: row.store,
+        product: row.product,
+        productVariant: row.productVariant,
+        quantity: row.quantity,
+        order: row.order,
+        performedBy: row.customer,
+        idempotencyKey: `order-variant-sale:${row.order}:${row._id}`
+      }, session);
+    }
     row.status = 'consumed';
     row.consumedAt = new Date();
     row.paymentId = paymentId;
     await row.save({ session });
     if (!row.productVariant) {
+      inventory.quantity -= row.quantity;
+      await inventory.save({ session });
       await Product.findByIdAndUpdate(row.product, {
         $set: { stockQuantity: inventory.quantity, stockStatus: inventory.quantity > 0 ? 'in_stock' : 'out_of_stock' }
       }, { session });

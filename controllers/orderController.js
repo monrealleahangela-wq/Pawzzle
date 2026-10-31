@@ -22,6 +22,14 @@ const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/a
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
 const { evaluateOrderTransition } = require('../utils/orderLifecycle');
 const { decorateOrdersWithProductReviewStatus } = require('../services/productOrderReviewService');
+const { getCustomerVariantLifecycleReadiness } = require('../services/customerVariantLifecycleReadinessService');
+const { listOrderReturns } = require('../services/orderReturnLifecycleService');
+const {
+  applyItemFulfillmentStage,
+  assertVariantFulfillmentEligible,
+  hasNormalizedVariants,
+  pickingInstructions
+} = require('../services/variantOrderLifecycleService');
 const {
   getPetAvailabilityIssue,
   reservePetForOrder
@@ -169,7 +177,24 @@ const getOrderById = async (req, res) => {
       [responseOrder] = await decorateOrdersWithProductReviewStatus([responseOrder], req.user._id);
     }
 
-    res.json({ order: responseOrder });
+    const responseValue = responseOrder?.toObject ? responseOrder.toObject() : responseOrder;
+    const variantOrder = hasNormalizedVariants(responseValue);
+    const [returnCases, lifecycleReadiness] = await Promise.all([
+      variantOrder ? listOrderReturns(order._id) : [],
+      variantOrder ? getCustomerVariantLifecycleReadiness() : Promise.resolve(null)
+    ]);
+    res.json({
+      order: {
+        ...responseValue,
+        returnCases,
+        variantLifecycle: lifecycleReadiness ? {
+          fulfillmentEnabled: lifecycleReadiness.fulfillmentEnabled,
+          cancellationEnabled: lifecycleReadiness.cancellationEnabled,
+          returnsEnabled: lifecycleReadiness.returnsEnabled
+        } : null,
+        pickingInstructions: storeOperator || isPlatformAdmin(req.user) ? pickingInstructions(responseValue) : undefined
+      }
+    });
   } catch (error) {
     console.error('Get order error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -692,6 +717,9 @@ const updateOrderStatus = async (req, res) => {
       await order.save();
       return res.json({ message: 'Order metadata updated', order });
     }
+    if (hasNormalizedVariants(order) && !['pending_payment', 'payment_failed', 'cancelled'].includes(status)) {
+      await assertVariantFulfillmentEligible(order);
+    }
     if (linkedDelivery && status === 'cancelled') {
       return res.status(409).json({ message: 'Use the Order cancellation action so the linked Delivery and rider capacity are closed together.' });
     }
@@ -719,7 +747,7 @@ const updateOrderStatus = async (req, res) => {
     if (status === 'confirmed' && (oldStatus === 'paid' || oldStatus === 'awaiting_confirmation')) {
       for (const item of order.items) {
         if (item.itemType === 'product') {
-          await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, order.store);
+          if (!item.variantId) await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, order.store);
         } else if (item.itemType === 'pet') {
           const reserved = await reservePetForOrder(item.itemId, order._id);
           if (!reserved) throw new Error(`Pet "${item.name}" is already reserved or unavailable.`);
@@ -737,6 +765,8 @@ const updateOrderStatus = async (req, res) => {
       order.deliveryDate = new Date();
       order.payoutStatus = 'released';
     }
+
+    applyItemFulfillmentStage(order, status, req.user._id);
 
     await order.save();
     
@@ -758,7 +788,10 @@ const updateOrderStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Update order status error:', error);
-    res.status(500).json({ message: 'Transition error: ' + error.message });
+    res.status(error.statusCode || 500).json({
+      code: error.code,
+      message: error.statusCode ? error.message : 'Transition error: ' + error.message
+    });
   }
 };
 
@@ -777,7 +810,11 @@ const cancelOrder = async (req, res) => {
     if (!customerOwnsOrder && !isPlatformAdmin(req.user) && !storeCanCancel) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    const cancellation = await cancelOrderDelivery({ orderId: order._id, actorId: req.user._id });
+    const cancellation = await cancelOrderDelivery({
+      orderId: order._id,
+      actorId: req.user._id,
+      allowRefundedCancellation: order.paymentStatus === 'refunded'
+    });
     if (!cancellation.changed) return res.json({ message: 'Order is already cancelled' });
     const cancelledOrder = cancellation.order;
     const cancelledDelivery = cancellation.delivery;

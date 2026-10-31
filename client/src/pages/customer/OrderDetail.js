@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { orderService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
+import { orderService, orderReturnService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
@@ -44,6 +44,8 @@ const OrderDetail = () => {
   const [cancellingOrder, setCancellingOrder] = useState(false);
   const [concernOpen, setConcernOpen] = useState(false);
   const [concernSubmitting, setConcernSubmitting] = useState(false);
+  const [returnDraft, setReturnDraft] = useState(null);
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const checkoutBatchId = order?.checkoutBatch?._id || order?.checkoutBatch;
@@ -54,6 +56,28 @@ const OrderDetail = () => {
     [orderLineItems]
   );
   const canReportDeliveryConcern = canManageOrders && deliveryAssignment?.concernReporting?.allowed === true;
+  const variantAttributeText = item => (item.variantAttributes || [])
+    .map(attribute => `${attribute.label || attribute.code}: ${attribute.valueLabel || attribute.valueCode}`)
+    .join(' • ');
+
+  const submitVariantReturn = async () => {
+    if (!returnDraft) return;
+    setReturnSubmitting(true);
+    try {
+      await orderReturnService.request(order._id, {
+        itemId: returnDraft.orderItemId,
+        quantity: Number(returnDraft.quantity),
+        reason: returnDraft.reason
+      });
+      toast.success('Return request submitted for Store review.');
+      setReturnDraft(null);
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to submit the return request.');
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!order?._id || !order.delivery) return;
@@ -476,6 +500,30 @@ const OrderDetail = () => {
                     {item.itemType} • {formatPeso(item.unitPrice)} × {item.quantity}
                   </p>
 
+                  {item.variantId && (
+                    <div className="mt-2 rounded-xl border border-primary-100 bg-primary-50/50 px-3 py-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary-800">Selected variant</p>
+                      <p className="mt-1 text-xs font-bold text-slate-800">{variantAttributeText(item)}</p>
+                      {item.variantSku && <p className="mt-1 text-[10px] font-mono text-slate-500">SKU: {item.variantSku}</p>}
+                      <p className="mt-1 text-[10px] font-bold uppercase text-slate-500">Fulfillment: {String(item.fulfillment?.status || 'pending').replace(/_/g, ' ')}</p>
+                      {item.returnStatus !== 'none' && <p className="mt-1 text-[10px] font-bold uppercase text-primary-700">Return: {String(item.returnStatus).replace(/_/g, ' ')}</p>}
+                    </div>
+                  )}
+
+                  {user?.role === 'customer'
+                    && order.variantLifecycle?.returnsEnabled
+                    && ['delivered', 'completed'].includes(order.status)
+                    && item.variantId
+                    && item.returnStatus === 'none' && (
+                    <button
+                      type="button"
+                      onClick={() => setReturnDraft({ orderItemId: item.orderItemId, name: item.name, quantity: 1, max: item.quantity, reason: '' })}
+                      className="mt-3 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary-700 hover:bg-primary-50"
+                    >
+                      Request return
+                    </button>
+                  )}
+
                   {user?.role === 'customer' && ['delivered', 'completed'].includes(order.status) && item.itemType === 'product' && (
                     item.reviewStatus?.isRated ? (
                       <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
@@ -510,6 +558,34 @@ const OrderDetail = () => {
               </div>
             ))}
           </div>
+
+          {returnDraft && (
+            <div className="mt-5 rounded-2xl border border-primary-200 bg-primary-50/40 p-4">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-900">Return {returnDraft.name}</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[120px_1fr]">
+                <label className="text-xs font-bold text-slate-700">
+                  Quantity
+                  <input type="number" min="1" max={returnDraft.max} value={returnDraft.quantity}
+                    onChange={event => setReturnDraft(current => ({ ...current, quantity: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900" />
+                </label>
+                <label className="text-xs font-bold text-slate-700">
+                  Reason for return
+                  <textarea value={returnDraft.reason}
+                    onChange={event => setReturnDraft(current => ({ ...current, reason: event.target.value }))}
+                    placeholder="Explain the issue with this exact variant"
+                    className="mt-1 min-h-20 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-slate-900" />
+                </label>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <button type="button" onClick={submitVariantReturn} disabled={returnSubmitting || returnDraft.reason.trim().length < 3}
+                  className="rounded-xl bg-primary-700 px-4 py-2 text-xs font-black uppercase text-white disabled:opacity-50">
+                  {returnSubmitting ? 'Submitting...' : 'Submit return request'}
+                </button>
+                <button type="button" onClick={() => setReturnDraft(null)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700">Cancel</button>
+              </div>
+            </div>
+          )}
 
           {/* Authoritative transaction summary */}
           {(

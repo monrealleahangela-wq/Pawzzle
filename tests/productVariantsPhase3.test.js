@@ -23,16 +23,13 @@ test('simple products remain the default and normalized variants do not alter em
   assert.equal(simple.productMode, 'simple');
   assert.equal(simple.variants.length, 1);
 });
-test('inventory schemas define separate partial uniqueness for simple and variant identities', () => {
+test('inventory schemas define MongoDB-compatible unified uniqueness for simple and variant identities', () => {
   const balances = indexByName(Inventory);
-  assert.deepEqual(balances.get('inventory_simple_balance_unique').key, { store: 1, product: 1 });
-  assert.deepEqual(balances.get('inventory_simple_balance_unique').options.partialFilterExpression, { productVariant: { $exists: false } });
-  assert.deepEqual(balances.get('inventory_variant_balance_unique').key, { store: 1, product: 1, productVariant: 1 });
-  assert.deepEqual(balances.get('inventory_variant_balance_unique').options.partialFilterExpression, { productVariant: { $type: 'objectId' } });
+  assert.deepEqual(balances.get('inventory_balance_identity_unique').key, { store: 1, product: 1, productVariant: 1 });
+  assert.equal(balances.get('inventory_balance_identity_unique').options.unique, true);
   const lots = indexByName(InventoryLot);
-  assert.ok(lots.has('inventory_lot_simple_unique'));
-  assert.ok(lots.has('inventory_lot_variant_unique'));
-  assert.equal(REQUIRED_INDEXES.Inventory.length, 2);
+  assert.deepEqual(lots.get('inventory_lot_identity_unique').key, { store: 1, product: 1, productVariant: 1, lotNumber: 1 });
+  assert.equal(REQUIRED_INDEXES.Inventory.length, 1);
   const readiness = source('services/variantInventoryReadinessService.js');
   assert.match(readiness, /invalidBalanceIdentities/);
   assert.match(readiness, /null or invalid productVariant identities/);

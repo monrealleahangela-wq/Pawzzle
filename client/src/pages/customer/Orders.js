@@ -134,7 +134,7 @@ const Orders = () => {
                       {order.items.map((item, i) => (
                         <div key={item._id || i} className="flex gap-4 items-center">
                           <img 
-                            src={getImageUrl(item.image)} 
+                            src={getImageUrl(item.variantSnapshot?.image || item.image)}
                             alt="" 
                             className="w-12 h-12 object-cover rounded-lg border border-slate-100 bg-slate-50"
                             onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Pet' }}
@@ -142,6 +142,12 @@ const Orders = () => {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
                             <p className="text-xs text-slate-500">Qty: {item.quantity} · {formatPeso(item.price)}</p>
+                            {item.variantId && (
+                              <p className="mt-1 text-[10px] font-medium text-primary-700">
+                                {(item.variantSnapshot?.attributes || []).map(attribute => attribute.valueLabel || attribute.valueCode).join(' • ')}
+                                {item.variantSnapshot?.sku ? ` · SKU ${item.variantSnapshot.sku}` : ''}
+                              </p>
+                            )}
                           </div>
                           {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (
                             item.reviewStatus?.isRated ? (

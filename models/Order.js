@@ -41,6 +41,23 @@ const orderItemSchema = new mongoose.Schema({
     packagingWeightUnit: String,
     capturedAt: Date
   },
+  fulfillment: {
+    status: {
+      type: String,
+      enum: ['pending', 'picking', 'packed', 'fulfilled', 'cancelled', 'return_requested', 'returned'],
+      default: 'pending'
+    },
+    exactVariantVerifiedAt: Date,
+    pickedAt: Date,
+    packedAt: Date,
+    fulfilledAt: Date,
+    actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
+  returnStatus: {
+    type: String,
+    enum: ['none', 'requested', 'approved', 'rejected', 'received', 'inspected', 'refund_pending', 'refunded', 'closed'],
+    default: 'none'
+  },
   unitWeightKg: {
     type: Number,
     min: 0.001

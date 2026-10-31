@@ -14,9 +14,9 @@ Phase 3 defines, but does not apply, the physical indexes required for exact-var
 
 1. Disable variant writes and receiving flags.
 2. Re-run the dry-run collision report on a read-only production connection approved for the release.
-3. Create `inventory_simple_balance_unique`, `inventory_variant_balance_unique`, `inventory_lot_simple_unique`, and `inventory_lot_variant_unique` using the definitions in the Mongoose schemas.
-4. Remove the legacy `store_1_product_1` unique index only after both Inventory indexes exist and validation queries pass. This is necessary because that legacy index prevents two variants under one parent.
-5. Verify index names, keys, partial filters, and uniqueness through the readiness endpoint.
+3. Create the MongoDB-compatible unified indexes `inventory_balance_identity_unique` and `inventory_lot_identity_unique` using the definitions in the Mongoose schemas. Missing `productVariant` keys identify simple rows; ObjectId values identify exact variants.
+4. Remove the legacy `store_1_product_1` and any rejected Phase 3 partial-index definitions only after both unified indexes exist and validation queries pass. The legacy index prevents two variants under one parent.
+5. Verify index names, compound keys, and uniqueness through the readiness endpoint.
 6. Record seller variant concurrency and authorization verification, then enable flags in order: seller variant management, variant inventory, inventory concurrency verification, variant procurement, then variant receiving.
 
 No application startup path runs these index operations automatically in production.
