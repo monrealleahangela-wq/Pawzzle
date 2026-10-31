@@ -14,7 +14,8 @@
     "seed": "node scripts/seed.js",
     "bootstrap-superadmin": "node scripts/seed-super-admin.js",
     "test": "node --test tests/*.test.js",
-    "jobs:expire-reservations": "node scripts/runReservationExpirationJob.js"
+    "jobs:expire-reservations": "node scripts/runReservationExpirationJob.js",
+    "prepare:supplier-variants": "node scripts/prepareSupplierVariantReadiness.js"
   },
   "dependencies": {
     "axios": "^1.13.5",

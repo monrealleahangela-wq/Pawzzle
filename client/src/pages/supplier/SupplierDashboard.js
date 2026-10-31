@@ -733,7 +733,7 @@ const SupplierDashboard = () => {
                     <span className="block text-[10px] font-black uppercase">Product with variants</span><span className="mt-1 block text-[10px] font-medium normal-case">Explicit combinations such as Chicken · 1 kg.</span>
                   </button>
                 </div>
-                {!variantCapabilities.enabled && <p className="mt-3 rounded-xl border border-primary-100 bg-white p-3 text-[10px] font-semibold leading-4 text-primary-900">Variant creation is safely disabled while database indexes, transactional SKU claims, and legacy SKU coverage are being verified. Simple products remain available.</p>}
+                {!variantCapabilities.enabled && <p className="mt-3 rounded-xl border border-primary-100 bg-white p-3 text-[10px] font-semibold leading-4 text-primary-900">Product variants require one-time platform activation. Ask the platform administrator to complete supplier variant database readiness, then refresh this page.</p>}
               </div>}
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">

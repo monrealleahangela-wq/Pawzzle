@@ -5,6 +5,8 @@ const SupplierProduct = require('../models/SupplierProduct');
 const SupplierProductVariant = require('../models/SupplierProductVariant');
 const SkuClaim = require('../models/SkuClaim');
 const { claimSku, releaseSku, replaceSkuClaim } = require('../services/skuClaimService');
+const { getSupplierVariantReadiness } = require('../services/supplierVariantReadinessService');
+const { prepareSupplierVariantReadiness } = require('../scripts/prepareSupplierVariantReadiness');
 
 const configuredUri = process.env.MONGODB_TRANSACTION_TEST_URI;
 const safeLocalReplicaUri = uri => {
@@ -81,6 +83,42 @@ integration('supplier variant indexes and transactional SKU claims enforce concu
       entityType: 'supplier_product_variant', entity: first._id, reason: 'test release', session
     }));
   } finally {
+    await mongoose.connection.dropDatabase();
+    await mongoose.disconnect();
+  }
+});
+
+integration('guarded readiness maintenance prepares legacy supplier SKUs without rewriting products', async () => {
+  await mongoose.connect(configuredUri, { autoIndex: false, serverSelectionTimeoutMS: 5000 });
+  const previousFlag = process.env.SUPPLIER_VARIANTS_ENABLED;
+  process.env.SUPPLIER_VARIANTS_ENABLED = 'true';
+  try {
+    await mongoose.connection.dropDatabase();
+    await SupplierProduct.syncIndexes();
+    const supplier = new mongoose.Types.ObjectId();
+    const parent = await SupplierProduct.create({
+      supplier, itemType: 'pet_supply', productMode: 'simple',
+      name: 'Legacy Food', sku: 'LEGACY-FOOD-1', category: 'pet_food',
+      wholesalePrice: 100, availableStock: 5, minimumOrderQuantity: 1
+    });
+
+    const preflight = await prepareSupplierVariantReadiness({ apply: false });
+    assert.equal(preflight.ready, false);
+    assert.equal(preflight.coverage.missingClaims.length, 1);
+    assert.equal(await SkuClaim.countDocuments(), 0);
+
+    const applied = await prepareSupplierVariantReadiness({ apply: true });
+    assert.equal(applied.ready, true);
+    assert.equal(applied.claimsCreated, 1);
+    assert.ok(await SkuClaim.exists({ entityType: 'supplier_product', entity: parent._id, isActive: true }));
+    assert.equal((await getSupplierVariantReadiness()).enabled, true);
+
+    const retry = await prepareSupplierVariantReadiness({ apply: true });
+    assert.equal(retry.ready, true);
+    assert.equal(retry.claimsCreated, 0);
+  } finally {
+    if (previousFlag === undefined) delete process.env.SUPPLIER_VARIANTS_ENABLED;
+    else process.env.SUPPLIER_VARIANTS_ENABLED = previousFlag;
     await mongoose.connection.dropDatabase();
     await mongoose.disconnect();
   }
