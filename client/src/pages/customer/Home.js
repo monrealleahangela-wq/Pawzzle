@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowRight, Brain, Building, CalendarDays, CheckCircle2,
   ChevronRight, Dumbbell, Heart, Package, PawPrint, Scissors, Search,
@@ -71,6 +71,7 @@ const SectionHeading = ({ eyebrow, title, description, to, linkLabel }) => (
 );
 
 const Home = () => {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
   const [data, setData] = useState(EMPTY_DATA);
@@ -92,6 +93,11 @@ const Home = () => {
   }, []);
 
   const handleAddToCart = (product) => {
+    if (product.productMode === 'variant') {
+      navigate(`/products/${product._id}`);
+      toast.info('Choose an available product option first.');
+      return;
+    }
     addToCart({
       itemId: product._id,
       itemType: 'product',

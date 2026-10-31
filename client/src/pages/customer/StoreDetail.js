@@ -154,6 +154,11 @@ const StoreDetail = () => {
   };
 
   const handleAddToCart = (product) => {
+    if (product.productMode === 'variant') {
+      navigate(`/products/${product._id}`);
+      toast.info('Choose an available product option first.');
+      return;
+    }
     if (!isAuthenticated || !user) {
       toast.error('Please log in to add items to cart');
       navigate('/login');
@@ -179,6 +184,11 @@ const StoreDetail = () => {
   };
 
   const handleBuyNow = (product) => {
+    if (product.productMode === 'variant') {
+      navigate(`/products/${product._id}`);
+      toast.info('Choose an available product option first.');
+      return;
+    }
     if (!isAuthenticated || !user) {
       toast.error('Please log in to proceed');
       navigate('/login');

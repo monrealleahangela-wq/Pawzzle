@@ -14,6 +14,8 @@ const {
 } = require('../utils/catalogListing');
 const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
 const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
+const { listCustomerVariants } = require('../services/customerProductVariantService');
+const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode', 'productMode',
@@ -92,6 +94,7 @@ const getAllProducts = async (req, res) => {
     }
 
     const isAdminRoute = req.originalUrl && req.originalUrl.includes('/admin');
+    let customerVariantBrowsingEnabled = false;
 
     if (isAdminRoute) {
       if (isOperationalStaff(req.user) && req.user.store) {
@@ -107,6 +110,9 @@ const getAllProducts = async (req, res) => {
       // super_admin sees everything (no extra filter)
     } else {
       filter.visibility = { $nin: ['draft', 'hidden'] };
+      const variantReadiness = await getCustomerVariantReadiness();
+      customerVariantBrowsingEnabled = variantReadiness.browsingEnabled;
+      if (!variantReadiness.browsingEnabled) filter.productMode = { $ne: 'variant' };
       const ownerIds = await getCustomerVisibleOwnerIds();
       const extra = city ? { 'contactInfo.address.city': { $regex: new RegExp(city, 'i') } } : {};
       const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, extra))).select('_id');
@@ -123,17 +129,26 @@ const getAllProducts = async (req, res) => {
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
     }
     if (inStock === 'true' || inStock === true) {
-      filter.stockQuantity = { $gt: 0 };
+      if (!isAdminRoute && customerVariantBrowsingEnabled) {
+        filter.$and = filter.$and || [];
+        filter.$and.push({ $or: [
+          { productMode: { $ne: 'variant' }, stockQuantity: { $gt: 0 } },
+          { productMode: 'variant' }
+        ] });
+      } else {
+        filter.stockQuantity = { $gt: 0 };
+      }
     }
 
     if (search && search !== '') {
-      filter.$or = [
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: [
         { name: { $regex: search, $options: 'i' } },
         { brand: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { category: { $regex: search, $options: 'i' } },
         { tags: { $regex: search, $options: 'i' } }
-      ];
+      ] });
     }
 
     const skip = (page - 1) * limit;
@@ -146,8 +161,23 @@ const getAllProducts = async (req, res) => {
 
     const total = await Product.countDocuments(filter);
 
+    const customerProducts = isAdminRoute ? products : await Promise.all(products.map(async product => {
+      if (product.productMode !== 'variant') return product;
+      const catalog = await listCustomerVariants(product);
+      const object = product.toObject();
+      const inStockVariants = catalog.variants.filter(variant => variant.inStock);
+      return {
+        ...object,
+        normalizedVariants: catalog.variants,
+        variantCapabilities: { browsingEnabled: catalog.browsingEnabled, purchasingEnabled: catalog.purchasingEnabled },
+        price: inStockVariants.length ? Math.min(...inStockVariants.map(variant => Number(variant.price))) : object.price,
+        stockQuantity: catalog.variants.reduce((sum, variant) => sum + Number(variant.availableQuantity || 0), 0),
+        images: inStockVariants[0]?.images?.length ? inStockVariants[0].images : object.images
+      };
+    }));
+
     res.json({
-      products,
+      products: customerProducts,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -185,7 +215,20 @@ const getProductById = async (req, res) => {
       }
     }
 
-    res.json({ product });
+    if (!req.baseUrl?.includes('/admin') && product.productMode === 'variant') {
+      const catalog = await listCustomerVariants(product);
+      if (!catalog.browsingEnabled) return res.status(404).json({ message: 'Product not found or unavailable' });
+      return res.json({
+        product,
+        normalizedVariants: catalog.variants,
+        variantCapabilities: {
+          browsingEnabled: catalog.browsingEnabled,
+          purchasingEnabled: catalog.purchasingEnabled,
+          reasons: catalog.reasons
+        }
+      });
+    }
+    res.json({ product, normalizedVariants: [], variantCapabilities: { browsingEnabled: false, purchasingEnabled: true } });
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -310,7 +353,12 @@ const updateProduct = async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(updateData, 'sku') && updateData.sku !== product.sku) {
         return res.status(409).json({ message: 'The parent SKU of a variant listing cannot be changed through the standard product editor.' });
       }
-      updateData.visibility = 'draft';
+      if (updateData.visibility === 'published') {
+        const readiness = await getCustomerVariantReadiness();
+        if (!readiness.browsingEnabled) {
+          return res.status(409).json({ code: 'CUSTOMER_VARIANT_BROWSING_NOT_READY', message: 'Variant browsing must pass its readiness checks before this listing can be published.' });
+        }
+      }
       updateData.stockQuantity = 0;
       updateData.stockStatus = 'out_of_stock';
     }

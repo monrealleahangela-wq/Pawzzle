@@ -7,6 +7,7 @@ const Review = require('../models/Review');
 const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const { buildPublicPetFilter } = require('../utils/catalogListing');
+const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 
 // Public site keys are designed to be sent to browsers. The matching secret
 // remains server-only and is never included in this response.
@@ -26,6 +27,12 @@ const getLandingPageData = async (req, res) => {
       { isAvailable: 'true' },
       visibleStores.map(store => store._id)
     );
+    const variantReadiness = await getCustomerVariantReadiness();
+    const publicProductFilter = {
+      store: { $in: visibleStores.map(store => store._id) },
+      visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true },
+      ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
+    };
     const [
       pets,
       products,
@@ -40,7 +47,7 @@ const getLandingPageData = async (req, res) => {
         .select('name breed price images gender age description'),
       
       // 2. Featured Products
-      Product.find({ store: { $in: visibleStores.map(store => store._id) }, visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true } })
+      Product.find(publicProductFilter)
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
         .select('name price images category stockQuantity store')
@@ -67,7 +74,7 @@ const getLandingPageData = async (req, res) => {
         Store.countDocuments(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(visibleOwnerIds))),
         Pet.countDocuments(publicPetFilter),
         User.countDocuments({ role: 'staff', isActive: true, isDeleted: { $ne: true } }),
-        Product.countDocuments({ store: { $in: visibleStores.map(store => store._id) }, visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true } }),
+        Product.countDocuments(publicProductFilter),
         Service.countDocuments({ isActive: true, isDeleted: { $ne: true } })
       ])
     ]);

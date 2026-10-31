@@ -4,18 +4,23 @@ import { cartService } from '../services/apiService';
 
 const CartContext = createContext();
 
+const variantIdOf = item => String(item?.productVariant?._id || item?.productVariant || item?.variantId || '');
+const sameCartItem = (item, candidate) => item.itemId === candidate.itemId
+  && item.itemType === candidate.itemType
+  && variantIdOf(item) === variantIdOf(candidate);
+
 const cartReducer = (state, action) => {
   switch (action.type) {
     case 'ADD_TO_CART':
       const existingItem = state.items.find(item =>
-        item.itemId === action.payload.itemId && item.itemType === action.payload.itemType
+        sameCartItem(item, action.payload)
       );
 
       if (existingItem) {
         return {
           ...state,
           items: state.items.map(item =>
-            item.itemId === action.payload.itemId && item.itemType === action.payload.itemType
+            sameCartItem(item, action.payload)
               ? {
                 ...item,
                 quantity: item.quantity + action.payload.quantity,
@@ -42,14 +47,14 @@ const cartReducer = (state, action) => {
       const itemToBuy = action.payload;
 
       const existingInDeselected = itemsAfterDeselect.find(item =>
-        item.itemId === itemToBuy.itemId && item.itemType === itemToBuy.itemType
+        sameCartItem(item, itemToBuy)
       );
 
       if (existingInDeselected) {
         return {
           ...state,
           items: itemsAfterDeselect.map(item =>
-            item.itemId === itemToBuy.itemId && item.itemType === itemToBuy.itemType
+            sameCartItem(item, itemToBuy)
               ? { ...item, quantity: item.quantity + itemToBuy.quantity, selected: true }
               : item
           )
@@ -70,7 +75,7 @@ const cartReducer = (state, action) => {
       return {
         ...state,
         items: state.items.filter(item =>
-          !(item.itemId === action.payload.itemId && item.itemType === action.payload.itemType)
+          !sameCartItem(item, action.payload)
         )
       };
 
@@ -78,7 +83,7 @@ const cartReducer = (state, action) => {
       return {
         ...state,
         items: state.items.map(item =>
-          item.itemId === action.payload.itemId && item.itemType === action.payload.itemType
+          sameCartItem(item, action.payload)
             ? { ...item, quantity: action.payload.quantity }
             : item
         ).filter(item => item.quantity > 0)
@@ -99,7 +104,7 @@ const cartReducer = (state, action) => {
     case 'TOGGLE_ITEM_SELECTION':
       console.log('TOGGLE_ITEM_SELECTION action:', action.payload);
       const updatedItems = state.items.map(item =>
-        item.itemId === action.payload.itemId && item.itemType === action.payload.itemType
+        sameCartItem(item, action.payload)
           ? { ...item, selected: !item.selected }
           : item
       );
@@ -216,18 +221,18 @@ export const CartProvider = ({ children }) => {
     dispatch({ type: 'ADD_TO_CART', payload: item });
   };
 
-  const removeFromCart = (itemId, itemType) => {
-    dispatch({ type: 'REMOVE_FROM_CART', payload: { itemId, itemType } });
+  const removeFromCart = (itemId, itemType, productVariant) => {
+    dispatch({ type: 'REMOVE_FROM_CART', payload: { itemId, itemType, productVariant } });
   };
 
-  const updateQuantity = (itemId, itemType, quantity) => {
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { itemId, itemType, quantity } });
+  const updateQuantity = (itemId, itemType, quantity, productVariant) => {
+    dispatch({ type: 'UPDATE_QUANTITY', payload: { itemId, itemType, quantity, productVariant } });
   };
 
-  const toggleItemSelection = (itemId, itemType) => {
-    console.log('Toggling item selection:', { itemId, itemType });
+  const toggleItemSelection = (itemId, itemType, productVariant) => {
+    console.log('Toggling item selection:', { itemId, itemType, productVariant });
     console.log('Current items:', state.items);
-    dispatch({ type: 'TOGGLE_ITEM_SELECTION', payload: { itemId, itemType } });
+    dispatch({ type: 'TOGGLE_ITEM_SELECTION', payload: { itemId, itemType, productVariant } });
   };
 
   const selectAllItems = () => {

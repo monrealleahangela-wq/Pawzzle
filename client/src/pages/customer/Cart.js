@@ -18,7 +18,9 @@ const Cart = () => {
   useEffect(() => {
     items
       .filter(item => item.itemType === 'pet' && Number(item.quantity) !== 1)
-      .forEach(item => updateQuantity(item.itemId, item.itemType, 1));
+      .forEach(item => item.productVariant
+        ? updateQuantity(item.itemId, item.itemType, 1, item.productVariant)
+        : updateQuantity(item.itemId, item.itemType, 1));
     checkPetAvailability();
   }, [items]);
 
@@ -57,11 +59,13 @@ const Cart = () => {
     return items.some(item => isPetSold(item));
   };
 
-  const handleQuantityChange = (itemId, itemType, newQuantity) => {
+  const handleQuantityChange = (itemId, itemType, newQuantity, productVariant) => {
     if (newQuantity < 1) {
-      removeFromCart(itemId, itemType);
+      if (productVariant) removeFromCart(itemId, itemType, productVariant);
+      else removeFromCart(itemId, itemType);
     } else {
-      updateQuantity(itemId, itemType, newQuantity);
+      if (productVariant) updateQuantity(itemId, itemType, newQuantity, productVariant);
+      else updateQuantity(itemId, itemType, newQuantity);
     }
   };
 
@@ -223,7 +227,9 @@ const Cart = () => {
                     type="checkbox"
                     aria-label={`Select ${item.name}`}
                     checked={item.selected || false}
-                    onChange={() => toggleItemSelection(item.itemId, item.itemType)}
+                    onChange={() => item.productVariant
+                      ? toggleItemSelection(item.itemId, item.itemType, item.productVariant)
+                      : toggleItemSelection(item.itemId, item.itemType)}
                     className="h-4 w-4 cursor-pointer rounded border-slate-300 text-primary-600 focus:ring-primary-500 sm:h-5 sm:w-5"
                   />
                 </label>
@@ -257,14 +263,14 @@ const Cart = () => {
                       <span className="rounded-lg border border-primary-100 bg-primary-50 px-2.5 py-1.5 text-[9px] font-black uppercase text-primary-700">1 individual pet</span>
                     ) : (
                       <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-0.5 shadow-inner" aria-label={`Quantity for ${item.name}`}>
-                        <button aria-label={`Decrease ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-20"><Minus className="h-3.5 w-3.5" /></button>
+                        <button aria-label={`Decrease ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity - 1, item.productVariant)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-20"><Minus className="h-3.5 w-3.5" /></button>
                         <span className="w-8 text-center text-xs font-black text-slate-900" aria-label={`${item.quantity} items`}>{item.quantity}</span>
-                        <button aria-label={`Increase ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><Plus className="h-3.5 w-3.5" /></button>
+                        <button aria-label={`Increase ${item.name} quantity`} onClick={() => handleQuantityChange(item.itemId, item.itemType, item.quantity + 1, item.productVariant)} className="flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><Plus className="h-3.5 w-3.5" /></button>
                       </div>
                     )}
                     <div className="flex shrink-0 items-center gap-1 sm:gap-2">
                       <span className="text-sm font-black tracking-tight text-slate-900 sm:text-base">{formatPeso(item.price * item.quantity)}</span>
-                      <button aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(item.itemId, item.itemType)} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"><Trash2 className="h-4 w-4" /></button>
+                      <button aria-label={`Remove ${item.name} from cart`} onClick={() => item.productVariant ? removeFromCart(item.itemId, item.itemType, item.productVariant) : removeFromCart(item.itemId, item.itemType)} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                 </div>

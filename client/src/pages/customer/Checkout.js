@@ -113,7 +113,7 @@ const Checkout = () => {
   const [storeAddresses, setStoreAddresses] = useState({});
 
   const quoteItemsSignature = checkoutItems
-    .map(item => `${item.itemType}:${item.itemId}:${item.quantity}`)
+    .map(item => `${item.itemType}:${item.itemId}:${item.productVariant || item.variantId || ''}:${item.quantity}`)
     .sort()
     .join('|');
   const checkoutItemsIdentity = checkoutItems
@@ -124,7 +124,8 @@ const Checkout = () => {
   const quoteItems = React.useMemo(() => checkoutItems.map(item => ({
     itemType: item.itemType,
     itemId: item.itemId,
-    quantity: item.quantity
+    quantity: item.quantity,
+    ...(item.productVariant || item.variantId ? { variantId: item.productVariant || item.variantId } : {})
   })), [checkoutItems]);
 
   const quoteShippingAddress = React.useMemo(
@@ -432,6 +433,11 @@ const Checkout = () => {
       setIsLoading(false);
       return;
     }
+    if (selectedItems.some(item => item.requiresReselection)) {
+      toast.error('Select an available option for every variant product before checkout.');
+      setIsLoading(false);
+      return;
+    }
 
     if (!items || items.length === 0) {
       toast.error('Your cart is empty');
@@ -444,7 +450,8 @@ const Checkout = () => {
         items: selectedItems.map(item => ({
           itemType: item.itemType,
           itemId: item.itemId,
-          quantity: item.quantity
+          quantity: item.quantity,
+          ...(item.productVariant || item.variantId ? { variantId: item.productVariant || item.variantId } : {})
         })),
         deliveryMethod,
         shippingAddress: deliveryMethod === 'delivery' ? shippingAddress : {},

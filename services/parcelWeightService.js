@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const ProductVariant = require('../models/ProductVariant');
 
 const WEIGHT_UNITS = ['g', 'kg'];
 const ASSIGNABLE_WEIGHT_STATUSES = ['complete', 'product_weight_only'];
@@ -23,9 +24,9 @@ const resolveVariant = (product, variantId) => {
   return variants.find(variant => String(variant?._id) === String(variantId)) || null;
 };
 
-const snapshotProductWeight = (product, { variantId, capturedAt = new Date() } = {}) => {
+const snapshotProductWeight = (product, { variantId, normalizedVariant, capturedAt = new Date() } = {}) => {
   if (!product) return null;
-  const variant = resolveVariant(product, variantId);
+  const variant = normalizedVariant || resolveVariant(product, variantId);
   if (variantId && !variant) throw invalid('The selected product variant is unavailable.');
 
   const weightOwner = variant && toMilligrams(variant.weight, variant.weightUnit) ? variant : product;
@@ -45,7 +46,7 @@ const snapshotProductWeight = (product, { variantId, capturedAt = new Date() } =
     packagingWeightMilligrams,
     includesPackaging,
     packagingKnown: includesPackaging || packagingWeightMilligrams > 0,
-    source: weightOwner === variant ? 'variant' : 'product',
+    source: weightOwner === normalizedVariant ? 'normalized_variant' : (weightOwner === variant ? 'variant' : 'product'),
     status: weightOwner?.weightStatus || 'seller_provided',
     capturedAt,
     catalogUpdatedAt: product.updatedAt || capturedAt
@@ -127,11 +128,19 @@ const refreshOrderWeightSnapshots = async (order, { session, parcelCount, calcul
   if (session) query.session(session);
   const products = await query;
   const byId = new Map(products.map(product => [String(product._id), product]));
+  const variantIds = [...new Set((order.items || [])
+    .filter(item => item.itemType === 'product' && item.variantId)
+    .map(item => String(item.variantId)))];
+  const variantQuery = ProductVariant.find({ _id: { $in: variantIds } });
+  if (session) variantQuery.session(session);
+  const variants = variantIds.length ? await variantQuery : [];
+  const variantsById = new Map(variants.map(variant => [String(variant._id), variant]));
 
   for (const item of order.items || []) {
     if (item.itemType !== 'product') continue;
     const snapshot = snapshotProductWeight(byId.get(String(item.itemId)), {
       variantId: item.variantId,
+      normalizedVariant: item.variantId ? variantsById.get(String(item.variantId)) : null,
       capturedAt: calculatedAt
     });
     item.weightSnapshot = snapshot || undefined;

@@ -12,6 +12,19 @@ const cartItemSchema = new mongoose.Schema({
         required: true,
         enum: ['pet', 'product', 'service']
     },
+    productVariant: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ProductVariant',
+        default: undefined
+    },
+    variantSnapshot: {
+        sku: String,
+        attributes: [{ code: String, label: String, valueCode: String, valueLabel: String }],
+        image: String,
+        weight: Number,
+        weightUnit: String
+    },
+    requiresReselection: { type: Boolean, default: false },
     name: {
         type: String,
         required: true
@@ -51,6 +64,8 @@ const cartItemSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+cartItemSchema.index({ itemType: 1, itemId: 1, productVariant: 1 });
 
 const cartSchema = new mongoose.Schema({
     user: {

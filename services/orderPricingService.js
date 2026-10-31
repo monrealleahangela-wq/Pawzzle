@@ -6,6 +6,8 @@ const DeliveryFeeService = require('./deliveryFeeService');
 const { calculateTransactionTax, resolveTransactionTaxConfiguration, roundMoney } = require('../utils/taxCalculator');
 const { getPetAvailabilityIssue } = require('./petAvailabilityService');
 const { assertStoreTransactionEligible } = require('./storeComplianceService');
+const { resolveCustomerProductSelection } = require('./customerProductVariantService');
+const { releaseExpiredReservations } = require('./inventoryReservationService');
 const {
   calculateParcelWeight,
   milligramsToKg,
@@ -99,10 +101,14 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
       const issue = getPetAvailabilityIssue(itemDoc, quantity);
       if (issue) throw new Error(issue);
     } else if (item.itemType === 'product') {
-      itemDoc = await Product.findById(item.itemId);
-      if (!itemDoc || !itemDoc.isActive || itemDoc.stockQuantity < quantity) {
-        throw new Error(`Product "${itemDoc?.name || item.itemId}" is unavailable or has insufficient stock.`);
-      }
+      const selection = await resolveCustomerProductSelection({
+        productId: item.itemId,
+        variantId: item.variantId,
+        quantity,
+        requirePurchasable: true
+      });
+      itemDoc = selection.product;
+      item._resolvedSelection = selection;
     } else {
       throw new Error('Invalid item type.');
     }
@@ -118,12 +124,12 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
     }
     storeId = itemStoreId;
 
-    const price = roundMoney(itemDoc.price);
+    const selection = item._resolvedSelection;
+    const price = roundMoney(selection?.price ?? itemDoc.price);
     subtotal = roundMoney(subtotal + price * quantity);
-    const variant = item.itemType === 'product' && item.variantId ? itemDoc.variants?.id?.(item.variantId) : null;
-    if (item.variantId && !variant) throw new Error(`The selected variant for "${itemDoc.name}" is unavailable.`);
+    const variant = selection?.variant || null;
     const weightSnapshot = item.itemType === 'product'
-      ? snapshotProductWeight(itemDoc, { variantId: item.variantId })
+      ? snapshotProductWeight(itemDoc, { variantId: item.variantId, normalizedVariant: variant })
       : null;
     const unitWeightKg = weightSnapshot ? milligramsToKg(weightSnapshot.productWeightMilligrams) : null;
     processedItems.push({
@@ -132,8 +138,23 @@ const calculateOrderPricing = async ({ items, requestedDeliveryMethod, shippingA
       name: itemDoc.name,
       price,
       quantity,
-      image: itemDoc.images?.[0] || itemDoc.image || null,
-      ...(variant ? { variantId: variant._id, variantName: variant.combination } : {}),
+      image: selection?.image || itemDoc.images?.[0] || itemDoc.image || null,
+      ...(variant ? {
+        variantId: variant._id,
+        variantName: variant.displayName || variant.combinationKey,
+        variantSnapshot: {
+          sku: variant.sku,
+          attributes: variant.attributes,
+          image: variant.images?.[0],
+          retailUnitPrice: price,
+          weight: variant.weight,
+          weightUnit: variant.weightUnit,
+          weightIncludesPackaging: variant.weightIncludesPackaging,
+          packagingWeight: variant.packagingWeight,
+          packagingWeightUnit: variant.packagingWeightUnit,
+          capturedAt: new Date()
+        }
+      } : {}),
       ...(unitWeightKg ? { unitWeightKg, weightSource: 'product_snapshot', weightSnapshot } : {})
     });
   }
@@ -221,6 +242,11 @@ const aggregatePricingBreakdown = orders => ({
 // with its own authoritative tax, voucher, refund, delivery, and inventory data.
 const calculateCheckoutPricing = async ({ items, requestedDeliveryMethod, shippingAddress, voucherCode }) => {
   if (!Array.isArray(items) || items.length === 0) throw new Error('Order must contain at least one item.');
+  // Expiration is lazy and transactional: every quote/order attempt first
+  // releases stale holds so abandoned checkouts cannot block later buyers.
+  if (items.some(item => item.itemType === 'product' && item.variantId)) {
+    await releaseExpiredReservations();
+  }
 
   const groupedItems = new Map();
   for (const item of items) {

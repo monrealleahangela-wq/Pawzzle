@@ -27,6 +27,11 @@ const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refun
 const { hasCurrentPickupAgreement } = require('../utils/petPickupPolicy');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
+const { resolveCustomerProductSelection } = require('../services/customerProductVariantService');
+const {
+  assertOrderReservationsPayable,
+  releaseOrderReservations
+} = require('../services/inventoryReservationService');
 const {
   getPetAvailabilityIssue,
   releasePetReservation,
@@ -42,6 +47,26 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
 }
 
 const sessionHistory = record => record.paymentDetails?.sessionHistory || [];
+
+const validateOrderItemBeforePayment = async (order, item) => {
+  if (item.itemType !== 'product') {
+    const current = await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
+    const reservedForThisOrder = String(current?.reservation?.order || '') === String(order._id);
+    const issue = !reservedForThisOrder ? getPetAvailabilityIssue(current, item.quantity) : null;
+    return Boolean(!current || Number(current.price) !== Number(item.price) || issue);
+  }
+  const selection = await resolveCustomerProductSelection({
+    productId: item.itemId,
+    variantId: item.variantId,
+    quantity: item.quantity,
+    requirePurchasable: false
+  });
+  if (Number(selection.price) !== Number(item.price)) return true;
+  if (item.variantId) return false; // Exact inventory is already held by the active reservation.
+  return !selection.product.isActive
+    || ['draft', 'hidden'].includes(selection.product.visibility)
+    || Number(selection.availableQuantity) < Number(item.quantity);
+};
 const PROCUREMENT_CHECKOUT_BLOCKED_STATUSES = [
   'cancelled', 'returned', 'issue_reported', 'pending_supplier_resolution',
   'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
@@ -337,24 +362,16 @@ const createCheckoutSession = async (req, res) => {
     }
     assertStoreTransactionEligible(order.store, { requireTax: true });
     await revalidatePendingOrderDelivery(order);
+    await assertOrderReservationsPayable(order._id, {
+      requireReservation: order.items.some(item => item.itemType === 'product' && item.variantId)
+    });
     if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
         && !order.refundPolicyAcknowledgment?.acknowledged) {
       return res.status(409).json({ message: 'Acknowledge the store No Refund policy before starting PayMongo.' });
     }
 
     for (const item of order.items) {
-      const current = item.itemType === 'product'
-        ? await Product.findById(item.itemId).select('price stockQuantity isActive visibility')
-        : await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
-      const reservedForThisOrder = item.itemType === 'pet'
-        && String(current?.reservation?.order || '') === String(order._id);
-      const petIssue = item.itemType === 'pet' && !reservedForThisOrder
-        ? getPetAvailabilityIssue(current, item.quantity)
-        : null;
-      const unavailable = !current
-        || Number(current.price) !== Number(item.price)
-        || (item.itemType === 'product' && (!current.isActive || ['draft', 'hidden'].includes(current.visibility) || current.stockQuantity < item.quantity))
-        || Boolean(petIssue);
+      const unavailable = await validateOrderItemBeforePayment(order, item);
       if (unavailable) return res.status(409).json({ message: 'An item price or availability changed. Please recreate checkout.' });
     }
 
@@ -445,24 +462,16 @@ const createOrderBatchCheckoutSession = async (req, res) => {
         if (order.status === 'cancelled') throw Object.assign(new Error('A cancelled Store order cannot be paid.'), { statusCode: 409 });
         assertStoreTransactionEligible(order.store, { requireTax: true });
         await revalidatePendingOrderDelivery(order);
+        await assertOrderReservationsPayable(order._id, {
+          requireReservation: order.items.some(item => item.itemType === 'product' && item.variantId)
+        });
         if (requiresAcknowledgment(order.refundPolicySnapshot || order.store?.refundPolicy)
             && !order.refundPolicyAcknowledgment?.acknowledged) {
           throw Object.assign(new Error('Acknowledge every Store\'s No Refund policy before starting PayMongo.'), { statusCode: 409 });
         }
 
         for (const item of order.items) {
-          const current = item.itemType === 'product'
-            ? await Product.findById(item.itemId).select('price stockQuantity isActive visibility')
-            : await Pet.findById(item.itemId).select('price isAvailable status quantity reservation isDeleted name');
-          const reservedForThisOrder = item.itemType === 'pet'
-            && String(current?.reservation?.order || '') === String(order._id);
-          const petIssue = item.itemType === 'pet' && !reservedForThisOrder
-            ? getPetAvailabilityIssue(current, item.quantity)
-            : null;
-          const unavailable = !current
-            || Number(current.price) !== Number(item.price)
-            || (item.itemType === 'product' && (!current.isActive || ['draft', 'hidden'].includes(current.visibility) || current.stockQuantity < item.quantity))
-            || Boolean(petIssue);
+          const unavailable = await validateOrderItemBeforePayment(order, item);
           if (unavailable) throw Object.assign(new Error('An item price or availability changed. Please recreate checkout.'), { statusCode: 409 });
         }
 
@@ -1000,6 +1009,13 @@ const cancelPayment = async (req, res) => {
       await target.record.save();
     }
     await releaseTransactionPetReservations(target.type, cancelledRecord);
+    if (target.type === 'order') {
+      await releaseOrderReservations({ orderId: cancelledRecord._id, reason: 'PayMongo checkout cancelled' });
+    } else if (target.type === 'order_batch') {
+      for (const orderId of cancelledRecord.orders || []) {
+        await releaseOrderReservations({ orderId, reason: 'Combined PayMongo checkout cancelled' });
+      }
+    }
     const status = target.type === 'adoption' ? cancelledRecord.paymentDetails.paymentStatus : cancelledRecord.paymentStatus;
     emitPaymentDashboardUpdate(req, target.type, cancelledRecord, status);
     res.json({ status, sessionStatus: 'expired' });

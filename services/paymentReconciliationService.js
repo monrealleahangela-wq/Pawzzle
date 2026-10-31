@@ -11,6 +11,7 @@ const RevenueService = require('./revenueService');
 const { createNotification } = require('../controllers/notificationController');
 const { internalCreateDelivery } = require('../controllers/deliveryController');
 const { removePurchasedItemsFromCart } = require('./checkoutCartService');
+const { consumeOrderReservations } = require('./inventoryReservationService');
 const {
   releasePetReservation,
   reservePetForAdoption,
@@ -288,13 +289,19 @@ const fulfillOrderOnce = async (orderId) => {
 
   const claimedPetIds = [];
   try {
+    const reservationResult = await consumeOrderReservations({
+      orderId: claimed._id,
+      paymentId: claimed.paymentDetails?.paymentId
+    });
     for (const item of claimed.items.filter(item => item.itemType === 'pet')) {
       const pet = await reservePetForOrder(item.itemId, claimed._id);
       if (!pet) throw new Error(`Pet "${item.name}" is already reserved or unavailable.`);
       claimedPetIds.push(item.itemId);
     }
     for (const item of claimed.items.filter(item => item.itemType === 'product')) {
-      await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, claimed.store);
+      if (!item.variantId || !reservationResult.handled) {
+        await StockSyncService.reduceStockOnOrder(item.itemId, item.quantity, claimed.store);
+      }
     }
 
     await createNotification({
@@ -326,7 +333,8 @@ const fulfillOrderOnce = async (orderId) => {
     await Order.findByIdAndUpdate(claimed._id, {
       $set: {
         'paymentDetails.fulfillmentStatus': 'failed',
-        'paymentDetails.failureReason': `Paid order fulfillment requires retry: ${error.message}`
+        'paymentDetails.failureReason': `Paid order fulfillment requires review: ${error.message}`,
+        ...(error.code === 'PAYMENT_AFTER_RESERVATION_EXPIRY' ? { status: 'awaiting_confirmation' } : {})
       }
     });
     throw error;
@@ -374,8 +382,8 @@ const finalizeOrder = async (order, payment, { skipCartCleanup = false } = {}) =
   });
 
   if (cancelled) return Order.findById(order._id);
-  await RevenueService.recordPayment('order', order._id);
   const fulfilled = await fulfillOrderOnce(order._id);
+  await RevenueService.recordPayment('order', order._id);
   if (!skipCartCleanup) {
     await removePurchasedItemsFromCart({
       customerId: order.customer?._id || order.customer,

@@ -183,6 +183,11 @@ const Products = () => {
   };
 
   const handleAddToCart = (product) => {
+    if (product.productMode === 'variant') {
+      navigate(`/products/${product._id}`);
+      toast.info('Choose an available product option first.');
+      return;
+    }
     // Check if authenticated using context flag
     if (!isAuthenticated || !user) {
       setShowLoginModal(true);
@@ -210,6 +215,11 @@ const Products = () => {
   };
 
   const handleBuyNow = (product) => {
+    if (product.productMode === 'variant') {
+      navigate(`/products/${product._id}`);
+      toast.info('Choose an available product option first.');
+      return;
+    }
     // Check if authenticated using context flag
     if (!isAuthenticated || !user) {
       setShowLoginModal(true);

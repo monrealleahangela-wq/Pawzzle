@@ -284,9 +284,9 @@ export const cartService = {
   getCart: () => api.get('/cart'),
   syncCart: (items) => api.post('/cart/sync', { items }),
   addToCart: (itemData) => api.post('/cart/add', itemData),
-  updateQuantity: (itemId, itemType, quantity) => api.put('/cart/quantity', { itemId, itemType, quantity }),
-  toggleSelection: (itemId, itemType) => api.put('/cart/toggle', { itemId, itemType }),
-  removeFromCart: (itemId, itemType) => api.delete(`/cart/remove/${itemType}/${itemId}`),
+  updateQuantity: (itemId, itemType, quantity, productVariant) => api.put('/cart/quantity', { itemId, itemType, quantity, productVariant }),
+  toggleSelection: (itemId, itemType, productVariant) => api.put('/cart/toggle', { itemId, itemType, productVariant }),
+  removeFromCart: (itemId, itemType, productVariant) => api.delete(`/cart/remove/${itemType}/${itemId}`, { params: { productVariant } }),
   clearCart: () => api.delete('/cart/clear')
 };
 

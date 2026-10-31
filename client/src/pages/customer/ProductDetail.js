@@ -22,6 +22,9 @@ const ProductDetail = () => {
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [mainImage, setMainImage] = useState(null);
+  const [normalizedVariants, setNormalizedVariants] = useState([]);
+  const [variantCapabilities, setVariantCapabilities] = useState({ browsingEnabled: false, purchasingEnabled: true });
+  const [selectedVariantId, setSelectedVariantId] = useState('');
   const { addToCart, buyNow } = useCart();
   const { isAuthenticated, user } = useAuth();
 
@@ -63,6 +66,10 @@ const ProductDetail = () => {
     try {
       const response = await productService.getProductById(id);
       setProduct(response.data.product);
+      const variants = response.data.normalizedVariants || [];
+      setNormalizedVariants(variants);
+      setVariantCapabilities(response.data.variantCapabilities || { browsingEnabled: false, purchasingEnabled: true });
+      setSelectedVariantId('');
       setMainImage(response.data.product?.images?.[0] || null);
     } catch (error) {
       toast.error('We could not load this product. Please try again.');
@@ -78,14 +85,23 @@ const ProductDetail = () => {
       return;
     }
 
+    if (product.productMode === 'variant' && !selectedVariant) {
+      toast.info('Select a product option before adding it to your cart.');
+      return;
+    }
+    if (!canPurchaseSelection) {
+      toast.error('This product option is not available for purchase.');
+      return;
+    }
     const userId = user._id || user.id;
 
     addToCart({
       itemType: 'product',
       itemId: product._id,
-      name: product.name,
-      price: product.price,
-      image: product.images?.[0] || null,
+      name: selectedVariant ? `${product.name} — ${variantLabel(selectedVariant)}` : product.name,
+      price: selectedVariant?.price ?? product.price,
+      image: selectedVariant?.images?.[0] || product.images?.[0] || null,
+      ...(selectedVariant ? { productVariant: selectedVariant._id, variantSnapshot: { sku: selectedVariant.sku, attributes: selectedVariant.attributes } } : {}),
       quantity,
       storeName: product.store?.name,
       storeId: product.store?._id,
@@ -102,15 +118,24 @@ const ProductDetail = () => {
       return;
     }
 
+    if (product.productMode === 'variant' && !selectedVariant) {
+      toast.info('Select a product option before continuing.');
+      return;
+    }
+    if (!canPurchaseSelection) {
+      toast.error('This product option is not available for purchase.');
+      return;
+    }
     const userId = user._id || user.id;
 
     // Prepare item
     const item = {
       itemType: 'product',
       itemId: product._id,
-      name: product.name,
-      price: product.price,
-      image: product.images?.[0] || null,
+      name: selectedVariant ? `${product.name} — ${variantLabel(selectedVariant)}` : product.name,
+      price: selectedVariant?.price ?? product.price,
+      image: selectedVariant?.images?.[0] || product.images?.[0] || null,
+      ...(selectedVariant ? { productVariant: selectedVariant._id, variantSnapshot: { sku: selectedVariant.sku, attributes: selectedVariant.attributes } } : {}),
       quantity,
       storeName: product.store?.name,
       storeId: product.store?._id,
@@ -150,6 +175,16 @@ const ProductDetail = () => {
   const description = product.description || 'A great product for your pet.';
   const hasLongDescription = description.length > 260;
   const isSellerAccount = user?.role === 'seller' || user?.role === 'store_owner';
+  const variantLabel = variant => (variant?.attributes || []).map(attribute => `${attribute.label}: ${attribute.valueLabel}`).join(' · ');
+  const selectedVariant = normalizedVariants.find(variant => String(variant._id) === String(selectedVariantId));
+  const displayedPrice = selectedVariant?.price ?? product.price;
+  const displayedStock = product.productMode === 'variant' ? Number(selectedVariant?.availableQuantity || 0) : Number(product.stockQuantity || 0);
+  const canPurchaseSelection = product.productMode !== 'variant'
+    ? displayedStock > 0
+    : Boolean(selectedVariant && selectedVariant.inStock && variantCapabilities.purchasingEnabled);
+  const purchaseLabel = product.productMode === 'variant' && !variantCapabilities.purchasingEnabled
+    ? 'Purchasing unavailable'
+    : (product.productMode === 'variant' && !selectedVariant ? 'Select an option' : (displayedStock > 0 ? null : 'Out of Stock'));
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-1 pb-24 sm:space-y-5 sm:px-0 lg:pb-12 animate-fade-in">
@@ -193,7 +228,7 @@ const ProductDetail = () => {
                 )}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xl font-black tracking-tighter text-slate-900 sm:text-2xl">{formatPeso(product.price)}</span>
+              <span className="text-xl font-black tracking-tighter text-slate-900 sm:text-2xl">{formatPeso(displayedPrice)}</span>
               {product.brand && (
                 <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-black uppercase tracking-widest">{product.brand}</span>
               )}
@@ -208,6 +243,42 @@ const ProductDetail = () => {
               </div>
             )}
           </div>
+
+          {product.productMode === 'variant' && variantCapabilities.browsingEnabled && (
+            <section className="rounded-2xl border border-primary-100 bg-primary-50/40 p-3 sm:p-4" aria-label="Product options">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-900">Choose an option</h2>
+                  <p className="mt-0.5 text-[10px] font-semibold text-slate-500">Only combinations offered by this store are shown.</p>
+                </div>
+                {selectedVariant && <span className="text-[10px] font-black text-primary-700">{selectedVariant.availableQuantity} available</span>}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {normalizedVariants.map(variant => (
+                  <button
+                    key={variant._id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedVariantId(variant._id);
+                      setQuantity(1);
+                      setMainImage(variant.images?.[0] || product.images?.[0] || null);
+                    }}
+                    disabled={!variant.inStock}
+                    aria-pressed={String(selectedVariantId) === String(variant._id)}
+                    className={`rounded-xl border px-3 py-2.5 text-left transition ${String(selectedVariantId) === String(variant._id)
+                      ? 'border-primary-600 bg-white shadow-sm ring-2 ring-primary-100'
+                      : 'border-slate-200 bg-white hover:border-primary-300'} ${!variant.inStock ? 'cursor-not-allowed opacity-45' : ''}`}
+                  >
+                    <span className="block text-[11px] font-black text-slate-900">{variantLabel(variant)}</span>
+                    <span className="mt-1 block text-[10px] font-bold text-slate-500">{formatPeso(variant.price)} · {variant.inStock ? `${variant.availableQuantity} in stock` : 'Out of stock'}</span>
+                  </button>
+                ))}
+              </div>
+              {!variantCapabilities.purchasingEnabled && (
+                <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] font-bold text-slate-600">Options are visible for review, but checkout remains disabled until inventory and payment safety checks are verified.</p>
+              )}
+            </section>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             {[
@@ -260,30 +331,30 @@ const ProductDetail = () => {
                   <div className="flex items-center gap-4 bg-white/10 rounded-xl p-1 px-4 border border-white/10">
                     <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-slate-400 hover:text-white" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
                     <span className="w-8 text-center text-white font-black">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="text-slate-400 hover:text-white" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
+                    <button onClick={() => setQuantity(Math.min(displayedStock, quantity + 1))} disabled={!canPurchaseSelection || quantity >= displayedStock} className="text-slate-400 hover:text-white disabled:opacity-30" aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
                   </div>
                 </div>
 
                 <div className="relative z-10 grid grid-cols-2 gap-3">
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stockQuantity === 0}
-                    className={`w-full rounded-2xl px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${product.stockQuantity > 0
+                    disabled={!canPurchaseSelection}
+                    className={`w-full rounded-2xl px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${canPurchaseSelection
                       ? 'bg-white/10 text-white border border-white/10 hover:bg-white/20 active:scale-95'
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                   >
-                    {product.stockQuantity === 0 ? 'Out of Stock' : `Add to Cart`}
+                    {purchaseLabel || 'Add to Cart'}
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    disabled={product.stockQuantity === 0}
-                    className={`w-full rounded-2xl px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${product.stockQuantity > 0
+                    disabled={!canPurchaseSelection}
+                    className={`w-full rounded-2xl px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${canPurchaseSelection
                       ? 'bg-primary-600 text-white shadow-xl shadow-primary-500/20 active:scale-95'
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                   >
-                    {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [${formatPeso(product.price * quantity)}]`}
+                    {purchaseLabel || `Buy Now [${formatPeso(displayedPrice * quantity)}]`}
                   </button>
                 </div>
               </>
@@ -348,22 +419,22 @@ const ProductDetail = () => {
             <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-1 border border-slate-100 shrink-0">
               <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 h-8 flex items-center justify-center text-slate-400" aria-label="Decrease quantity"><Minus className="h-3 w-3" /></button>
               <span className="w-6 text-center text-[11px] font-black text-slate-900">{quantity}</span>
-              <button onClick={() => setQuantity(quantity + 1)} className="w-8 h-8 flex items-center justify-center text-slate-400" aria-label="Increase quantity"><Plus className="h-3 w-3" /></button>
+              <button onClick={() => setQuantity(Math.min(displayedStock, quantity + 1))} disabled={!canPurchaseSelection || quantity >= displayedStock} className="w-8 h-8 flex items-center justify-center text-slate-400 disabled:opacity-30" aria-label="Increase quantity"><Plus className="h-3 w-3" /></button>
             </div>
             <button
               onClick={handleAddToCart}
-              disabled={product.stockQuantity === 0}
-              aria-label={product.stockQuantity === 0 ? 'Out of stock' : 'Add to Cart'}
-              className={`w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0 ${product.stockQuantity === 0 ? 'opacity-50' : ''}`}
+              disabled={!canPurchaseSelection}
+              aria-label={purchaseLabel || 'Add to Cart'}
+              className={`w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 shrink-0 ${!canPurchaseSelection ? 'opacity-50' : ''}`}
             >
               <ShoppingBag className="h-5 w-5" />
             </button>
             <button
               onClick={handleBuyNow}
-              disabled={product.stockQuantity === 0}
-              className={`flex-1 btn btn-primary py-3.5 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-200 text-center ${product.stockQuantity === 0 ? 'opacity-50 grayscale' : ''}`}
+              disabled={!canPurchaseSelection}
+              className={`flex-1 btn btn-primary py-3.5 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary-200 text-center ${!canPurchaseSelection ? 'opacity-50 grayscale' : ''}`}
             >
-              {product.stockQuantity === 0 ? 'Out of Stock' : `Buy Now [${formatPeso(product.price * quantity)}]`}
+              {purchaseLabel || `Buy Now [${formatPeso(displayedPrice * quantity)}]`}
             </button>
           </div>
         </div>

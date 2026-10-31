@@ -27,8 +27,20 @@ const orderItemSchema = new mongoose.Schema({
   image: {
     type: String
   },
-  variantId: mongoose.Schema.Types.ObjectId,
+  variantId: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant' },
   variantName: String,
+  variantSnapshot: {
+    sku: String,
+    attributes: [{ code: String, label: String, valueCode: String, valueLabel: String }],
+    image: String,
+    retailUnitPrice: Number,
+    weight: Number,
+    weightUnit: String,
+    weightIncludesPackaging: Boolean,
+    packagingWeight: Number,
+    packagingWeightUnit: String,
+    capturedAt: Date
+  },
   unitWeightKg: {
     type: Number,
     min: 0.001
@@ -42,7 +54,7 @@ const orderItemSchema = new mongoose.Schema({
     packagingWeightMilligrams: { type: Number, min: 0 },
     includesPackaging: Boolean,
     packagingKnown: Boolean,
-    source: { type: String, enum: ['product', 'variant', 'legacy_product_snapshot'] },
+    source: { type: String, enum: ['product', 'variant', 'normalized_variant', 'legacy_product_snapshot'] },
     status: { type: String, enum: ['seller_provided', 'verified'] },
     capturedAt: Date,
     catalogUpdatedAt: Date

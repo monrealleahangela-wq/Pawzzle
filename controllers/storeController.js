@@ -3,6 +3,7 @@ const Store = require('../models/Store');
 const StoreApplication = require('../models/StoreApplication');
 const Pet = require('../models/Pet');
 const Product = require('../models/Product');
+const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
@@ -98,6 +99,7 @@ const getStoreById = async (req, res) => {
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
     }
+    const variantReadiness = await getCustomerVariantReadiness();
 
     // Get store's pets and products
     const [pets, products] = await Promise.all([
@@ -112,7 +114,8 @@ const getStoreById = async (req, res) => {
         ],
         visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
-        isDeleted: { $ne: true }
+        isDeleted: { $ne: true },
+        ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
       }).limit(6)
     ]);
 
@@ -134,6 +137,7 @@ const getStoreDetails = async (req, res) => {
     if (!store) {
       return res.status(404).json({ message: 'Store not found' });
     }
+    const variantReadiness = await getCustomerVariantReadiness();
 
     // Get store's products, services, pets, follower count, and staff
     const [products, services, pets, followerCount, staff] = await Promise.all([
@@ -144,8 +148,9 @@ const getStoreDetails = async (req, res) => {
         ],
         visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
-        isDeleted: { $ne: true }
-      }).select('name description price images stockQuantity category'),
+        isDeleted: { $ne: true },
+        ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
+      }).select('name description price images stockQuantity category productMode'),
       Service.find({
         $or: [
           { store: store._id },

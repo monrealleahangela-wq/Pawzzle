@@ -15,6 +15,8 @@ const { internalCreateDelivery } = require('./deliveryController');
 const { cancelOrderDelivery, completePickupOrder } = require('../services/deliveryAssignmentService');
 const { emitAuthorizedDeliveryEvent, revokeDeliveryRoomForUser } = require('../services/socketAuthorization');
 const { calculateCheckoutPricing } = require('../services/orderPricingService');
+const InventoryReservation = require('../models/InventoryReservation');
+const { releaseOrderReservations, reserveOrderItems } = require('../services/inventoryReservationService');
 const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
 const { getAuthorizedStoreIds, canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { normalizeRefundPolicy, snapshotRefundPolicy, requiresAcknowledgment } = require('../utils/refundPolicy');
@@ -488,6 +490,7 @@ const createOrder = async (req, res) => {
               acknowledgedBy: req.body.refundPolicyAcknowledged ? req.user._id : undefined
             }
           }], { session });
+          await reserveOrderItems({ order, customerId: req.user._id, session });
           transactionOrders.push(order);
         }
 
@@ -502,6 +505,11 @@ const createOrder = async (req, res) => {
           }], { session });
           await Order.updateMany(
             { _id: { $in: transactionOrders.map(order => order._id) } },
+            { $set: { checkoutBatch: transactionBatch._id } },
+            { session }
+          );
+          await InventoryReservation.updateMany(
+            { order: { $in: transactionOrders.map(order => order._id) }, status: 'active' },
             { $set: { checkoutBatch: transactionBatch._id } },
             { session }
           );
@@ -563,6 +571,14 @@ const createOrder = async (req, res) => {
     if (error.code === 'CHECKOUT_IDEMPOTENCY_CONFLICT') {
       return res.status(409).json({ code: error.code, message: error.message });
     }
+    const variantErrorCodes = new Set([
+      'CUSTOMER_VARIANT_PURCHASING_NOT_READY', 'PRODUCT_UNAVAILABLE',
+      'VARIANT_SELECTION_REQUIRED', 'VARIANT_MISMATCH', 'VARIANT_NOT_ALLOWED',
+      'INSUFFICIENT_VARIANT_STOCK', 'VARIANT_PRICE_CHANGED', 'RESERVATION_STOCK_CONFLICT'
+    ]);
+    if (variantErrorCodes.has(error.code)) {
+      return res.status(error.statusCode || 409).json({ code: error.code, message: error.message });
+    }
     const deliveryErrorCodes = new Set([
       'INVALID_DELIVERY_ADDRESS',
       'CUSTOMER_LOCATION_REQUIRED',
@@ -623,7 +639,10 @@ const quoteOrder = async (req, res) => {
       'DELIVERY_PRICING_UNAVAILABLE', 'DELIVERY_SERVICE_UNAVAILABLE',
       'CHECKOUT_STORE_CHANGED', 'STORE_UNAVAILABLE',
       'STORE_COMPLIANCE_RESTRICTED', 'STORE_COMPLIANCE_DOCUMENT_EXPIRED',
-      'STORE_TAX_VERIFICATION_REQUIRED'
+      'STORE_TAX_VERIFICATION_REQUIRED',
+      'CUSTOMER_VARIANT_PURCHASING_NOT_READY', 'PRODUCT_UNAVAILABLE',
+      'VARIANT_SELECTION_REQUIRED', 'VARIANT_MISMATCH', 'VARIANT_NOT_ALLOWED',
+      'INSUFFICIENT_VARIANT_STOCK'
     ]);
     if (safeCodes.has(error.code)) {
       return res.status(error.statusCode || 400).json({ code: error.code, message: error.message });
@@ -762,6 +781,7 @@ const cancelOrder = async (req, res) => {
     if (!cancellation.changed) return res.json({ message: 'Order is already cancelled' });
     const cancelledOrder = cancellation.order;
     const cancelledDelivery = cancellation.delivery;
+    await releaseOrderReservations({ orderId: cancelledOrder._id, reason: 'Order cancelled' });
 
     const secondaryEffects = [];
     if (cancelledDelivery) {

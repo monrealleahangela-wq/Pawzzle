@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Cart = require('../models/Cart');
 
-const itemKey = item => `${item.itemType}:${String(item.itemId?._id || item.itemId)}`;
+const itemKey = item => `${item.itemType}:${String(item.itemId?._id || item.itemId)}:${String(item.productVariant?._id || item.productVariant || item.variantId || '')}`;
 
 const purchasedQuantities = orders => {
   const quantities = new Map();
