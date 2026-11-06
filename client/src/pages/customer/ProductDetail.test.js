@@ -83,3 +83,31 @@ test('variant product requires an exact available option and adds that identity 
     itemId: 'product-variant', productVariant: 'variant-beef', price: 145
   }));
 });
+
+test('shows an FDA approval badge only from the server verification response', async () => {
+  productService.getProductById.mockResolvedValue({
+    data: {
+      product: {
+        _id: 'approved-food', name: 'Reviewed Cat Food', category: 'Pet Food',
+        description: 'Complete nutrition.', price: 320, images: [], suitableFor: ['cat'], stockQuantity: 5
+      },
+      regulatoryVerification: {
+        authority: 'FDA', status: 'approved', label: 'FDA Approved',
+        detail: 'FDA registration evidence verified by Pawzzle'
+      }
+    }
+  });
+  socialService.checkFavoriteStatus.mockResolvedValue({ data: { isFavorite: false } });
+
+  render(
+    <MemoryRouter initialEntries={['/products/approved-food']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <Routes><Route path="/products/:id" element={<ProductDetail />} /></Routes>
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByText('FDA Approved')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveAttribute(
+    'aria-label',
+    'FDA approved; FDA registration evidence verified by Pawzzle'
+  );
+});

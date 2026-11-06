@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { productService, getImageUrl } from '../../services/apiService';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Package, ArrowLeft, Plus, Minus, MapPin, Store, ShoppingBag, Star, Heart } from 'lucide-react';
+import { Package, ArrowLeft, Plus, Minus, MapPin, Store, ShoppingBag, Star, Heart, ShieldCheck } from 'lucide-react';
 import LoginModal from '../../components/LoginModal';
 import ReviewSection from '../../components/ReviewSection';
 import { socialService } from '../../services/apiService';
@@ -25,6 +25,7 @@ const ProductDetail = () => {
   const [normalizedVariants, setNormalizedVariants] = useState([]);
   const [variantCapabilities, setVariantCapabilities] = useState({ browsingEnabled: false, purchasingEnabled: true });
   const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [regulatoryVerification, setRegulatoryVerification] = useState(null);
   const { addToCart, buyNow } = useCart();
   const { isAuthenticated, user } = useAuth();
 
@@ -69,6 +70,7 @@ const ProductDetail = () => {
       const variants = response.data.normalizedVariants || [];
       setNormalizedVariants(variants);
       setVariantCapabilities(response.data.variantCapabilities || { browsingEnabled: false, purchasingEnabled: true });
+      setRegulatoryVerification(response.data.regulatoryVerification || null);
       setSelectedVariantId('');
       setMainImage(response.data.product?.images?.[0] || null);
     } catch (error) {
@@ -233,6 +235,19 @@ const ProductDetail = () => {
                 <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-black uppercase tracking-widest">{product.brand}</span>
               )}
             </div>
+
+            {regulatoryVerification?.authority === 'FDA' && regulatoryVerification?.status === 'approved' && (
+              <div
+                className="mt-2 flex w-fit max-w-full items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-primary-800"
+                role="status"
+                aria-label="FDA approved; FDA registration evidence verified by Pawzzle"
+                title="FDA registration evidence was reviewed by Pawzzle. Pawzzle does not issue FDA approval."
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="text-[10px] font-black uppercase tracking-widest">FDA Approved</span>
+                <span className="hidden border-l border-primary-200 pl-2 text-[9px] font-bold normal-case text-primary-700 sm:inline">Registration evidence verified</span>
+              </div>
+            )}
 
             {product.ratings && product.ratings.count > 0 && (
               <div className="mt-2 flex w-fit items-center gap-1.5 rounded-xl border border-secondary-100 bg-secondary-50 px-3 py-1.5">

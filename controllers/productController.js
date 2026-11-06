@@ -16,6 +16,7 @@ const { buildProductCategoryFilter, requireProductCategory } = require('../utils
 const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 const { listCustomerVariants } = require('../services/customerProductVariantService');
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
+const { getPublicProductRegulatoryVerification } = require('../services/productRegulatoryVerificationService');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode', 'productMode',
@@ -215,11 +216,16 @@ const getProductById = async (req, res) => {
       }
     }
 
+    const regulatoryVerification = !req.baseUrl?.includes('/admin')
+      ? await getPublicProductRegulatoryVerification(product)
+      : null;
+
     if (!req.baseUrl?.includes('/admin') && product.productMode === 'variant') {
       const catalog = await listCustomerVariants(product);
       if (!catalog.browsingEnabled) return res.status(404).json({ message: 'Product not found or unavailable' });
       return res.json({
         product,
+        regulatoryVerification,
         normalizedVariants: catalog.variants,
         variantCapabilities: {
           browsingEnabled: catalog.browsingEnabled,
@@ -228,7 +234,7 @@ const getProductById = async (req, res) => {
         }
       });
     }
-    res.json({ product, normalizedVariants: [], variantCapabilities: { browsingEnabled: false, purchasingEnabled: true } });
+    res.json({ product, regulatoryVerification, normalizedVariants: [], variantCapabilities: { browsingEnabled: false, purchasingEnabled: true } });
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({ message: 'Server error' });
