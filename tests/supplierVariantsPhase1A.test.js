@@ -171,3 +171,14 @@ test('legacy simple supplier products still default to simple mode', () => {
   });
   assert.equal(product.productMode, 'simple');
 });
+
+test('supplier variant activation is guarded, explicit, and does not touch inventory', () => {
+  const script = read('scripts/prepareSupplierVariantReadiness.js');
+  const packageJson = JSON.parse(read('package.json'));
+  assert.equal(packageJson.scripts['prepare:supplier-variants'], 'node scripts/prepareSupplierVariantReadiness.js');
+  assert.match(script, /SUPPLIER_VARIANT_MIGRATION_URI/);
+  assert.match(script, /SUPPLIER_VARIANT_MIGRATION_EXPECTED_DB/);
+  assert.match(script, /SUPPLIER_VARIANT_MIGRATION_APPROVED/);
+  assert.match(script, /process\.argv\.includes\('--apply'\)/);
+  assert.doesNotMatch(script, /Inventory|PayMongo|PurchaseOrder|ProcurementCart|checkout/i);
+});

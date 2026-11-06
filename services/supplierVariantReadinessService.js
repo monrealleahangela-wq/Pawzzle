@@ -67,7 +67,14 @@ const buildCoverageReport = async () => {
     }
     const claim = activeKeys.get(key);
     if (!claim || claim.entityType !== entityType || String(claim.entity) !== String(entity)) {
-      missingClaims.push({ key, entityType, entity: String(entity) });
+      missingClaims.push({
+        key,
+        namespaceType: 'supplier',
+        owner: String(owner),
+        normalizedSku,
+        entityType,
+        entity: String(entity)
+      });
     }
   };
 
