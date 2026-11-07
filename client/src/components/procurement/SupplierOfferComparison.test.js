@@ -57,6 +57,16 @@ test('restock mode explains that stock changes only after receiving inspection',
   expect(screen.getByText(/quantity will remain unchanged until delivery passes receiving inspection/i)).toBeInTheDocument();
 });
 
+test('keeps the compact close control visible and functional', async () => {
+  purchaseOrderService.compareOffers.mockResolvedValue(response({ ...candidate, matchType: 'exact' }));
+  renderComparison();
+
+  const closeButton = screen.getByRole('button', { name: 'Close supplier comparison' });
+  expect(closeButton).toHaveClass('h-9', 'w-9', 'shrink-0');
+  fireEvent.click(closeButton);
+  expect(props.onClose).toHaveBeenCalledTimes(1);
+});
+
 test('selects a reviewed service-supply offer without changing an existing Store product', async () => {
   const supply = { _id: 'supply-1', name: 'Shampoo', sku: 'SHAMPOO' };
   purchaseOrderService.getProcurementStoreProducts.mockImplementation(async params => ({

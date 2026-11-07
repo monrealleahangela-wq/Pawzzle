@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { purchaseOrderService } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import ModalViewport from '../ui/ModalViewport';
 
 const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartUpdated, onOfferAdded, onClose, restockMode = false }) => {
   const [targetType, setTargetType] = useState('product');
@@ -91,15 +93,18 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-3" role="presentation">
-      <section role="dialog" aria-modal="true" aria-labelledby="supplier-comparison-title" className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b p-4">
-          <div><h2 id="supplier-comparison-title" className="text-lg font-bold">{restockMode ? 'Order new stock' : 'Compare supplier offers'}</h2><p className="text-sm text-slate-600">{restockMode ? 'Choose an approved supplier offer. The quantity will remain unchanged until delivery passes receiving inspection.' : 'Exact and equivalent labels require a Store review. Candidates are not automatically interchangeable.'}</p></div>
-          <button type="button" onClick={onClose} aria-label="Close supplier comparison" className="rounded border px-3 py-1">Close</button>
+    <ModalViewport onClose={onClose} className="z-[1300] items-end p-0 sm:items-center sm:p-3">
+      <section role="dialog" aria-modal="true" aria-labelledby="supplier-comparison-title" className="flex max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-1.5rem)] sm:rounded-2xl">
+        <header className="z-10 flex shrink-0 items-start justify-between gap-3 border-b bg-white px-4 py-3">
+          <div className="min-w-0"><h2 id="supplier-comparison-title" className="text-base font-black text-slate-900 sm:text-lg">{restockMode ? 'Order new stock' : 'Compare supplier offers'}</h2><p className="mt-0.5 max-w-3xl text-xs leading-relaxed text-slate-600">{restockMode ? 'Choose an approved supplier offer. The quantity will remain unchanged until delivery passes receiving inspection.' : 'Review exact and equivalent matches before adding a supplier offer.'}</p></div>
+          <button type="button" onClick={onClose} aria-label="Close supplier comparison" title="Close" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500">
+            <X className="h-4 w-4" />
+          </button>
         </header>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          <label className="block text-sm font-semibold">Inventory destination
-            <select aria-label="Inventory destination" className="mt-1 w-full rounded border p-2" value={targetType} onChange={event => {
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 sm:p-4">
+          <div className="grid gap-3 md:grid-cols-2">
+          <label className="block text-xs font-bold text-slate-700">Add stock to
+            <select aria-label="Inventory destination" className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" value={targetType} onChange={event => {
               setTargetType(event.target.value); setStoreProductId(''); setProductOptions([]);
               setProductSearch(''); setProductPage(1); setData(null);
             }}>
@@ -107,11 +112,11 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
               <option value="service_supply">Service supply</option>
             </select>
           </label>
-          <label className="block text-sm font-semibold">Find a {targetType === 'service_supply' ? 'service supply' : 'Store product'}
-            <input className="mt-1 w-full rounded border p-2" value={productSearch} onChange={event => { setProductSearch(event.target.value); setProductPage(1); }} maxLength={80} />
+          <label className="block text-xs font-bold text-slate-700">Search your {targetType === 'service_supply' ? 'service supplies' : 'inventory'}
+            <input aria-label={`Find a ${targetType === 'service_supply' ? 'service supply' : 'Store product'}`} placeholder="Type a product name or SKU" className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={productSearch} onChange={event => { setProductSearch(event.target.value); setProductPage(1); }} maxLength={80} />
           </label>
-          <label className="block text-sm font-semibold">{targetType === 'service_supply' ? 'Service supply' : 'Store product'}
-            <select className="mt-1 w-full rounded border p-2" value={storeProductId} onChange={event => { setStoreProductId(event.target.value); setPage(1); }}>
+          <label className="block text-xs font-bold text-slate-700">{targetType === 'service_supply' ? 'Supply to restock' : 'Product to restock'}
+            <select aria-label={targetType === 'service_supply' ? 'Service supply' : 'Store product'} className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm" value={storeProductId} onChange={event => { setStoreProductId(event.target.value); setPage(1); }}>
               <option value="">Select a {targetType === 'service_supply' ? 'service supply' : 'Store product'}</option>
               {[...productOptions, ...[data?.storeProduct, ...(targetType === 'product' ? storeProducts : [])].filter((product, index, candidates) => product
                 && String(product._id) === String(storeProductId)
@@ -120,42 +125,43 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
                 .map(product => <option key={product._id} value={product._id}>{product.name} ({product.sku})</option>)}
             </select>
           </label>
-          {productPagination?.totalPages > 1 && <nav aria-label="Store product pages" className="flex items-center gap-3 text-sm">
-            <button type="button" disabled={productPage <= 1} onClick={() => setProductPage(value => value - 1)}>Previous products</button>
-            <span>{productPage} / {productPagination.totalPages}</span>
-            <button type="button" disabled={productPage >= productPagination.totalPages} onClick={() => setProductPage(value => value + 1)}>Next products</button>
-          </nav>}
-          <label className="block text-sm font-semibold">Filter supplier offers by name
-            <input className="mt-1 w-full rounded border p-2" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} maxLength={80} />
+          <label className="block text-xs font-bold text-slate-700">Search supplier offers
+            <input aria-label="Filter supplier offers by name" placeholder="Type a supplier or product name" className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} maxLength={80} />
           </label>
-          {loading && <p role="status">Loading supplier offers...</p>}
-          {error && <div role="alert" className="rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error} <button type="button" onClick={() => setRefresh(value => value + 1)} className="underline">Retry</button></div>}
+          </div>
+          {productPagination?.totalPages > 1 && <nav aria-label="Store product pages" className="flex items-center justify-end gap-3 text-xs text-slate-600">
+            <button type="button" disabled={productPage <= 1} onClick={() => setProductPage(value => value - 1)} className="font-bold disabled:opacity-40">Previous products</button>
+            <span>{productPage} / {productPagination.totalPages}</span>
+            <button type="button" disabled={productPage >= productPagination.totalPages} onClick={() => setProductPage(value => value + 1)} className="font-bold disabled:opacity-40">Next products</button>
+          </nav>}
+          {loading && <p role="status" className="text-xs text-slate-600">Loading supplier offers...</p>}
+          {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800">{error} <button type="button" onClick={() => setRefresh(value => value + 1)} className="font-bold underline">Retry</button></div>}
           {data && !loading && <>
-            <p className="text-sm text-slate-600">{data.pagination?.total ?? data.offers.length} authorized supplier offer{(data.pagination?.total ?? data.offers.length) === 1 ? '' : 's'} for {data.storeProduct.name}. Stock and price are refreshed when the purchase request is submitted.</p>
-            {!data.offers.length && <p className="rounded border p-4 text-sm">No matching-unit supplier offers are currently available.</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {data.offers.map(offer => <article key={offer.supplierProductId} className="rounded-xl border p-4">
-                <div className="flex items-start justify-between gap-2"><div><h3 className="font-bold">{offer.name}</h3><p className="text-sm">{offer.supplier.businessName} Â· SKU {offer.sku}</p></div><span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold">{offer.matchType === 'unverified_candidate' ? 'Unverified candidate' : `${offer.matchType} match`}</span></div>
-                <p className="mt-2 text-sm">{formatPeso(offer.unitPrice)} / {offer.unitOfMeasure} Â· {offer.availableStock} available Â· Min {offer.minimumOrderQuantity} Â· Lead {offer.deliveryLeadTimeDays} days</p>
-                {!offer.available && <p className="mt-1 text-sm text-amber-700">This supplier cannot fulfill its minimum quantity. Compare another offer.</p>}
-                {offer.matchType === 'unverified_candidate' ? <div className="mt-3 flex gap-2">
-                  <select aria-label={`Match classification for ${offer.name} from ${offer.supplier.businessName}`} value={matchTypes[offer.supplierProductId] || 'equivalent'} onChange={event => setMatchTypes(previous => ({ ...previous, [offer.supplierProductId]: event.target.value }))} className="min-w-0 flex-1 rounded border p-2 text-sm"><option value="equivalent">Equivalent substitute</option><option value="exact">Exact match</option></select>
-                  <button type="button" disabled={busyId === offer.supplierProductId} onClick={() => confirmMatch(offer)} className="rounded bg-slate-800 px-3 py-2 text-sm text-white">Review match</button>
-                </div> : <div className="mt-3 flex gap-2">
-                  <input aria-label={`Quantity from ${offer.supplier.businessName}`} type="number" min={offer.minimumOrderQuantity} max={offer.availableStock} step="1" value={quantities[offer.supplierProductId] ?? offer.minimumOrderQuantity} onChange={event => setQuantities(previous => ({ ...previous, [offer.supplierProductId]: event.target.value }))} className="w-24 rounded border p-2 text-sm" />
-                  <button type="button" disabled={!offer.available || busyId === offer.supplierProductId} onClick={() => addOffer(offer)} className="rounded bg-emerald-700 px-3 py-2 text-sm text-white disabled:opacity-40">Add this supplier</button>
+            <p className="text-xs text-slate-600"><b className="text-slate-800">{data.pagination?.total ?? data.offers.length} authorized offer{(data.pagination?.total ?? data.offers.length) === 1 ? '' : 's'}</b> for {data.storeProduct.name}. Stock and price are rechecked when you submit the purchase request.</p>
+            {!data.offers.length && <p className="rounded-lg border p-3 text-xs">No matching supplier offers are currently available.</p>}
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {data.offers.map(offer => <article key={offer.supplierProductId} className="rounded-xl border border-slate-200 p-3">
+                <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="truncate text-sm font-black text-slate-900">{offer.name}</h3><p className="text-xs text-slate-600">{offer.supplier.businessName} · SKU {offer.sku}</p></div><span className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-700">{offer.matchType === 'unverified_candidate' ? 'Unverified candidate' : `${offer.matchType} match`}</span></div>
+                <p className="mt-1.5 text-xs text-slate-700">{formatPeso(offer.unitPrice)} / {offer.unitOfMeasure} · {offer.availableStock} available · Min {offer.minimumOrderQuantity} · {offer.deliveryLeadTimeDays}-day lead</p>
+                {!offer.available && <p className="mt-1 text-xs text-amber-700">This supplier cannot fulfill its minimum quantity. Compare another offer.</p>}
+                {offer.matchType === 'unverified_candidate' ? <div className="mt-2.5 flex gap-2">
+                  <select aria-label={`Match classification for ${offer.name} from ${offer.supplier.businessName}`} value={matchTypes[offer.supplierProductId] || 'equivalent'} onChange={event => setMatchTypes(previous => ({ ...previous, [offer.supplierProductId]: event.target.value }))} className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 px-2 text-xs"><option value="equivalent">Equivalent substitute</option><option value="exact">Exact match</option></select>
+                  <button type="button" disabled={busyId === offer.supplierProductId} onClick={() => confirmMatch(offer)} className="h-9 shrink-0 rounded-lg bg-slate-800 px-3 text-xs font-bold text-white disabled:opacity-40">Review match</button>
+                </div> : <div className="mt-2.5 flex gap-2">
+                  <input aria-label={`Quantity from ${offer.supplier.businessName}`} type="number" min={offer.minimumOrderQuantity} max={offer.availableStock} step="1" value={quantities[offer.supplierProductId] ?? offer.minimumOrderQuantity} onChange={event => setQuantities(previous => ({ ...previous, [offer.supplierProductId]: event.target.value }))} className="h-9 w-20 rounded-lg border border-slate-200 px-2 text-xs" />
+                  <button type="button" disabled={!offer.available || busyId === offer.supplierProductId} onClick={() => addOffer(offer)} className="h-9 flex-1 rounded-lg bg-emerald-700 px-3 text-xs font-bold text-white disabled:opacity-40">Add this supplier</button>
                 </div>}
               </article>)}
             </div>
-            {data.pagination?.totalPages > 1 && <nav aria-label="Supplier offer pages" className="flex items-center justify-center gap-3 text-sm">
-              <button type="button" disabled={page <= 1} onClick={() => setPage(value => value - 1)} className="rounded border px-3 py-2 disabled:opacity-40">Previous</button>
+            {data.pagination?.totalPages > 1 && <nav aria-label="Supplier offer pages" className="flex items-center justify-center gap-3 text-xs">
+              <button type="button" disabled={page <= 1} onClick={() => setPage(value => value - 1)} className="h-9 rounded-lg border px-3 font-bold disabled:opacity-40">Previous</button>
               <span>Page {page} of {data.pagination.totalPages}</span>
-              <button type="button" disabled={page >= data.pagination.totalPages} onClick={() => setPage(value => value + 1)} className="rounded border px-3 py-2 disabled:opacity-40">Next</button>
+              <button type="button" disabled={page >= data.pagination.totalPages} onClick={() => setPage(value => value + 1)} className="h-9 rounded-lg border px-3 font-bold disabled:opacity-40">Next</button>
             </nav>}
           </>}
         </div>
       </section>
-    </div>
+    </ModalViewport>
   );
 };
 
