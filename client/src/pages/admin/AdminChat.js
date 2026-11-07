@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { MessageSquare, Search, RefreshCw, MoreVertical, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { MessageSquare, Search, RefreshCw, ArrowLeft, AlertTriangle, Inbox, UserRound } from 'lucide-react';
 import { chatService } from '../../services/chatService';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import UserReportModal from '../../components/UserReportModal';
 import CustomerQuickViewModal from '../../components/CustomerQuickViewModal';
+
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'unread', label: 'Unread' },
+  { id: 'sales', label: 'Pet purchases' }
+];
 
 const AdminChat = () => {
   const [conversations, setConversations] = useState([]);
@@ -24,12 +30,9 @@ const AdminChat = () => {
     fetchConversations();
     fetchUnreadCount();
 
-    // Check for conversationId in URL
     const params = new URLSearchParams(window.location.search);
     const convId = params.get('conversationId');
-    if (convId) {
-      autoSelectConversation(convId);
-    }
+    if (convId) autoSelectConversation(convId);
 
     const interval = setInterval(() => {
       fetchConversations(false);
@@ -42,9 +45,7 @@ const AdminChat = () => {
   const autoSelectConversation = async (id) => {
     try {
       const response = await chatService.getConversationById(id);
-      if (response.data.conversation) {
-        setSelectedConversation(response.data.conversation);
-      }
+      if (response.data.conversation) setSelectedConversation(response.data.conversation);
     } catch (error) {
       console.error('Failed to auto-select conversation:', error);
     }
@@ -56,7 +57,7 @@ const AdminChat = () => {
       const response = await chatService.getAdminChats();
       setConversations(response.data.conversations || []);
     } catch (error) {
-      toast.error('Failed to load chats');
+      toast.error('Conversations could not be loaded. Please try again.');
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -71,34 +72,44 @@ const AdminChat = () => {
     }
   };
 
+  const getOtherParticipant = (conversation) => {
+    const currentUserId = currentUser?._id || currentUser?.id;
+    return conversation?.participants?.find(participant => {
+      const participantId = participant.user?._id || participant.user;
+      return participantId && participantId.toString() !== currentUserId?.toString();
+    });
+  };
+
   const handleSelectConversation = (conversation) => {
     if (!conversation) return;
     setSelectedConversation(conversation);
+    const conversationUnread = Number(conversation.unreadCount || 0);
+    if (conversationUnread > 0) {
+      setConversations(current => current.map(item => item._id === conversation._id ? { ...item, unreadCount: 0 } : item));
+      setUnreadCount(current => Math.max(0, current - conversationUnread));
+    }
   };
 
   const getParticipantNames = (conversation) => {
     const currentUserId = currentUser?._id || currentUser?.id;
-    return conversation.participants
-      ?.filter(p => {
-        const pId = p.user?._id || p.user;
-        return pId && pId.toString() !== currentUserId?.toString();
+    return conversation?.participants
+      ?.filter(participant => {
+        const participantId = participant.user?._id || participant.user;
+        return participantId && participantId.toString() !== currentUserId?.toString();
       })
-      .map(p => p.user?.firstName || 'User')
-      .join(', ') || 'Unknown User';
+      .map(participant => participant.user?.firstName || 'Customer')
+      .join(', ') || 'Customer';
   };
 
-  const filteredConversations = conversations.filter(conv => {
-    const names = getParticipantNames(conv).toLowerCase();
-    const petName = conv.pet?.name?.toLowerCase() || '';
-    const lastMsg = conv.lastMessage?.content?.toLowerCase() || '';
-    const searchLower = searchTerm.toLowerCase();
-
-    const matchesSearch = names.includes(searchLower) || petName.includes(searchLower) || lastMsg.includes(searchLower);
-
-    const matchesFilter = filter === 'all' ||
-      (filter === 'unread' && conv.unreadCount > 0) ||
-      (filter === 'sales' && conv.type === 'adoption');
-
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredConversations = conversations.filter(conversation => {
+    const names = getParticipantNames(conversation).toLowerCase();
+    const petName = conversation.pet?.name?.toLowerCase() || '';
+    const lastMessage = conversation.lastMessage?.content?.toLowerCase() || '';
+    const matchesSearch = !normalizedSearch || names.includes(normalizedSearch) || petName.includes(normalizedSearch) || lastMessage.includes(normalizedSearch);
+    const matchesFilter = filter === 'all'
+      || (filter === 'unread' && conversation.unreadCount > 0)
+      || (filter === 'sales' && conversation.type === 'adoption');
     return matchesSearch && matchesFilter;
   });
 
@@ -106,174 +117,149 @@ const AdminChat = () => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMins = Math.floor((now - date) / 60000);
-    if (diffMins < 1) return 'LIVE';
+    if (diffMins < 1) return 'Now';
     if (diffMins < 60) return `${diffMins}m`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
     return `${Math.floor(diffMins / 1440)}d`;
   };
 
+  const openCustomerDetails = () => {
+    const otherParticipant = getOtherParticipant(selectedConversation);
+    if (otherParticipant?.user?._id) {
+      setViewingCustomerId(otherParticipant.user._id);
+      setShowCustomerDetails(true);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4 bg-slate-50/50">
-        <div className="w-10 h-10 border-2 border-slate-200 border-t-primary-600 rounded-full animate-spin"></div>
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Syncing Messages...</p>
+      <div className="flex min-h-[32rem] flex-col items-center justify-center gap-4 bg-[#F8F7F4]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-primary-600" />
+        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Loading conversations...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full max-w-full min-w-0 bg-white md:bg-slate-50/30">
-      <div className="w-full max-w-[1600px] min-w-0 mx-auto min-h-screen flex flex-col md:p-4 lg:p-6">
-
-        {/* Compact Header */}
-        <header className="flex items-center justify-between px-4 py-3.5 md:px-0 md:pb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-slate-900 text-white rounded-lg">
-              <MessageSquare className="h-3.5 w-3.5" />
+    <div className="min-w-0 max-w-full bg-[#F8F7F4] p-2 sm:p-4 lg:p-5">
+      <div className="mx-auto flex min-w-0 max-w-[1440px] flex-col">
+        <header className="flex items-center justify-between gap-4 px-1 pb-3 sm:pb-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+              <MessageSquare className="h-4 w-4" />
             </div>
-            <h1 className="text-sm font-black text-slate-900 uppercase tracking-widest">
-              Messages {unreadCount > 0 && <span className="ml-2 px-1.5 py-0.5 bg-rose-500 text-[8px] rounded-full">{unreadCount}</span>}
-            </h1>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-base font-black uppercase tracking-tight text-slate-950 sm:text-xl">Customer messages</h1>
+                {unreadCount > 0 && <span className="rounded-full bg-primary-700 px-2 py-0.5 text-[8px] font-black text-white">{unreadCount} new</span>}
+              </div>
+              <p className="mt-0.5 hidden text-[10px] font-medium text-slate-500 sm:block">Reply to questions, purchase conversations, and customer updates.</p>
+            </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => fetchConversations()}
-              className="p-2 text-slate-400 hover:text-slate-900 transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => fetchConversations()}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-primary-100 bg-white px-3 text-[9px] font-black uppercase tracking-wider text-primary-800 shadow-sm transition hover:bg-primary-50"
+            title="Refresh conversations"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Refresh</span>
+          </button>
         </header>
 
-        <div className="min-w-0 flex-1 flex overflow-hidden bg-white border border-slate-100 rounded-none md:rounded-2xl shadow-sm">
-          {/* Sidebar - Conversation List */}
-          <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-slate-50 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
-            {/* Search & Filter - Compact */}
-            <div className="p-3 border-b border-slate-50 space-y-3">
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-                  <Search className="h-3.5 w-3.5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-                </div>
+        <div className="flex h-[clamp(32rem,calc(100dvh-16rem),46rem)] min-w-0 overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-[0_18px_55px_rgba(76,38,13,0.08)]" data-testid="admin-chat-workspace">
+          <aside className={`min-h-0 w-full flex-col border-r border-slate-100 bg-white md:w-[21rem] lg:w-[23rem] ${selectedConversation ? 'hidden md:flex' : 'flex'}`} aria-label="Conversations">
+            <div className="space-y-2.5 border-b border-slate-100 p-3.5">
+              <div className="group relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-500" />
                 <input
+                  aria-label="Search conversations"
                   type="text"
-                  placeholder="FIND CUSTOMER..."
+                  placeholder="Search customers or messages"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50/80 border border-slate-100 text-[9px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/10 transition-all placeholder:text-slate-300 font-sans"
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
                 />
               </div>
 
-              <div className="flex gap-1 p-1 bg-slate-50 rounded-lg">
-                {['all', 'unread', 'sales'].map((f) => (
+              <div className="flex gap-1 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Conversation filters">
+                {FILTERS.map(({ id, label }) => (
                   <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`flex-1 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={filter === id}
+                    onClick={() => setFilter(id)}
+                    className={`min-h-8 flex-1 rounded-lg px-2 text-[8px] font-black uppercase tracking-wide transition ${filter === id ? 'bg-white text-primary-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
-                    {f}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* List */}
-            <div className="flex-1 overflow-y-auto no-scrollbar">
-              {filteredConversations.length > 0 ? (
-                filteredConversations.map((conv) => (
-                  <div
-                    key={conv._id}
-                    onClick={() => handleSelectConversation(conv)}
-                    className={`px-4 py-3.5 cursor-pointer transition-all border-b border-slate-50/50 flex items-center gap-4 relative ${selectedConversation?._id === conv._id ? 'bg-slate-50 border-l-4 border-l-primary-600' : 'hover:bg-slate-50/50 border-l-4 border-l-transparent'}`}
-                  >
-                    <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-sm shrink-0 uppercase">
-                      {getParticipantNames(conv)[0]}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex justify-between items-start">
-                        <h4 className="text-[11px] font-black text-slate-900 uppercase truncate tracking-tight">
-                          {getParticipantNames(conv)}
-                        </h4>
-                        <span className="text-[8px] font-bold text-slate-300">
-                          {formatTime(conv.lastMessageAt || conv.updatedAt)}
-                        </span>
-                      </div>
-                      <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5">
-                        {conv.lastMessage?.type === 'image' ? '📷 Image shared' : (conv.lastMessage?.content || 'Start conversation')}
-                      </p>
-                    </div>
-                    {conv.unreadCount > 0 && selectedConversation?._id !== conv._id && (
-                      <div className="w-1.5 h-1.5 bg-primary-500 rounded-full" />
-                    )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]" data-testid="conversation-scroll-region">
+              {filteredConversations.length > 0 ? filteredConversations.map(conversation => (
+                <button
+                  type="button"
+                  key={conversation._id}
+                  onClick={() => handleSelectConversation(conversation)}
+                  className={`relative flex w-full items-center gap-3 border-b border-slate-100 px-3.5 py-3 text-left transition ${selectedConversation?._id === conversation._id ? 'bg-primary-50/70 shadow-[inset_3px_0_0_#8B4513]' : 'hover:bg-slate-50'}`}
+                  aria-current={selectedConversation?._id === conversation._id ? 'true' : undefined}
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black uppercase ${conversation.unreadCount > 0 ? 'bg-primary-700 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {getParticipantNames(conversation)[0]}
                   </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-2 p-8 opacity-30">
-                  <MessageSquare className="h-8 w-8 text-slate-300" />
-                  <p className="text-[9px] font-black uppercase tracking-widest">Empty</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="truncate text-[11px] font-black uppercase tracking-tight text-slate-900">{getParticipantNames(conversation)}</h4>
+                      <span className="shrink-0 text-[8px] font-bold text-slate-400">{formatTime(conversation.lastMessageAt || conversation.updatedAt)}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className={`min-w-0 flex-1 truncate text-[10px] ${conversation.unreadCount > 0 ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}`}>
+                        {conversation.lastMessage?.type === 'image' ? 'Photo shared' : (conversation.lastMessage?.content || 'No messages yet')}
+                      </p>
+                      {conversation.unreadCount > 0 && selectedConversation?._id !== conversation._id && (
+                        <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-700 px-1.5 py-0.5 text-[7px] font-black text-white">{conversation.unreadCount}</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              )) : (
+                <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
+                  <Inbox className="h-8 w-8 text-slate-300" />
+                  <p className="text-xs font-black text-slate-700">{normalizedSearch || filter !== 'all' ? 'No matching conversations' : 'No conversations yet'}</p>
+                  <p className="max-w-[15rem] text-[10px] leading-relaxed text-slate-400">{normalizedSearch || filter !== 'all' ? 'Try another search or conversation filter.' : 'New customer messages will appear here.'}</p>
                 </div>
               )}
             </div>
-          </div>
+          </aside>
 
-          {/* Chat Main Area */}
-          <div className={`min-w-0 flex-1 flex flex-col bg-white overflow-hidden relative ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+          <main className={`relative min-w-0 flex-1 flex-col overflow-hidden bg-white ${!selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             {selectedConversation ? (
               <>
-                {/* Minimalist Chat Header */}
-                <header className="flex-shrink-0 px-4 md:px-6 py-3.5 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-md z-20">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedConversation(null)}
-                      className="md:hidden p-1.5 text-slate-400 hover:text-slate-900"
-                    >
+                <header className="z-20 flex flex-shrink-0 items-center justify-between border-b border-slate-100 bg-white/95 px-3.5 py-3 backdrop-blur-md md:px-5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <button type="button" onClick={() => setSelectedConversation(null)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 md:hidden" aria-label="Back to conversations">
                       <ArrowLeft className="h-4 w-4" />
                     </button>
-                    <button 
-                        onClick={() => {
-                            const otherParticipant = selectedConversation.participants?.find(p => {
-                                const pId = p.user?._id || p.user;
-                                return pId?.toString() !== (currentUser?._id || currentUser?.id)?.toString();
-                            });
-                            if (otherParticipant?.user?._id) {
-                                setViewingCustomerId(otherParticipant.user._id);
-                                setShowCustomerDetails(true);
-                            }
-                        }}
-                        className="flex items-center gap-3 hover:opacity-75 transition-opacity text-left"
-                    >
-                        <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white text-xs font-black uppercase overflow-hidden shrink-0">
-                        {(selectedConversation.participants?.find(p => p.user?._id?.toString() !== (currentUser?._id || currentUser?.id)?.toString())?.user?.avatar) ? (
-                            <img src={selectedConversation.participants?.find(p => p.user?._id?.toString() !== (currentUser?._id || currentUser?.id)?.toString())?.user?.avatar} alt="" className="w-full h-full object-cover" />
+                    <button type="button" onClick={openCustomerDetails} className="flex min-w-0 items-center gap-3 text-left transition-opacity hover:opacity-75">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900 text-xs font-black uppercase text-white">
+                        {getOtherParticipant(selectedConversation)?.user?.avatar ? (
+                          <img src={getOtherParticipant(selectedConversation).user.avatar} alt="" className="h-full w-full object-cover" />
                         ) : getParticipantNames(selectedConversation)[0]}
-                        </div>
-                        <div>
-                        <h2 className="text-xs font-black text-slate-900 uppercase tracking-tight">{getParticipantNames(selectedConversation)}</h2>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Online</span>
-                            <div className="w-1 h-1 rounded-full bg-slate-200" />
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{selectedConversation.type === 'adoption' ? 'Pet Sale' : selectedConversation.type}</span>
-                        </div>
-                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-xs font-black uppercase tracking-tight text-slate-900">{getParticipantNames(selectedConversation)}</h2>
+                        <p className="mt-0.5 truncate text-[9px] font-medium text-slate-500">{selectedConversation.type === 'adoption' ? 'Pet purchase conversation' : 'Customer conversation'} · View customer profile</p>
+                      </div>
                     </button>
                   </div>
-
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => setShowReportModal(true)}
-                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      title="Report Customer"
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                    </button>
-                    <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <button type="button" onClick={() => setShowReportModal(true)} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50" title="Report customer" aria-label="Report customer">
+                    <AlertTriangle className="h-4 w-4" />
+                  </button>
                 </header>
 
-                <div className="flex-1 relative min-h-0">
+                <div className="relative min-h-0 flex-1">
                   <EnhancedChatMessenger
                     isOpen={true}
                     onClose={() => setSelectedConversation(null)}
@@ -283,43 +269,35 @@ const AdminChat = () => {
                     isAdmin={true}
                     existingConversationId={selectedConversation._id}
                     isEmbedded={true}
+                    showEmbeddedHeader={false}
                     onMessageUpdate={() => fetchConversations(false)}
                   />
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-12 opacity-40">
-                <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-6">
-                  <MessageSquare className="h-10 w-10 text-slate-200" />
+              <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-50 text-primary-300">
+                  <UserRound className="h-8 w-8" />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Select a thread</h2>
-                <p className="max-w-xs text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                  Choose a customer from the left to begin secure real-time communication.
-                </p>
+                <h2 className="mb-2 text-lg font-black text-slate-900">Select a conversation</h2>
+                <p className="max-w-sm text-xs font-medium leading-relaxed text-slate-500">Choose a customer conversation to review messages and reply.</p>
               </div>
             )}
-          </div>
+          </main>
         </div>
       </div>
+
       {showReportModal && selectedConversation && (
-        <UserReportModal
-          isOpen={showReportModal}
-          onClose={() => setShowReportModal(false)}
-          reportedUser={selectedConversation.participants?.find(p => {
-            const pId = p.user?._id || p.user;
-            const currentId = currentUser?._id || currentUser?.id;
-            return pId && pId.toString() !== currentId?.toString();
-          })?.user}
-        />
+        <UserReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} reportedUser={getOtherParticipant(selectedConversation)?.user} />
       )}
       {showCustomerDetails && viewingCustomerId && (
         <CustomerQuickViewModal
-            isOpen={showCustomerDetails}
-            onClose={() => {
-                setShowCustomerDetails(false);
-                setViewingCustomerId(null);
-            }}
-            customerId={viewingCustomerId}
+          isOpen={showCustomerDetails}
+          onClose={() => {
+            setShowCustomerDetails(false);
+            setViewingCustomerId(null);
+          }}
+          customerId={viewingCustomerId}
         />
       )}
     </div>

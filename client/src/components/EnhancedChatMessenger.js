@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
-import { Send, X, Clock, MapPin, Heart, AlertCircle, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown, Calendar, Wallet, CheckCircle2, Zap } from 'lucide-react';
+import { Send, X, Clock, MapPin, Heart, AlertCircle, CheckCircle, Camera, Shield, ArrowLeft, ChevronDown, Calendar, Wallet, CheckCircle2, Zap, MessageCircle } from 'lucide-react';
 import { chatService } from '../services/chatService';
 import { adoptionService, uploadService, paymentService } from '../services/apiService';
 import UserReportModal from './UserReportModal';
@@ -19,6 +19,7 @@ const EnhancedChatMessenger = ({
   isAdmin = false,
   existingConversationId = null,
   isEmbedded = false,
+  showEmbeddedHeader = true,
   onMessageUpdate = null
 }) => {
   const [messages, setMessages] = useState([]);
@@ -31,11 +32,15 @@ const EnhancedChatMessenger = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [typingUser, setTypingUser] = useState(null);
   const typingTimeoutRef = useRef(null);
-  const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const messageInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const isFirstLoad = useRef(true);
+  const isNearBottomRef = useRef(true);
+  const forceScrollRef = useRef(false);
+  const previousMessageCountRef = useRef(0);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [newMessagesBelow, setNewMessagesBelow] = useState(0);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
 
 
@@ -50,6 +55,7 @@ const EnhancedChatMessenger = ({
 
   useEffect(() => {
     if ((isOpen || isEmbedded) && existingConversationId) {
+      setMessages([]);
       setConversationId(existingConversationId);
       loadMessages(existingConversationId);
       fetchTransactionData(existingConversationId);
@@ -57,6 +63,15 @@ const EnhancedChatMessenger = ({
       initializeConversation();
     }
   }, [isOpen, isEmbedded, pet, seller, existingConversationId]);
+
+  useEffect(() => {
+    isFirstLoad.current = true;
+    isNearBottomRef.current = true;
+    forceScrollRef.current = false;
+    previousMessageCountRef.current = 0;
+    setShowScrollButton(false);
+    setNewMessagesBelow(0);
+  }, [conversationId]);
 
   useEffect(() => {
     if (!conversationId || (!isOpen && !isEmbedded)) return;
@@ -110,37 +125,49 @@ const EnhancedChatMessenger = ({
   const handleScroll = () => {
     if (!messagesContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 150;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 96;
+    isNearBottomRef.current = isAtBottom;
     setShowScrollButton(!isAtBottom);
+    if (isAtBottom) setNewMessagesBelow(0);
   };
 
   useEffect(() => {
-    if (messagesContainerRef.current && messages.length > 0) {
-      if (isFirstLoad.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        isFirstLoad.current = false;
-      } else {
-        const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-        const isAtBottom = scrollHeight - scrollTop - clientHeight < 400;
-        if (isAtBottom) {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
+    const container = messagesContainerRef.current;
+    if (!container || messages.length === 0) return;
+
+    const addedMessages = Math.max(0, messages.length - previousMessageCountRef.current);
+    if (isFirstLoad.current) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+        isNearBottomRef.current = true;
+        setShowScrollButton(false);
+      });
+      isFirstLoad.current = false;
+    } else if (forceScrollRef.current || isNearBottomRef.current) {
+      requestAnimationFrame(() => container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }));
+      forceScrollRef.current = false;
+      setNewMessagesBelow(0);
+    } else if (addedMessages > 0) {
+      setNewMessagesBelow(current => current + addedMessages);
+      setShowScrollButton(true);
     }
-  }, [messages]);
+    previousMessageCountRef.current = messages.length;
+  }, [messages.length, conversationId]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    isNearBottomRef.current = true;
+    setShowScrollButton(false);
+    setNewMessagesBelow(0);
   };
 
   // Handle image load scroll
   const handleImageLoad = () => {
-    if (messagesContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 400;
-      if (isAtBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
+    const container = messagesContainerRef.current;
+    if (container && isNearBottomRef.current) {
+      requestAnimationFrame(() => container.scrollTo({ top: container.scrollHeight, behavior: 'auto' }));
     }
   };
 
@@ -220,21 +247,31 @@ const EnhancedChatMessenger = ({
     if (!newMessage.trim() || !conversationId) return;
 
     const messageData = { content: newMessage.trim(), type: 'text' };
+    forceScrollRef.current = true;
     setIsLoading(true);
     const savedMessage = newMessage;
     setNewMessage('');
+    if (messageInputRef.current) messageInputRef.current.style.height = 'auto';
     
     // Stop typing immediately when sending
     handleStopTyping();
 
     try {
       const response = await chatService.sendMessage(conversationId, messageData);
-      setMessages(prev => [...prev, response.data.message]);
+      setMessages(prev => prev.some(message => message._id === response.data.message?._id)
+        ? prev
+        : [...prev, response.data.message]);
       if (onMessageUpdate) onMessageUpdate();
     } catch (error) {
+      forceScrollRef.current = false;
       console.error('Error sending message:', error);
       toast.error('Your message could not be sent. Please try again.');
       setNewMessage(savedMessage);
+      requestAnimationFrame(() => {
+        if (messageInputRef.current) {
+          messageInputRef.current.style.height = `${Math.min(messageInputRef.current.scrollHeight, 96)}px`;
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -288,19 +325,24 @@ const EnhancedChatMessenger = ({
     formData.append('image', file);
 
     try {
+      forceScrollRef.current = true;
       setIsLoading(true);
       const uploadResponse = await uploadService.uploadImage(formData);
       const imageUrl = uploadResponse.data.url;
 
       const messageData = { content: imageUrl, type: 'image' };
       const response = await chatService.sendMessage(conversationId, messageData);
-      setMessages(prev => [...prev, response.data.message]);
-      toast.success('Image sent!');
+      setMessages(prev => prev.some(message => message._id === response.data.message?._id)
+        ? prev
+        : [...prev, response.data.message]);
+      toast.success('Photo sent');
     } catch (error) {
+      forceScrollRef.current = false;
       console.error('Error sending image:', error);
       toast.error('Your photo could not be sent. Please try again.');
     } finally {
       setIsLoading(false);
+      e.target.value = '';
     }
   };
 
@@ -555,7 +597,7 @@ const EnhancedChatMessenger = ({
 
     return (
       <div key={message._id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-        <div className={`max-w-[80%] ${isSystemMessage ? 'mx-auto' : ''}`}>
+        <div className={`max-w-[85%] sm:max-w-[75%] ${isSystemMessage ? 'mx-auto' : ''}`}>
           {!isSystemMessage && (
             <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -599,7 +641,7 @@ const EnhancedChatMessenger = ({
       className={`flex flex-col h-full bg-white transition-transform duration-300 ease-out min-h-0
         ${!isEmbedded ? 'rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl max-w-lg w-full h-full sm:h-[85vh] sm:max-h-[600px] overflow-hidden border border-white/20' : ''}`}
     >
-      {(!isEmbedded || window.innerWidth < 640) && (
+      {(!isEmbedded || showEmbeddedHeader) && (
         <div className={`flex-shrink-0 px-5 py-3 flex items-center justify-between z-10 ${
           isEmbedded ? 'bg-white border-b border-slate-100' : 'bg-neutral-900 text-white'
         }`}>
@@ -646,21 +688,37 @@ const EnhancedChatMessenger = ({
 
       {renderTransactionStatus()}
 
-      <div 
-        ref={messagesContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 pb-24 space-y-4 bg-slate-50/50 no-scrollbar overscroll-contain touch-pan-y scroll-smooth min-h-0 relative"
-      >
+      <div className="relative min-h-0 flex-1 bg-slate-50/50">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto overscroll-contain px-4 py-5 [scrollbar-gutter:stable] touch-pan-y"
+          data-testid="message-scroll-region"
+        >
+          {messages.length > 0 ? (
+            <div className="space-y-4">
+              {messages.map(renderMessage)}
+              <div className="h-1" aria-hidden="true" />
+            </div>
+          ) : (
+            <div className="flex h-full min-h-56 flex-col items-center justify-center px-6 text-center">
+              <MessageCircle className="mb-3 h-8 w-8 text-slate-300" />
+              <p className="text-xs font-black text-slate-700">No messages yet</p>
+              <p className="mt-1 max-w-xs text-[10px] leading-relaxed text-slate-400">Send a message to start this customer conversation.</p>
+            </div>
+          )}
+        </div>
         {showScrollButton && (
-          <button 
+          <button
+            type="button"
             onClick={scrollToBottom}
-            className="fixed bottom-24 right-8 bg-white/90 backdrop-blur-sm text-primary-600 p-3 rounded-full shadow-lg border border-primary-100 hover:bg-primary-50 transition-all z-[60] animate-bounce"
+            className="absolute bottom-3 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-primary-100 bg-white/95 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-primary-700 shadow-lg backdrop-blur-sm transition hover:bg-primary-50"
+            aria-label="Jump to latest message"
           >
-            <ChevronDown className="h-5 w-5" />
+            <ChevronDown className="h-3.5 w-3.5" />
+            {newMessagesBelow > 0 ? `${newMessagesBelow} new` : 'Latest'}
           </button>
         )}
-        {messages.map(renderMessage)}
-        <div ref={messagesEndRef} className="h-6" />
       </div>
 
       {typingUser && (
@@ -676,25 +734,28 @@ const EnhancedChatMessenger = ({
         </div>
       )}
 
-      <div className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 bg-white border-t border-slate-100 z-10">
-        <div className="flex items-center gap-3 bg-slate-50 rounded-full p-1.5 pl-4 border border-slate-100">
-          <button onClick={() => fileInputRef.current?.click()} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-primary-500 shadow-sm transition-colors shrink-0">
+      <div className="z-10 flex-shrink-0 border-t border-slate-100 bg-white p-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] sm:p-4">
+        <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 pl-2 shadow-sm transition focus-within:border-primary-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-100">
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm transition-colors hover:text-primary-600" title="Send a photo" aria-label="Send a photo">
             <Camera className="h-4 w-4" />
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
           </button>
           <textarea
+            ref={messageInputRef}
             rows="1"
             value={newMessage}
             onChange={(e) => {
               setNewMessage(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
               handleTyping();
             }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
             placeholder="Write a message..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-700 py-2 resize-none max-h-24"
+            className="max-h-24 min-h-9 flex-1 resize-none border-none bg-transparent px-1 py-2 text-sm font-medium leading-5 text-slate-700 outline-none focus:ring-0"
             disabled={isLoading}
           />
-          <button onClick={handleSendMessage} disabled={isLoading || !newMessage.trim()} className="w-10 h-10 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 disabled:opacity-50 shrink-0">
+          <button type="button" onClick={handleSendMessage} disabled={isLoading || !newMessage.trim()} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-700 text-white shadow-md transition hover:bg-primary-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none" title="Send message" aria-label="Send message">
             <Send className="h-4 w-4" />
           </button>
         </div>
