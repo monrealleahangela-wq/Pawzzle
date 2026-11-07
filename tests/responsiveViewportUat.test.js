@@ -195,6 +195,19 @@ test('supplier product submission stays compact and anchored to the viewport', (
   assert.match(supplier, /flex shrink-0 gap-2 border-t[^"`]*px-4 py-3/);
 });
 
+test('purchase request review stays compact with its controls anchored to the viewport', () => {
+  const procurement = read('client/src/pages/admin/PurchaseOrders.js');
+
+  assert.match(procurement, /showCheckout && createPortal\(\(/);
+  assert.match(procurement, /role="dialog" aria-modal="true" aria-labelledby="purchase-request-review-title"/);
+  assert.match(procurement, /aria-label="Close purchase request review"/);
+  assert.match(procurement, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-2xl/);
+  assert.match(procurement, /space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5/);
+  assert.match(procurement, /flex shrink-0 gap-2 border-t[^"`]*px-4 py-3/);
+  assert.match(procurement, /When would you like to pay\?/);
+  assert.match(procurement, /Inventory destination \(optional\)/);
+});
+
 test('genuinely wide tables scroll inside their component instead of widening the page', () => {
   const css = read('client/src/styles/Global.css');
   const staff = read('client/src/pages/admin/StaffManagement.js');
