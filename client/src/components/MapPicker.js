@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { Circle, MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { MapPin, Check, X, LocateFixed, Info } from 'lucide-react';
 import { toast } from 'react-toastify';
+import {
+  getAccurateCurrentPosition,
+  getLocationErrorMessage
+} from '../utils/geolocationAccuracy';
 
 // Fix for Leaflet default icon issues in React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -63,6 +67,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [tempLocation, setTempLocation] = useState(null);
+  const [accuracyMeters, setAccuracyMeters] = useState(null);
 
   useEffect(() => {
     if (!validCoordinates({ lat: initialLat, lng: initialLng })) return;
@@ -132,29 +137,33 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
     }
   };
 
-  const handleLocationDetection = () => {
+  const handleLocationDetection = async () => {
     if (!navigator.geolocation) {
       toast.error('This device does not support location services.');
       return;
     }
 
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const result = await reverseGeocode(latitude, longitude);
-        if (result) {
-          setTempLocation({ lat: latitude, lng: longitude, ...result });
-          setPosition([latitude, longitude]);
-          setShowConfirm(true);
-        }
-      },
-      () => {
-        setLoading(false);
-        toast.error('We could not access your location. Check your device permissions and try again.');
-      },
-      { enableHighAccuracy: true }
-    );
+    try {
+      const location = await getAccurateCurrentPosition();
+      const result = await reverseGeocode(location.lat, location.lng);
+      if (result) {
+        setAccuracyMeters(location.accuracy);
+        setTempLocation({
+          lat: location.lat,
+          lng: location.lng,
+          accuracyMeters: location.accuracy,
+          locationSource: 'device_gps',
+          ...result
+        });
+        setPosition([location.lat, location.lng]);
+        setShowConfirm(true);
+      }
+    } catch (error) {
+      toast.error(getLocationErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const LocationMarker = () => {
@@ -163,7 +172,8 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
         const { lat, lng } = e.latlng;
         const result = await reverseGeocode(lat, lng);
         if (result) {
-          setTempLocation({ lat, lng, ...result });
+          setAccuracyMeters(null);
+          setTempLocation({ lat, lng, locationSource: 'map_pin', ...result });
           setPosition([lat, lng]);
           setShowConfirm(true);
         }
@@ -175,7 +185,8 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
         const { lat, lng } = e.target.getLatLng();
         const result = await reverseGeocode(lat, lng);
         if (result) {
-          setTempLocation({ lat, lng, ...result });
+          setAccuracyMeters(null);
+          setTempLocation({ lat, lng, locationSource: 'map_pin', ...result });
           setPosition([lat, lng]);
           setShowConfirm(true);
         }
@@ -213,6 +224,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
+          {accuracyMeters && <Circle center={position} radius={accuracyMeters} pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.12, weight: 1 }} />}
           <LocationMarker />
           <MapController center={position} />
         </MapContainer>
@@ -236,6 +248,11 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
               <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Is this your base?</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 leading-relaxed">
                 {tempLocation.full}
+              </p>
+              <p className={`mb-5 rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-wider ${tempLocation.locationSource === 'device_gps' ? 'bg-blue-50 text-blue-700' : 'bg-primary-50 text-primary-700'}`}>
+                {tempLocation.locationSource === 'device_gps'
+                  ? `Precise GPS fix ±${Math.round(tempLocation.accuracyMeters)} m`
+                  : 'Pin placed manually on the map'}
               </p>
               
               <div className="flex gap-3">
@@ -267,6 +284,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
           <div className="min-w-0">
             <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Location selected</p>
             <p className="text-[10px] font-bold text-emerald-600 uppercase truncate">{address}</p>
+            {accuracyMeters && <p className="mt-1 text-[9px] font-bold text-blue-700">GPS accuracy: approximately ±{Math.round(accuracyMeters)} m</p>}
           </div>
         </div>
       )}

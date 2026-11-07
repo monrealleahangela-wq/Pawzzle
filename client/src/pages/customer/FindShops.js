@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { MapPin, Search, Navigation, Phone, Mail, ChevronRight, Clock, Store as StoreIcon, Filter, X, Target, Navigation2, Flag, ArrowRight } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import { Circle, MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
 import { storeService, getImageUrl } from '../../services/apiService';
@@ -10,6 +10,7 @@ import { toast } from 'react-toastify';
 import 'leaflet/dist/leaflet.css';
 import { hasMapCoordinates } from '../../utils/storeLocation';
 import { calculateRouteProgress, distanceBetweenMeters, parseOsrmRoute } from '../../utils/shopNavigation';
+import { getAccurateCurrentPosition, getLocationErrorMessage, normalizeBrowserPosition } from '../../utils/geolocationAccuracy';
 
 // Fix for Leaflet default icon issues in React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -173,33 +174,20 @@ const FindShops = () => {
     setRouteError('');
   }, []);
 
-  const requestUserLocation = useCallback(() => new Promise(resolve => {
+  const requestUserLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       toast.error('Location is not supported by this browser.');
-      resolve(null);
-      return;
+      return null;
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        };
-        setUserLocation(coords);
-        resolve(coords);
-      },
-      (error) => {
-        const denied = error?.code === error?.PERMISSION_DENIED;
-        toast.error(denied
-          ? 'Location permission is required for live navigation.'
-          : 'We could not determine your current location. Please try again.');
-        resolve(null);
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
-    );
-  }), []);
+    try {
+      const coords = await getAccurateCurrentPosition({ timeout: 12000 });
+      setUserLocation(coords);
+      return coords;
+    } catch (error) {
+      toast.error(getLocationErrorMessage(error));
+      return null;
+    }
+  }, []);
 
   const getUserLocation = useCallback(async () => {
     const coords = await requestUserLocation();
@@ -282,11 +270,15 @@ const FindShops = () => {
     if (isNavigating && selectedStoreHasCoordinates && navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const coords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy
-          };
+          let coords;
+          try {
+            coords = normalizeBrowserPosition(position);
+          } catch {
+            return;
+          }
+          // Ignore noisy live readings so they cannot pull the route away from
+          // the user's actual road position. The last precise fix stays visible.
+          if (coords.accuracy > 150) return;
           setUserLocation(coords);
           const previous = lastRoutedLocationRef.current;
           const movedMeters = previous ? distanceBetweenMeters(previous, coords) : Infinity;
@@ -593,13 +585,16 @@ const FindShops = () => {
 
           {/* User Location Marker */}
           {userLocation && (
-            <Marker
-              position={[userLocation.lat, userLocation.lng]}
-              icon={L.divIcon({
-                className: 'custom-user-marker',
-                html: `<div class="relative"><div class="absolute -inset-2 bg-blue-500/20 rounded-full animate-ping"></div><div class="w-5 h-5 bg-blue-600 border-2 border-white rounded-full shadow-lg relative z-10 flex items-center justify-center">${isNavigating ? '<div class="w-1.5 h-1.5 bg-white rounded-full"></div>' : ''}</div></div>`
-              })}
-            />
+            <>
+              {Number.isFinite(userLocation.accuracy) && <Circle center={[userLocation.lat, userLocation.lng]} radius={userLocation.accuracy} pathOptions={{ color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1 }} />}
+              <Marker
+                position={[userLocation.lat, userLocation.lng]}
+                icon={L.divIcon({
+                  className: 'custom-user-marker',
+                  html: `<div class="relative"><div class="absolute -inset-2 bg-blue-500/20 rounded-full animate-ping"></div><div class="w-5 h-5 bg-blue-600 border-2 border-white rounded-full shadow-lg relative z-10 flex items-center justify-center">${isNavigating ? '<div class="w-1.5 h-1.5 bg-white rounded-full"></div>' : ''}</div></div>`
+                })}
+              />
+            </>
           )}
 
           <MapController center={isNavigating && userLocation ? [userLocation.lat, userLocation.lng] : mapCenter} zoom={mapZoom} />

@@ -5,6 +5,7 @@ import storeApplicationService from '../../services/storeApplicationService';
 import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
+import { getAccurateCurrentPosition, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
 import '../../components/stores/StoreApplicationFields.css';
@@ -153,44 +154,38 @@ const StoreApplication = () => {
 
   const [locating, setLocating] = useState(false);
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = async () => {
     if (!navigator.geolocation) {
       return toast.error('Geolocation is not supported by your browser');
     }
 
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
-          const data = await response.json();
-          
-          if (data.address) {
-            const addr = data.address;
-            const street = addr.road || addr.suburb || addr.building || '';
-            const city = (addr.city || addr.town || addr.municipality || '').toLowerCase();
-            const barangay = (addr.village || addr.neighbourhood || addr.suburb || '').toLowerCase();
-            
-            handleChange('contactInfo.address.street', street);
-            handleChange('contactInfo.address.city', city);
-            handleChange('contactInfo.address.barangay', barangay);
-            handleChange('contactInfo.address.zipCode', addr.postcode || '');
-            handleChange('contactInfo.address.coordinates', { lat: latitude, lng: longitude });
-            
-            toast.success('Location detected! Please verify the details.');
-          }
-        } catch (err) {
-          toast.error('Could not resolve location address');
-        } finally {
-          setLocating(false);
-        }
-      },
-      (err) => {
-        toast.error('Failed to get location: ' + err.message);
-        setLocating(false);
-      }
-    );
+    try {
+      const location = await getAccurateCurrentPosition();
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.lat}&lon=${location.lng}&zoom=18&addressdetails=1`, {
+        headers: { 'Accept-Language': 'en', 'User-Agent': 'PawzzleStoreLocation/1.0' }
+      });
+      if (!response.ok) throw new Error('The address service is temporarily unavailable.');
+      const data = await response.json();
+
+      if (!data.address) throw new Error('No address was found for this GPS location.');
+      const addr = data.address;
+      const street = addr.road || addr.suburb || addr.building || '';
+      const city = (addr.city || addr.town || addr.municipality || '').toLowerCase();
+      const barangay = (addr.village || addr.neighbourhood || addr.suburb || '').toLowerCase();
+
+      handleChange('contactInfo.address.street', street);
+      handleChange('contactInfo.address.city', city);
+      handleChange('contactInfo.address.barangay', barangay);
+      handleChange('contactInfo.address.zipCode', addr.postcode || '');
+      handleChange('contactInfo.address.coordinates', { lat: location.lat, lng: location.lng });
+
+      toast.success(`Precise location detected (about ±${Math.round(location.accuracy)} m). Please verify the pin and address.`);
+    } catch (error) {
+      toast.error(getLocationErrorMessage(error));
+    } finally {
+      setLocating(false);
+    }
   };
 
   const handleSubmit = async (e) => {

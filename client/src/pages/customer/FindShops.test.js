@@ -16,6 +16,7 @@ jest.mock('react-leaflet', () => ({
   MapContainer: ({ children }) => <div data-testid="map">{children}</div>,
   TileLayer: () => null,
   Marker: ({ children }) => <div>{children}</div>,
+  Circle: () => <div data-testid="accuracy-circle" />,
   Popup: ({ children }) => <div>{children}</div>,
   Polyline: () => <div data-testid="route-line" />,
   useMap: () => ({ setView: jest.fn(), getZoom: () => 11 })
@@ -70,7 +71,10 @@ beforeEach(() => {
     configurable: true,
     value: {
       getCurrentPosition: jest.fn(success => success({ coords: { latitude: 14.4, longitude: 120.95, accuracy: 8 } })),
-      watchPosition: jest.fn(() => 0),
+      watchPosition: jest.fn(success => {
+        success({ coords: { latitude: 14.4, longitude: 120.95, accuracy: 8 }, timestamp: Date.now() });
+        return 0;
+      }),
       clearWatch: jest.fn()
     }
   });
