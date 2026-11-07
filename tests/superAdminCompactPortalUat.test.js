@@ -107,3 +107,15 @@ test('supplier details stay compact and anchored to the browser viewport', () =>
   assert.match(suppliers, /space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5/);
   assert.match(suppliers, /max-h-48 space-y-1\.5 overflow-y-auto overscroll-contain/);
 });
+
+test('system analytics keeps its metrics and activity panels compact', () => {
+  const analytics = read('client/src/pages/superadmin/SystemAnalytics.js');
+
+  assert.match(analytics, /space-y-4 pb-10/);
+  assert.match(analytics, /aria-label="Refresh analytics"/);
+  assert.match(analytics, /relative overflow-hidden rounded-2xl bg-slate-900 p-4/);
+  assert.match(analytics, /text-2xl font-black tracking-tight text-white sm:text-3xl/);
+  assert.match(analytics, /grid grid-cols-1 gap-4 lg:grid-cols-2/);
+  assert.match(analytics, /max-h-\[28rem\] space-y-2\.5 overflow-y-auto overscroll-contain/);
+  assert.doesNotMatch(analytics, /rounded-2xl p-8 shadow-sm/);
+});
