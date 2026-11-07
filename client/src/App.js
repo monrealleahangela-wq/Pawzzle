@@ -93,7 +93,6 @@ import StoreApplications from './pages/admin/StoreApplications';
 import SuperAdminDSS from './pages/superadmin/DSS';
 import ActivityHistory from './pages/superadmin/ActivityHistory';
 import SupportManagement from './pages/superadmin/SupportManagement';
-import RolePermissions from './pages/superadmin/RolePermissions';
 import SupplierManagement from './pages/superadmin/SupplierManagement';
 import SpecializedStaffVerification from './pages/superadmin/SpecializedStaffVerification';
 import ProfessionalVerificationStatus from './pages/staff/ProfessionalVerificationStatus';
@@ -239,7 +238,6 @@ function App() {
 
                   {/* Super Admin Routes */}
                   <Route path="superadmin/dashboard" element={<ProtectedRoute roles={['super_admin']}><SuperAdminDashboard /></ProtectedRoute>} />
-                  <Route path="superadmin/permissions" element={<ProtectedRoute roles={['super_admin']}><RolePermissions /></ProtectedRoute>} />
                   <Route path="superadmin/account-management" element={<ProtectedRoute roles={['super_admin']}><AccountManagement /></ProtectedRoute>} />
                   <Route path="superadmin/store-applications" element={<ProtectedRoute roles={['super_admin', 'platform_admin']}><StoreApplications /></ProtectedRoute>} />
                   <Route path="superadmin/transaction-history" element={<ProtectedRoute roles={['super_admin']}><TransactionHistory /></ProtectedRoute>} />

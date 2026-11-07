@@ -441,7 +441,7 @@ const AccountManagement = () => {
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                       <p className="text-sm font-black text-slate-900">{getRoleProps(selectedAccount.role).label}</p>
-                      <p className="mt-2 text-xs leading-5 text-slate-600">Access is defined by the account role. Customer accounts cannot receive administrative resource permissions. Store staff access is managed by role and Store scope from Role Permissions.</p>
+                      <p className="mt-2 text-xs leading-5 text-slate-600">Access is defined by the account role. Customer accounts cannot receive administrative resource permissions. Each store manages staff access from its Role Management page.</p>
                     </div>
                   </div>
 

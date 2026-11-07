@@ -8,7 +8,6 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 
 const routePages = {
   dashboard: 'client/src/pages/superadmin/Dashboard.js',
-  permissions: 'client/src/pages/superadmin/RolePermissions.js',
   'account-management': 'client/src/pages/superadmin/AccountManagement.js',
   'store-applications': 'client/src/pages/admin/StoreApplications.js',
   'transaction-history': 'client/src/pages/superadmin/TransactionHistory.js',
@@ -27,15 +26,15 @@ const routePages = {
 
 test('every routed platform administration page remains present and protected', () => {
   const app = read('client/src/App.js');
-  assert.equal(Object.keys(routePages).length, 16);
+  assert.equal(Object.keys(routePages).length, 15);
   for (const [route, page] of Object.entries(routePages)) {
     assert.ok(fs.existsSync(path.join(root, page)), `missing page for /superadmin/${route}`);
     assert.ok(app.includes(`path="superadmin/${route}"`), `missing /superadmin/${route} route`);
   }
-  assert.equal((app.match(/path="superadmin\//g) || []).length, 16);
+  assert.equal((app.match(/path="superadmin\//g) || []).length, 15);
   const superAdminOnly = (app.match(/roles=\{\['super_admin'\]\}/g) || []).length;
   const sharedPlatformAdmin = (app.match(/roles=\{\['super_admin', 'platform_admin'\]\}/g) || []).length;
-  assert.equal(superAdminOnly + sharedPlatformAdmin >= 16, true);
+  assert.equal(superAdminOnly + sharedPlatformAdmin >= 15, true);
 });
 
 test('platform role aliases share the same compact shell and navigation', () => {
@@ -82,17 +81,17 @@ test('platform portal has explicit dark-mode and mobile safeguards', () => {
   assert.doesNotMatch(css, /\.super-admin-interface\s*\{[^}]*overflow-x:\s*(?:hidden|clip)/);
 });
 
-test('plain-language labels and accessible permission controls are present', () => {
+test('plain-language labels remain and the retired role-permissions screen is inaccessible', () => {
   const layout = read('client/src/components/Layout.js');
-  const permissions = read('client/src/pages/superadmin/RolePermissions.js');
+  const app = read('client/src/App.js');
   const dss = read('client/src/pages/superadmin/DSS.js');
 
-  for (const label of ['Accounts', 'Transactions', 'Analytics', 'Payouts', 'Archive', 'Support', 'Activity', 'Suppliers', 'Role Permissions']) {
+  for (const label of ['Accounts', 'Transactions', 'Analytics', 'Payouts', 'Archive', 'Support', 'Activity', 'Suppliers']) {
     assert.ok(layout.includes(`label: '${label}'`), `missing navigation label: ${label}`);
   }
-  assert.match(permissions, /role="switch"/);
-  assert.match(permissions, /aria-checked=\{checked\}/);
-  assert.match(permissions, /overflow-x-auto/);
+  assert.doesNotMatch(layout, /\/superadmin\/permissions|Role Permissions/);
+  assert.doesNotMatch(app, /superadmin\/permissions|RolePermissions/);
+  assert.equal(fs.existsSync(path.join(root, 'client/src/pages/superadmin/RolePermissions.js')), false);
   assert.match(dss, /Decision support is unavailable/);
   assert.match(dss, /Try Again/);
   assert.doesNotMatch(dss, /Universal[\s\S]*Meta-Intelligence/);

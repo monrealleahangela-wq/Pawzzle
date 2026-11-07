@@ -185,12 +185,10 @@ test('calendar, specialized staff forms, and shared modals collapse inside narro
 
 test('genuinely wide tables scroll inside their component instead of widening the page', () => {
   const css = read('client/src/styles/Global.css');
-  const rolePermissions = read('client/src/pages/superadmin/RolePermissions.js');
   const staff = read('client/src/pages/admin/StaffManagement.js');
   const logistics = read('client/src/pages/admin/Logistics.js');
 
   assert.match(css, /\.app-page \[class~="overflow-x-auto"\][\s\S]*max-width: 100%;[\s\S]*min-width: 0;/);
-  assert.match(rolePermissions, /overflow-x-auto[\s\S]*min-w-\[760px\]/);
   assert.match(staff, /overflow-auto[\s\S]*min-w-\[1180px\]/);
   assert.match(logistics, /overflow-x-auto[\s\S]*min-w-\[1080px\]/);
 });

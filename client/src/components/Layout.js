@@ -179,7 +179,6 @@ const superAdminMenu = [
   {
     label: 'Users', icon: Users, children: [
       { path: '/superadmin/account-management', label: 'Accounts', icon: Users },
-      { path: '/superadmin/permissions', label: 'Role Permissions', icon: ShieldCheck },
       { path: '/superadmin/store-applications', label: 'Store Applications', icon: FileText },
       { path: '/superadmin/staff-verification', label: 'Professional Verification', icon: ShieldCheck },
     ]
