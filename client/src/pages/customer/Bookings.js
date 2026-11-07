@@ -1961,47 +1961,48 @@ const Bookings = ({ isSubcomponent = false }) => {
       {
         !showBookingForm && bookings.length > 0 && (
           <>
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
-                <div />
-
-                {/* Mobile Filter Toggle */}
-                <button
-                  onClick={() => setShowMobileFilters(!showMobileFilters)}
-                  className="md:hidden w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm font-black text-[10px] uppercase tracking-widest text-slate-700"
-                >
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4 text-primary-600" />
-                    <span>Search & Filters {(searchTerm || filterStatus !== 'all') && '• Active'}</span>
-                  </div>
-                  <Search className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-90' : ''}`} />
-                </button>
-              </div>
+            <div className="space-y-3">
+              {/* Mobile Filter Toggle */}
+              <button
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                type="button"
+                className="flex min-h-11 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm md:hidden"
+                aria-expanded={showMobileFilters}
+                aria-controls="booking-filters"
+              >
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-primary-600" />
+                  <span>Find a booking {(searchTerm || filterStatus !== 'all') && '• Filters active'}</span>
+                </div>
+                <Search className={`h-4 w-4 transition-transform ${showMobileFilters ? 'rotate-90' : ''}`} />
+              </button>
 
               {/* Collapsible Filters for mobile, fixed for desktop */}
-              <div className={`${showMobileFilters ? 'block' : 'hidden md:block'} card p-6 border-slate-100 shadow-xl shadow-primary-200/10 mb-8 animate-fade-in`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Search Booking</label>
+              <div id="booking-filters" className={`${showMobileFilters ? 'block' : 'hidden md:block'} animate-fade-in rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5`}>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                  <div className="space-y-1.5">
+                    <label htmlFor="booking-search" className="ml-0.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Search bookings</label>
                     <div className="relative group">
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+                      <Search className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-600" />
                       <input
+                        id="booking-search"
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input pl-10 w-full !bg-slate-50 border-transparent focus:!bg-white font-bold text-sm"
-                        placeholder="Search pet or service..."
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 !pl-11 !pr-4 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
+                        placeholder="Search by service or pet name"
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                  <div className="space-y-1.5">
+                    <label htmlFor="booking-status" className="ml-0.5 block text-[9px] font-black uppercase tracking-wider text-slate-500">Booking status</label>
                     <select
+                      id="booking-status"
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="input w-full !bg-slate-50 border-transparent focus:!bg-white font-bold text-sm"
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
                     >
-                      <option value="all">All Statuses</option>
+                      <option value="all">All bookings</option>
                       <option value="pending">Pending Review</option>
                       <option value="awaiting_customer_confirmation">Waiting for your confirmation</option>
                       <option value="awaiting_payment">Payment Required</option>
@@ -2016,10 +2017,11 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                 {showMobileFilters && (
                   <button
+                    type="button"
                     onClick={() => setShowMobileFilters(false)}
-                    className="w-full mt-6 btn btn-primary py-4 text-[10px] font-black uppercase tracking-widest"
+                    className="mt-3 min-h-10 w-full rounded-xl bg-primary-700 px-4 text-[10px] font-black uppercase tracking-wider text-white transition hover:bg-primary-800 md:hidden"
                   >
-                    Apply Search
+                    Show results
                   </button>
                 )}
               </div>
@@ -2028,48 +2030,47 @@ const Bookings = ({ isSubcomponent = false }) => {
             {bookings.map((booking) => (
               <div
                 key={booking._id}
-                className="group bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm hover:shadow-lg transition-all flex flex-col relative overflow-hidden animate-slide-up"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition-all hover:shadow-md sm:p-4 animate-slide-up"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-bl-[4rem] -translate-y-16 translate-x-16 group-hover:bg-primary-50 transition-colors duration-500" />
+                <div className="absolute right-0 top-0 h-24 w-24 -translate-y-12 translate-x-12 rounded-bl-[3rem] bg-slate-50 transition-colors duration-500 group-hover:bg-primary-50" />
 
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 relative z-10">
+                <div className="relative z-10 mb-3 flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-black text-slate-900 tracking-tight leading-none group-hover:text-primary-600 transition-colors">
                         {booking.service?.name || 'Service unavailable'}
                       </h3>
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                      <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-sm border ${getStatusColor(booking.status)}`}>
+                      <span className={`rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-wider shadow-sm ${getStatusColor(booking.status)}`}>
                         {getStatusLabel(booking.status)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-primary-600" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{formatSafeDate(booking.bookingDate)}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{formatSafeDate(booking.bookingDate)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-3.5 w-3.5 text-primary-600" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{formatTime12h(booking.startTime)}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{formatTime12h(booking.startTime)}</p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  <div className="md:text-right">
+                    <p className="mb-0.5 text-[8px] font-black uppercase tracking-wider text-slate-500">
                       {booking.pricingBreakdown?.calculationVersion
                         ? 'Total to Pay'
                         : booking.status === 'awaiting_customer_confirmation' ? 'Proposed Service Price' : 'Estimated Service Price'}
                     </p>
-                    <p className="text-lg font-black text-slate-900 leading-none tracking-tighter">
+                    <p className="text-base font-black leading-none tracking-tight text-slate-900">
                       {formatPeso(booking.totalPrice)}
                     </p>
                   </div>
                 </div>
 
                 {/* Subject Asset Manifest */}
-                <div className="bg-slate-50/50 rounded-xl p-4 mb-4 border border-slate-100 flex-1">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 block">Booking Summary</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="mb-3 flex-1 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                  <p className="mb-2 text-[8px] font-black uppercase tracking-wider text-slate-500">Booking summary</p>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                     <div>
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Pet Name</p>
                       <p className="text-[11px] font-black text-slate-800 uppercase">{booking.pet?.name || 'UNKNOWN'}</p>
@@ -2088,16 +2089,16 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-50 relative z-10">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-3">
+                <div className="relative z-10 flex flex-col items-center justify-between gap-2.5 border-t border-slate-100 pt-3 sm:flex-row">
+                  <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                    <div className="flex flex-wrap items-center gap-2">
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
                           `${booking.store?.contactInfo?.address?.street || ''}, ${booking.store?.contactInfo?.address?.city || ''}, ${booking.store?.contactInfo?.address?.state || ''}`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-300 transition-all group/store"
+                        className="group/store flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-2 transition-all hover:border-primary-300"
                       >
                         <Store className="h-3.5 w-3.5 text-primary-600 group-hover/store:scale-110 transition-transform" />
                         <div className="flex flex-col">
@@ -2110,7 +2111,7 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                       <Link
                         to={`/find-shops?store=${booking.store?._id || booking.store}`}
-                        className="flex items-center gap-2 p-2.5 bg-primary-50 text-primary-600 rounded-2xl border border-primary-100 hover:bg-primary-600 hover:text-white transition-all group/gps shadow-sm"
+                        className="group/gps flex items-center gap-2 rounded-xl border border-primary-100 bg-primary-50 p-2 text-primary-600 shadow-sm transition-all hover:bg-primary-600 hover:text-white"
                       >
                         <Navigation className="h-3.5 w-3.5 group-hover/gps:rotate-12 transition-transform" />
                         <span className="text-[9px] font-black uppercase tracking-widest leading-none">GPS</span>
@@ -2118,7 +2119,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
                   </div>
 
-                  <div className="flex gap-3 w-full sm:w-auto">
+                  <div className="flex w-full gap-2 sm:w-auto">
                     <button
                       onClick={() => setSelectedBooking(booking)}
                       className="flex-1 sm:flex-none flex h-10 items-center justify-center gap-2 px-4 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-primary-600 transition-all active:scale-95"
@@ -2128,7 +2129,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                     {booking.status === 'completed' && booking.paymentStatus === 'paid' && !booking.reviewStatus?.isRated && (booking.serviceProvider || booking.staff) && (
                       <button
                         onClick={() => setRatingBooking(booking)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm hover:bg-emerald-600 hover:text-white transition-all active:scale-95"
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 text-[9px] font-black uppercase tracking-wider text-emerald-700 shadow-sm transition-all hover:bg-emerald-600 hover:text-white active:scale-95 sm:flex-none"
                       >
                         <Star className="h-4 w-4" /> Rate Staff
                       </button>
@@ -2141,7 +2142,9 @@ const Bookings = ({ isSubcomponent = false }) => {
                     {['pending', 'awaiting_customer_confirmation', 'awaiting_payment'].includes(booking.status) && booking.paymentStatus !== 'paid' && (
                       <button
                         onClick={() => handleCancelBooking(booking._id)}
-                        className="p-4 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95"
+                        title="Cancel booking"
+                        aria-label="Cancel booking"
                       >
                         <X className="h-4 w-4" />
                       </button>
