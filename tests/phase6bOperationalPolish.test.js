@@ -43,6 +43,16 @@ test('role workspace edits inherited policies with staff counts and dependency-a
   assert.match(controller, /countDocuments/);
 });
 
+test('role permission editor stays compact and keeps its close and save actions anchored', () => {
+  const ui = source('client/src/pages/admin/RoleManagement.js');
+  assert.match(ui, /editing&&createPortal/);
+  assert.match(ui, /role="dialog" aria-modal="true" aria-labelledby="role-policy-title"/);
+  assert.match(ui, /aria-label="Close role permissions"/);
+  assert.match(ui, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-4xl/);
+  assert.match(ui, /grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overscroll-contain[^"`]*md:grid-cols-2/);
+  assert.match(ui, /flex shrink-0 gap-2 border-t/);
+});
+
 test('staff profile keeps professional, performance, availability, and activity views together', () => {
   const ui = source('client/src/components/admin/SpecializedStaffProfileModal.js');
   for (const section of ['Professional', 'Performance', 'Availability', 'Booking Timeline', 'Staff Activity Timeline']) assert.match(ui, new RegExp(section));

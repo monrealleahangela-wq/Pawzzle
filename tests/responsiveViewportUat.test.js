@@ -183,6 +183,16 @@ test('calendar, specialized staff forms, and shared modals collapse inside narro
   assert.match(modal, /max-h-\[calc\(100dvh-1rem\)\]/);
 });
 
+test('role permission editor fits the viewport and keeps actions visible', () => {
+  const roles = read('client/src/pages/admin/RoleManagement.js');
+
+  assert.match(roles, /fixed inset-0[^"`]*items-center justify-center[^"`]*p-2 sm:p-4/);
+  assert.match(roles, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-4xl/);
+  assert.match(roles, /overflow-y-auto overscroll-contain/);
+  assert.match(roles, /md:grid-cols-2/);
+  assert.match(roles, /aria-label="Close role permissions"/);
+});
+
 test('supplier product submission stays compact and anchored to the viewport', () => {
   const supplier = read('client/src/pages/supplier/SupplierDashboard.js');
 
