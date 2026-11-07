@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { chatService } from '../../services/chatService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import { Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart, Plus, Star, MessageCircle, Building, ShoppingCart, Zap, Shield, Check, Users, AlertTriangle } from 'lucide-react';
+import { Clock, Package, Scissors, ChevronLeft, ShoppingBag, Heart, Plus, Star, MessageCircle, Building, ShoppingCart, Zap, Shield, Check, Users, AlertTriangle, MapPin, Download } from 'lucide-react';
 import GoogleMap from '../../components/GoogleMap';
 import ReviewSection from '../../components/ReviewSection';
 import UserReportModal from '../../components/UserReportModal';
@@ -86,11 +86,11 @@ const StoreDetail = () => {
     if (isLocalFav) {
       const updated = favorites.filter(id => id !== storeId);
       localStorage.setItem('favoriteStores', JSON.stringify(updated));
-      toast.info('Removed from favorites');
+      toast.info('Removed from favorite stores.');
     } else {
       favorites.push(storeId);
       localStorage.setItem('favoriteStores', JSON.stringify(favorites));
-      toast.success('Added to favorites! ❤️');
+      toast.success('Added to favorite stores.');
     }
     // Update local state if we want to keep showing the heart
     window.dispatchEvent(new Event('storage'));
@@ -113,7 +113,7 @@ const StoreDetail = () => {
         type: 'general'
       });
       if (response.data?.conversation) {
-        toast.success('Chat opened! Check your messages.');
+        toast.success('Store conversation opened. Check your messages.');
         // Trigger the floating chat manager to open
         localStorage.setItem('newConversation', Date.now().toString());
         window.dispatchEvent(new StorageEvent('storage', { key: 'newConversation' }));
@@ -150,7 +150,7 @@ const StoreDetail = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success('Store contact card downloaded!');
+    toast.success('Store contact saved.');
   };
 
   const handleAddToCart = (product) => {
@@ -334,138 +334,134 @@ const StoreDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-36 sm:pb-12">
-      {/* Dynamic Hero Section - Optimized for Compact Mobile */}
-      <div className="relative h-[30vh] sm:h-[60vh] w-full overflow-hidden">
-        {store.coverImage ? (
-          <img src={getImageUrl(store.coverImage)} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-primary-900 to-primary-950"></div>
-        )}
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-32 sm:h-96 bg-gradient-to-t from-[#F8FAFC] via-[#F8FAFC]/40 to-transparent"></div>
-
-        {/* Navigation - Ultra Compact */}
-        <div className="absolute top-3 sm:top-8 left-3 sm:left-8 z-30">
-          <button onClick={() => window.history.back()} className="p-2 sm:p-4 bg-white/20 backdrop-blur-xl border border-white/30 text-white rounded-lg sm:rounded-2xl hover:bg-white hover:text-slate-900 transition-all active:scale-95">
-            <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" />
-          </button>
-        </div>
-
-        <div className="absolute bottom-4 sm:bottom-16 left-0 right-0 px-3 md:px-8 max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center md:items-end gap-3 sm:gap-10">
-            <div className="relative shrink-0">
-              {store.logo ? (
-                <img src={getImageUrl(store.logo)} alt="Logo" className="w-20 h-20 sm:w-40 sm:h-40 rounded-2xl sm:rounded-[2.5rem] ring-2 sm:ring-8 ring-white/20 shadow-2xl relative z-10 object-cover" />
-              ) : (
-                <div className="w-20 h-20 sm:w-40 sm:h-40 rounded-2xl sm:rounded-[2.5rem] bg-white flex items-center justify-center ring-2 sm:ring-8 ring-white/20 shadow-2xl relative z-10">
-                  <Building className="h-8 w-8 sm:h-20 sm:w-20 text-slate-200" />
-                </div>
+    <div className="min-h-screen bg-[#F8F7F4] pb-36 sm:pb-12">
+      <section className="mx-auto max-w-7xl px-2 pt-3 sm:px-5 sm:pt-5 lg:px-8" data-testid="store-profile-hero">
+        <div className="overflow-hidden rounded-[1.75rem] border border-primary-100 bg-white shadow-[0_18px_55px_rgba(76,38,13,0.10)] sm:rounded-[2rem]">
+          <div className="relative h-36 overflow-hidden sm:h-44 lg:h-52">
+            {store.coverImage ? (
+              <img src={getImageUrl(store.coverImage)} alt={`${store.name} cover`} className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-primary-900 to-primary-950" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/10 to-slate-950/25" />
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="absolute left-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/30 bg-slate-950/35 text-white shadow-lg backdrop-blur-md transition hover:bg-white hover:text-slate-900 sm:left-4 sm:top-4"
+              aria-label="Go back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="absolute bottom-3 right-3 flex flex-wrap justify-end gap-1.5 sm:bottom-4 sm:right-4">
+              {store.verificationStatus === 'verified' && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-primary-700/95 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-lg backdrop-blur">
+                  <Shield className="h-3 w-3" /> Verified store
+                </span>
               )}
+              <span className={`inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-lg backdrop-blur ${isStoreOpen() ? 'bg-emerald-700/95' : 'bg-slate-700/95'}`}>
+                <Clock className="h-3 w-3" /> {isStoreOpen() ? 'Open now' : 'Closed now'}
+              </span>
             </div>
+          </div>
 
-            <div className="flex-1 space-y-1 text-center md:text-left">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5">
-                {store.verificationStatus === 'verified' && (
-                  <span className="px-2 py-0.5 bg-primary-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                    <Shield className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> Official
-                  </span>
-                )}
-                {store.verificationStatus === 'pending' && (
-                  <span className="px-2 py-0.5 bg-secondary-500 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg">
-                    Pending
-                  </span>
-                )}
-                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isOnline() ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'}`}>
-                  <div className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white ${isOnline() ? 'animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'opacity-40'}`} />
-                  {isOnline() ? 'Online' : 'Offline'}
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg transition-all ${isStoreOpen() ? 'bg-primary-500 text-white' : 'bg-rose-500 text-white opacity-60'}`}>
-                  <Clock className="h-2 w-2 sm:h-3 sm:w-3" />
-                  {isStoreOpen() ? 'Open Now' : 'Closed'}
-                </span>
-                {user?.role !== 'super_admin' && (
-                  <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[7px] sm:text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
-                    <Users className="h-2 w-2 sm:h-3 sm:w-3 fill-white/20" /> {followerCount.toLocaleString()} {followerCount === 1 ? 'Follower' : 'Followers'}
-                  </span>
+          <div className="relative px-4 pb-4 sm:px-6 sm:pb-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="-mt-10 shrink-0 sm:-mt-12">
+                {store.logo ? (
+                  <img src={getImageUrl(store.logo)} alt={`${store.name} logo`} className="h-20 w-20 rounded-2xl border-4 border-white bg-white object-cover shadow-xl sm:h-24 sm:w-24" />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-white bg-slate-50 text-slate-300 shadow-xl sm:h-24 sm:w-24">
+                    <Building className="h-9 w-9" />
+                  </div>
                 )}
               </div>
-              <h1 className="flex max-w-full min-w-0 items-start gap-3 text-2xl font-black uppercase leading-tight tracking-tighter text-slate-900 break-words sm:text-3xl md:text-4xl">
-                {store.name}
-                {isAuthenticated && (
-                  <button 
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-all"
-                    title="Report Shop"
+
+              <div className="min-w-0 flex-1 sm:pb-0.5">
+                <div className="flex min-w-0 items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="break-words text-2xl font-black uppercase leading-none tracking-[-0.035em] text-slate-950 sm:text-3xl">{store.name}</h1>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-bold text-slate-500 sm:text-xs">
+                      {store.ratings && store.ratings.count > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-primary-800"><Star className="h-3.5 w-3.5 fill-primary-600 text-primary-600" /> {store.ratings.average.toFixed(1)} from {store.ratings.count} {store.ratings.count === 1 ? 'review' : 'reviews'}</span>
+                      ) : (
+                        <span>No reviews yet</span>
+                      )}
+                      {user?.role !== 'super_admin' && <span>{followerCount.toLocaleString()} {followerCount === 1 ? 'follower' : 'followers'}</span>}
+                      <span className="inline-flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${isOnline() ? 'bg-emerald-500' : 'bg-slate-300'}`} /> Seller {isOnline() ? 'online' : 'offline'}</span>
+                    </div>
+                  </div>
+                  {isAuthenticated && (
+                    <button
+                      type="button"
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-500 transition hover:bg-rose-100"
+                      title="Report this store"
+                      aria-label="Report this store"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-slate-600 line-clamp-2 break-words sm:text-sm">
+                  {store.description || 'Browse this store’s available products, pet services, and listings.'}
+                </p>
+              </div>
+
+              <div className="flex shrink-0 gap-2 sm:pb-0.5">
+                {user?.role !== 'super_admin' && (
+                  <button
+                    type="button"
+                    onClick={handleToggleFollow}
+                    disabled={isTogglingFollow}
+                    className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border px-4 text-[10px] font-black uppercase tracking-wider transition active:scale-95 disabled:opacity-60 sm:flex-none ${isFollowing
+                      ? 'border-primary-200 bg-primary-50 text-primary-700'
+                      : 'border-slate-900 bg-slate-900 text-white hover:bg-primary-700'
+                    }`}
                   >
-                    <AlertTriangle className="h-4 w-4" />
+                    {isFollowing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    {isFollowing ? 'Following' : 'Follow store'}
                   </button>
                 )}
-              </h1>
-              {store.ratings && store.ratings.count > 0 && (
-                <div className="flex items-center gap-1.5 mt-2 bg-secondary-50/80 backdrop-blur-md rounded-xl px-3 py-1.5 w-fit border border-secondary-100 mb-2">
-                  <Star className="w-4 h-4 text-secondary-500 fill-secondary-500" />
-                  <span className="text-xs font-black text-primary-700 tracking-wider">
-                    {store.ratings.average.toFixed(1)} <span className="font-bold opacity-70">({store.ratings.count})</span>
-                  </span>
-                </div>
-              )}
-              <p className="max-w-xl text-xs font-bold uppercase leading-relaxed tracking-tight text-slate-500 opacity-80 line-clamp-2 break-words sm:text-base">
-                {store.description}
-              </p>
-            </div>
-
-            <div className="flex gap-1.5 shrink-0 sm:pb-2">
-              {user?.role !== 'super_admin' && (
                 <button
-                  onClick={handleToggleFollow}
-                  disabled={isTogglingFollow}
-                  className={`flex items-center gap-2 px-6 sm:px-10 py-3 sm:py-5 rounded-xl sm:rounded-3xl font-black uppercase tracking-tighter text-[10px] sm:text-sm transition-all shadow-xl active:scale-95 ${
-                      isFollowing 
-                      ? 'bg-primary-50 text-primary-600 border-2 border-primary-200' 
-                      : 'bg-slate-900 text-white hover:bg-black'
-                  }`}
+                  type="button"
+                  onClick={handleStartChat}
+                  disabled={chatLoading}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-primary-200 bg-white px-4 text-[10px] font-black uppercase tracking-wider text-primary-800 transition hover:bg-primary-50 active:scale-95 disabled:opacity-60 sm:flex-none"
                 >
-                  {isFollowing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {isFollowing ? 'Following' : 'Follow'}
+                  {chatLoading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-700 border-t-transparent" /> : <MessageCircle className="h-4 w-4" />}
+                  Message store
                 </button>
-              )}
-              <button
-                onClick={handleStartChat}
-                disabled={chatLoading}
-                className="p-3 sm:p-5 bg-white text-slate-900 border-2 border-slate-100 rounded-xl sm:rounded-3xl shadow-lg transition-all disabled:opacity-50 active:scale-95 hover:border-slate-200"
-              >
-                {chatLoading ? <div className="h-4 w-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" /> : <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />}
-              </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-2 md:px-8 -mt-2 sm:-mt-8 relative z-20">
+      <div className="relative z-20 mx-auto mt-4 max-w-7xl px-2 sm:px-5 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-10">
 
           {/* Main Catalog View */}
-          <div className="lg:col-span-8 space-y-4 sm:space-y-12">
-            {/* Catalog Tabs - High Density Navigation */}
-            <div className="content-scroll-row gap-1 rounded-2xl border border-white bg-white/90 p-1 shadow-xl shadow-slate-200/40 backdrop-blur-xl sm:gap-2 sm:rounded-[2.5rem] sm:p-3">
+          <div className="space-y-4 lg:col-span-8 sm:space-y-6">
+            <div className="content-scroll-row gap-1 rounded-2xl border border-primary-100 bg-white p-1.5 shadow-sm sm:gap-1.5 sm:p-2" aria-label="Store sections">
               {[
-                { id: 'products', label: 'Gear', icon: Package, count: products.length },
-                { id: 'services', label: 'Ops', icon: Scissors, count: services.length },
-                { id: 'pets', label: 'Fleet', icon: Heart, count: pets.length },
-                ...(staff.length > 0 ? [{ id: 'experts', label: 'Experts', icon: Users, count: staff.length }] : [])
+                { id: 'products', label: 'Products', icon: Package, count: products.length },
+                { id: 'services', label: 'Services', icon: Scissors, count: services.length },
+                { id: 'pets', label: 'Pets', icon: Heart, count: pets.length },
+                ...(staff.length > 0 ? [{ id: 'experts', label: 'Store team', icon: Users, count: staff.length }] : [])
               ].map((tab) => (
                 <button
                   key={tab.id}
+                  type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase tracking-tight transition-all sm:min-w-0 sm:flex-1 sm:rounded-[2rem] sm:px-5 sm:py-4 sm:text-xs ${activeTab === tab.id
-                    ? 'bg-slate-900 text-white shadow-lg'
-                    : 'text-slate-400 hover:bg-slate-50'
+                  className={`flex min-h-10 min-w-[7rem] shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wide transition-all sm:min-w-0 sm:flex-1 ${activeTab === tab.id
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'text-slate-500 hover:bg-primary-50 hover:text-primary-800'
                     }`}
+                  aria-pressed={activeTab === tab.id}
                 >
-                  <tab.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${activeTab === tab.id ? 'text-primary-400' : 'text-slate-300'}`} />
+                  <tab.icon className={`h-3.5 w-3.5 ${activeTab === tab.id ? 'text-primary-300' : 'text-slate-400'}`} />
                   <span>{tab.label}</span>
-                  <span className={`px-1 rounded-full text-[7px] ${activeTab === tab.id ? 'bg-primary-600' : 'bg-slate-100 text-slate-400'}`}>
+                  <span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[7px] ${activeTab === tab.id ? 'bg-primary-700 text-white' : 'bg-slate-100 text-slate-500'}`}>
                     {tab.count}
                   </span>
                 </button>
@@ -475,44 +471,47 @@ const StoreDetail = () => {
             {/* Grid Views - Maximum Density */}
             <div className="min-h-[300px]">
               {activeTab === 'products' && (
-                <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] sm:[--card-gap:1.5rem] animate-fade-in px-1">
+                <div className="responsive-card-grid [--card-min:14rem] [--card-gap:0.875rem] animate-fade-in px-1 sm:[--card-min:15rem] sm:[--card-gap:1rem]">
                   {products.length > 0 ? products.map(product => (
-                    <div key={product._id} className="group bg-white rounded-xl sm:rounded-[2.5rem] p-2 sm:p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col h-full">
+                    <div key={product._id} className="group flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-2.5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:p-3">
                       <Link to={`/products/${product._id}`} className="block flex-1">
-                        <div className="relative aspect-square rounded-lg sm:rounded-[2rem] overflow-hidden mb-2 sm:mb-6 bg-slate-50">
+                        <div className="relative mb-3 aspect-[4/3] overflow-hidden rounded-xl bg-slate-50">
                           {product.images?.[0] ? (
                             <img src={getImageUrl(product.images[0])} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"><Package className="h-6 w-6 text-slate-200" /></div>
                           )}
                         </div>
-                        <div className="space-y-0.5 sm:space-y-4 mb-2 sm:mb-6 px-1">
-                          <p className="text-[10px] font-black uppercase leading-tight tracking-wide text-primary-600 break-words">{product.category}</p>
-                          <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{product.name}</h3>
-                          <p className="text-[11px] font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(product.price)}</p>
+                        <div className="mb-3 space-y-1 px-1">
+                          <p className="break-words text-[8px] font-black uppercase leading-tight tracking-wider text-primary-600">{product.category}</p>
+                          <h3 className="min-h-[2.25rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">{product.name}</h3>
+                          <p className="text-base font-black tracking-tight text-primary-800">{formatPeso(product.price)}</p>
                         </div>
                       </Link>
-                      <div className="flex gap-1.5 mt-auto">
+                      <div className="mt-auto grid grid-cols-2 gap-1.5">
                         <button
+                          type="button"
                           onClick={() => handleAddToCart(product)}
-                          className="p-2 sm:p-4 bg-slate-100 text-slate-600 rounded-lg sm:rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
-                          title="Add to Cart"
+                          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-primary-50 px-2 text-[8px] font-black uppercase tracking-wide text-primary-800 transition hover:bg-primary-100 active:scale-95"
+                          title={product.productMode === 'variant' ? 'View product options' : 'Add to cart'}
                         >
-                          <ShoppingCart className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                          {product.productMode === 'variant' ? 'Options' : 'Add cart'}
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleBuyNow(product)}
-                          className="flex-1 py-2 sm:py-4 bg-slate-900 text-white rounded-lg sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 sm:gap-2 active:scale-95 transition-all shadow-lg hover:bg-primary-600"
+                          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-slate-900 px-2 text-[8px] font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-primary-700 active:scale-95"
                         >
-                          <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
-                          Buy Now
+                          <Zap className="h-3.5 w-3.5" />
+                          {product.productMode === 'variant' ? 'Choose' : 'Buy now'}
                         </button>
                       </div>
                     </div>
                   )) : (
                     <div className="col-span-full py-12 text-center text-slate-300">
                       <Package className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                      <p className="font-black text-[10px] uppercase tracking-widest opacity-40">No Gear Available</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest opacity-50">No products available yet</p>
                     </div>
                   )}
                 </div>
@@ -544,7 +543,7 @@ const StoreDetail = () => {
                   )) : (
                     <div className="py-12 text-center text-slate-300">
                       <Scissors className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                      <p className="font-black text-[10px] uppercase tracking-widest opacity-40">Zero Ops Found</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest opacity-50">No services available yet</p>
                     </div>
                   )}
                 </div>
@@ -573,7 +572,7 @@ const StoreDetail = () => {
                   )) : (
                     <div className="col-span-full py-12 text-center text-slate-300">
                       <Heart className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                      <p className="font-black text-[10px] uppercase tracking-widest opacity-40">Fleet Offline</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest opacity-50">No pets available yet</p>
                     </div>
                   )}
                 </div>
@@ -638,7 +637,7 @@ const StoreDetail = () => {
                   )) : (
                     <div className="col-span-full py-12 text-center text-slate-300">
                       <Users className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                      <p className="font-black text-[10px] uppercase tracking-widest opacity-40">No Expert Data Dispatched</p>
+                      <p className="font-black text-[10px] uppercase tracking-widest opacity-50">No team members listed yet</p>
                     </div>
                   )}
                 </div>
@@ -651,61 +650,68 @@ const StoreDetail = () => {
             </div>
           </div>
 
-          {/* Sidebar - Tight Performance Layout */}
-          <div className="lg:col-span-4 space-y-3 sm:space-y-8 pb-12">
-            <div className="bg-slate-900 rounded-2xl sm:rounded-[3rem] p-5 sm:p-10 text-white relative overflow-hidden shadow-2xl">
-              <div className="relative z-10 space-y-4 sm:space-y-8">
-                <h4 className="text-sm sm:text-2xl font-black tracking-tighter uppercase border-b border-white/10 pb-3">Base Intel</h4>
-                <div className="space-y-3 sm:space-y-5">
+          <aside className="space-y-4 pb-12 lg:col-span-4">
+            <div className="relative overflow-hidden rounded-[1.75rem] bg-slate-900 p-5 text-white shadow-xl sm:p-6">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary-700/30 blur-3xl" />
+              <div className="relative z-10 space-y-4">
+                <div>
+                  <h4 className="text-base font-black uppercase tracking-tight">Store contact</h4>
+                  <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-400">Call, email, or open the store location.</p>
+                </div>
+                <div className="space-y-3 border-t border-white/10 pt-3">
                   <StoreContactIntel contactInfo={store.contactInfo} />
-                  <div 
-                    className="pt-2 sm:pt-4 cursor-pointer group"
+                  <div
+                    className="group cursor-pointer"
                     onClick={() => navigate(`/find-shops?store=${store._id}`)}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') navigate(`/find-shops?store=${store._id}`); }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="View store location and directions"
                   >
-                    <div className="relative">
-                      <GoogleMap 
+                    <div className="relative overflow-hidden rounded-2xl">
+                      <GoogleMap
                         address={`${store.contactInfo?.address?.street}, ${store.contactInfo?.address?.city}, ${store.contactInfo?.address?.state}`}
                         storeName={store.name}
                         coordinates={store.contactInfo?.address?.coordinates}
-                        className="w-full pointer-events-none sm:pointer-events-auto"
+                        className="pointer-events-none w-full [&>div:first-child]:!min-h-[10rem] [&>div:last-child]:hidden [&_iframe]:!min-h-[10rem]"
                         onDirectionsClick={() => navigate(`/find-shops?store=${store._id}`)}
                         onViewOnMapClick={() => navigate(`/find-shops?store=${store._id}`)}
                       />
-                      <div className="absolute inset-0 bg-transparent z-10 sm:hidden" />
-                      <div className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-xl">
-                        View Full Map
+                      <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-xl bg-slate-950/85 px-3 py-2 text-white shadow-lg backdrop-blur-md">
+                        <span className="inline-flex min-w-0 items-center gap-2 text-[9px] font-black uppercase tracking-wider"><MapPin className="h-3.5 w-3.5 shrink-0 text-primary-300" /> View location</span>
+                        <span className="text-[8px] font-bold text-slate-300">Directions</span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <button onClick={handleDownloadStoreCard} className="w-full py-3 sm:py-5 bg-white text-slate-900 rounded-lg sm:rounded-[2rem] font-black uppercase tracking-widest text-[8px] sm:text-xs active:scale-95 transition-transform shadow-xl">
-                  Extract vCard
+                <button onClick={handleDownloadStoreCard} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[9px] font-black uppercase tracking-wider text-slate-900 shadow-lg transition hover:bg-primary-50 active:scale-95">
+                  <Download className="h-3.5 w-3.5" /> Save store contact
                 </button>
               </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-[3rem] p-5 sm:p-10 border border-white shadow-xl">
-              <h4 className="text-[10px] sm:text-xl font-black text-slate-900 tracking-tight uppercase mb-4 sm:mb-8 flex items-center justify-between">
-                <span>Timeline</span>
-                <Clock className="h-3 w-3 sm:h-5 sm:w-5 text-slate-300" />
+            <div className="rounded-[1.75rem] border border-primary-100 bg-white p-5 shadow-sm sm:p-6">
+              <h4 className="mb-3 flex items-center justify-between text-sm font-black uppercase tracking-tight text-slate-900">
+                <span>Business hours</span>
+                <Clock className="h-4 w-4 text-primary-500" />
               </h4>
-              <div className="space-y-1 sm:space-y-3">
+              <div className="space-y-1">
                 {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
                   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
                   const isToday = day === today;
                   const hours = store.businessHours?.[day];
                   return (
-                    <div key={day} className={`flex justify-between items-center px-2 py-1.5 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl ${isToday ? 'bg-primary-50 ring-1 ring-primary-100' : 'opacity-60'}`}>
-                      <span className={`text-[7px] sm:text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-primary-600' : 'text-slate-400'}`}>{day.substring(0, 3)}</span>
-                      <span className={`font-black text-[8px] sm:text-xs sm:text-sm ${isToday ? 'text-primary-700' : 'text-slate-900'}`}>
-                        {hours && !hours.closed ? `${formatTime12h(hours.open)} - ${formatTime12h(hours.close)}` : 'OFFLINE'}
+                    <div key={day} className={`flex items-center justify-between rounded-lg px-2.5 py-2 ${isToday ? 'bg-primary-50 ring-1 ring-primary-100' : ''}`}>
+                      <span className={`text-[9px] font-black uppercase tracking-wider ${isToday ? 'text-primary-700' : 'text-slate-500'}`}>{isToday ? 'Today' : day.substring(0, 3)}</span>
+                      <span className={`text-[9px] font-bold ${isToday ? 'text-primary-800' : 'text-slate-700'}`}>
+                        {hours && !hours.closed ? `${formatTime12h(hours.open)} – ${formatTime12h(hours.close)}` : 'Closed'}
                       </span>
                     </div>
                   );
                 })}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
       <UserReportModal
