@@ -82,7 +82,7 @@ const Orders = () => {
       </header>
 
       {activeTab === 'orders' ? (
-        <div className="marketplace-order-list space-y-6">
+        <div className="marketplace-order-list space-y-4">
           {ordersError && (
             <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
               <span>{ordersError}</span>
@@ -96,7 +96,7 @@ const Orders = () => {
               <Link to="/products" className="text-primary-600 font-bold mt-2 inline-block">Start shopping</Link>
             </div>
           ) : (
-            <div className="grid gap-6">
+            <div className="grid gap-4">
               {orders.map(order => {
                 // Legacy Status Mapper for Backward Compatibility
                 const legacyToNew = {
@@ -112,36 +112,36 @@ const Orders = () => {
                 const orderPolicy = normalizeRefundPolicy(order.refundPolicySnapshot || order.store?.refundPolicy);
                 
                 return (
-                  <article key={order._id} className="marketplace-order-card bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3">
-                      <div className="flex items-center gap-4">
+                  <article key={order._id} className="marketplace-order-card overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-3.5 py-3 sm:px-4">
+                      <div className="flex min-w-0 items-center gap-3">
                         <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase">Order ID</p>
-                          <p className="font-bold text-slate-900">#{order.orderNumber?.slice(-8).toUpperCase()}</p>
+                          <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Order ID</p>
+                          <p className="text-sm font-black text-slate-900">#{order.orderNumber?.slice(-8).toUpperCase()}</p>
                         </div>
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${meta.bg} ${meta.color} ${meta.border}`}>
-                          <StatusIcon className="h-3.5 w-3.5" />
+                        <div className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-bold ${meta.bg} ${meta.color} ${meta.border}`}>
+                          <StatusIcon className="h-3.5 w-3.5 shrink-0" />
                           {meta.label}
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Total Amount</p>
-                        <p className="text-xl font-bold text-slate-900">{formatPeso(order.totalAmount)}</p>
+                        <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Total amount</p>
+                        <p className="text-lg font-black leading-tight text-slate-900">{formatPeso(order.totalAmount)}</p>
                       </div>
                     </div>
 
-                    <div className="p-4 space-y-3">
+                    <div className="space-y-2.5 p-3 sm:px-4">
                       {order.items.map((item, i) => (
-                        <div key={item._id || i} className="flex gap-4 items-center">
+                        <div key={item._id || i} className="flex items-center gap-3">
                           <img 
                             src={getImageUrl(item.variantSnapshot?.image || item.image)}
                             alt="" 
-                            className="w-12 h-12 object-cover rounded-lg border border-slate-100 bg-slate-50"
+                            className="h-11 w-11 shrink-0 rounded-lg border border-slate-100 bg-slate-50 object-cover"
                             onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Pet' }}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
-                            <p className="text-xs text-slate-500">Qty: {item.quantity} · {formatPeso(item.price)}</p>
+                            <p className="truncate text-sm font-bold text-slate-900">{item.name}</p>
+                            <p className="text-[11px] text-slate-500">Qty: {item.quantity} · {formatPeso(item.price)}</p>
                             {item.variantId && (
                               <p className="mt-1 text-[10px] font-medium text-primary-700">
                                 {(item.variantSnapshot?.attributes || []).map(attribute => attribute.valueLabel || attribute.valueCode).join(' • ')}
@@ -151,14 +151,14 @@ const Orders = () => {
                           </div>
                           {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (
                             item.reviewStatus?.isRated ? (
-                              <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold uppercase text-emerald-700">
+                              <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-bold uppercase text-emerald-700">
                                 Already Reviewed
                               </span>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setRatingProduct({ order, item })}
-                                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase text-slate-700 hover:bg-slate-50"
+                                className="flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[9px] font-bold uppercase text-slate-700 hover:bg-slate-50"
                               >
                                 <Star className="h-3.5 w-3.5 text-secondary-500" /> Review Product
                               </button>
@@ -168,31 +168,31 @@ const Orders = () => {
                       ))}
                     </div>
 
-                    <div className="mx-4 mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <PaymentBreakdown summary={orderPaymentSummary(order)} compact />
+                    <div className="mx-3 mb-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 sm:mx-4">
+                      <PaymentBreakdown summary={orderPaymentSummary(order)} compact className="!space-y-1 !text-[9px] leading-tight" />
                     </div>
 
-                    <div className="border-t border-slate-100 bg-slate-50 p-4">
-                      <div className="mb-3 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{refundPolicyLabel(orderPolicy.type)} policy</span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Payment: {order.paymentStatus || (effectiveStatus === 'pending_payment' ? 'pending' : 'recorded')}</span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Delivery: {meta.label}</span>
+                    <div className="border-t border-slate-100 bg-slate-50/80 p-3 sm:px-4">
+                      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[9px] font-medium text-slate-600">
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">{refundPolicyLabel(orderPolicy.type)} policy</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">Payment: {order.paymentStatus || (effectiveStatus === 'pending_payment' ? 'pending' : 'recorded')}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">Delivery: {meta.label}</span>
                       </div>
-                      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                      <p className="text-xs text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
-                      <div className="flex gap-2 w-full sm:w-auto">
+                      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                      <p className="text-[10px] text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
+                      <div className="flex w-full gap-2 sm:w-auto">
                         {order.delivery && ['rider_assigned', 'picked_up', 'in_transit'].includes(order.status) && (
-                          <Link to={`/track/${order.delivery.trackingToken}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-100 hover:bg-rose-600 transition-colors animate-pulse">
+                          <Link to={`/track/${order.delivery.trackingToken}`} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-500 px-3 text-[10px] font-bold text-white shadow-sm transition-colors hover:bg-rose-600 sm:flex-none">
                             <MapPin className="h-4 w-4" /> Live Track
                           </Link>
                         )}
-                        <Link to={`/orders/${order._id}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-slate-800 transition-colors">
-                          <Receipt className="h-4 w-4" /> Receipt & Details
+                        <Link to={`/orders/${order._id}`} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 text-[10px] font-bold text-white shadow-sm transition-colors hover:bg-slate-800 sm:flex-none">
+                          <Receipt className="h-3.5 w-3.5" /> Receipt & Details
                         </Link>
                         {order.status === 'delivered' && order.delivery?.assignmentType === 'internal' && order.delivery?.assignedRider && !order.delivery?.reviewStatus?.isRated && (
                           <button
                             onClick={() => setRatingDelivery({ order, delivery: order.delivery })}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
+                            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 transition-colors hover:bg-slate-50 sm:flex-none"
                           >
                             <Star className="h-4 w-4 text-primary-600" /> Rate Rider
                           </button>
