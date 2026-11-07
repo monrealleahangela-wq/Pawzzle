@@ -56,6 +56,18 @@ test('customer UI carries exact order-item context and keeps store reviews separ
   assert.match(controller, /targetType === 'Store'[\s\S]{0,700}getStoreReviewEligibility/);
 });
 
+test('store review management uses a compact responsive layout without changing moderation actions', () => {
+  const management = source('client/src/pages/admin/ReviewManagement.js');
+  assert.match(management, /space-y-4 animate-fade-in pb-12/);
+  assert.match(management, /Read customer feedback, reply, and manage review visibility\./);
+  assert.match(management, /grid grid-cols-1 gap-3/);
+  assert.match(management, /min-h-\[88px\] resize-y/);
+  assert.match(management, /: 'Send Reply'/);
+  assert.match(management, /handleToggleStatus\(review\._id\)/);
+  assert.match(management, /flex items-center flex-wrap gap-2/);
+  assert.doesNotMatch(management, /rounded-\[2rem\]/);
+});
+
 test('maintenance definitions require exact options and redact credentials', () => {
   assert.equal(isExact({ key: PRODUCT_INDEX.key, unique: true, partialFilterExpression: PRODUCT_INDEX.options.partialFilterExpression }, PRODUCT_INDEX), true);
   assert.equal(isExact({ key: PRODUCT_INDEX.key, unique: false, partialFilterExpression: PRODUCT_INDEX.options.partialFilterExpression }, PRODUCT_INDEX), false);
