@@ -7,6 +7,7 @@ import { formatTime12h } from '../../utils/timeFormatters';
 import { useAuth } from '../../contexts/AuthContext';
 import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import { getPetPriceLabel, getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
 const Adoptions = ({ isSubcomponent = false }) => {
     const { user } = useAuth();
@@ -138,10 +139,11 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                         <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter leading-none group-hover:text-primary-600 transition-colors truncate">
                                             {request.pet?.name || 'SUBJECT_ID'}
                                         </h3>
+                                        <p className="mt-2 text-[9px] font-black uppercase tracking-wider text-primary-700">{request.petSnapshot?.saleUnitLabel || getPetSaleUnitLabel(request.pet)}</p>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fee</p>
-                                        <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">₱{request.pet?.price?.toLocaleString() || 0}</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{getPetPriceLabel(request.petSnapshot || request.pet)}</p>
+                                        <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">₱{(request.petSnapshot?.listedPrice ?? request.pet?.price ?? 0).toLocaleString()}</p>
                                     </div>
                                 </div>
 

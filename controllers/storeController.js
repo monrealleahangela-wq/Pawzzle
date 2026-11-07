@@ -162,7 +162,7 @@ const getStoreDetails = async (req, res) => {
       Pet.find(buildPublicPetFilter({ isAvailable: 'true' }, [], { ownership: { $or: [
         { store: store._id },
         { addedBy: store.owner._id || store.owner }
-      ] } })).select('name breed age ageUnit gender price images species description status isAvailable'),
+      ] } })).select('name breed age ageUnit gender price images species description status isAvailable saleUnit animalsPerUnit'),
       Follow.countDocuments({ following: store.owner._id || store.owner }),
       User.find({
         store: store._id,

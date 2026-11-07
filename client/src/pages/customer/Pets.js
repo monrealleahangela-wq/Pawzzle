@@ -5,6 +5,7 @@ import { Heart, Filter, Search, Store, ArrowLeft, ArrowRight, Navigation, Star }
 import { toast } from 'react-toastify';
 import { getCitiesByProvince } from '../../constants/locationConstants';
 import { formatPeso } from '../../utils/paymentSummary';
+import { getPetPriceLabel, getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
 const CAVITE_CITIES = getCitiesByProvince('cavite');
 const SPECIES_OPTIONS = ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'other'];
@@ -256,7 +257,7 @@ const Pets = () => {
 
               <div className="space-y-1.5">
                 <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Sex</label>
-                <select value={filters.gender} onChange={event => handleFilterChange('gender', event.target.value)} className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase border-none"><option value="">Any</option><option value="male">Male</option><option value="female">Female</option></select>
+                <select value={filters.gender} onChange={event => handleFilterChange('gender', event.target.value)} className="w-full px-3 py-2 bg-slate-50 rounded-xl text-[10px] font-black uppercase border-none"><option value="">Any</option><option value="male">Male</option><option value="female">Female</option><option value="mixed">Mixed group</option></select>
               </div>
 
               <div className="space-y-1.5">
@@ -376,11 +377,14 @@ const Pets = () => {
                         <div className="w-1 h-1 rounded-full bg-secondary-500" />
                         <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{pet.gender?.[0] || '?'}</span>
                       </div>
+                      <div className="min-w-0 px-2 py-1 bg-primary-50 rounded-lg flex items-center gap-1.5 border border-primary-100">
+                        <span className="truncate text-[8px] font-black text-primary-700 uppercase tracking-wider">{getPetSaleUnitLabel(pet)}</span>
+                      </div>
                     </div>
 
                     <div className="flex min-w-0 flex-wrap justify-between items-center mt-auto gap-3">
                       <div className="min-w-0 flex flex-col">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest -mb-0.5">Price</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest -mb-0.5">{getPetPriceLabel(pet)}</span>
                         <span className="text-sm font-black tracking-tighter text-slate-900 sm:text-xl">{formatPeso(pet.price)}</span>
                       </div>
 

@@ -19,6 +19,18 @@ const adoptionRequestSchema = new mongoose.Schema({
         ref: 'Pet',
         required: true
     },
+    petSnapshot: {
+        name: { type: String, trim: true },
+        species: { type: String, trim: true },
+        breed: { type: String, trim: true },
+        saleUnit: { type: String, enum: ['single', 'pair', 'group'], default: 'single' },
+        animalsPerUnit: { type: Number, min: 1, max: 1000, default: 1 },
+        saleUnitLabel: { type: String, trim: true },
+        gender: { type: String, enum: ['male', 'female', 'mixed'] },
+        listedPrice: { type: Number, min: 0 },
+        image: String,
+        capturedAt: Date
+    },
     customer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

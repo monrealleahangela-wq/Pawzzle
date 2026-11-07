@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { adoptionService } from '../services/apiService';
 import { formatPeso } from '../utils/paymentSummary';
 import { normalizeRefundPolicy, refundPolicyLabel, requiresRefundAcknowledgment } from '../utils/refundPolicy';
+import { getPetPriceLabel, getPetSaleUnitLabel, getPetSaleUnitSubject } from '../utils/petSaleUnit';
 import './PetPurchaseModal.css';
 
 const createPurchaseRequestId = () => {
@@ -131,6 +132,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
               {isReservation ? 'Reserve Pet' : 'Pet Purchase Checkout'}
             </h2>
             <p className="mt-1 text-xs font-semibold text-slate-300">{pet.name} · {pet.breed || pet.species}</p>
+            <p className="mt-1 text-[9px] font-black uppercase tracking-wider text-primary-200">{getPetSaleUnitLabel(pet)}</p>
           </div>
           <button type="button" onClick={onClose} disabled={submitting} aria-label="Close pet checkout" className="pet-purchase-modal__close relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"><X className="h-5 w-5" /></button>
         </header>
@@ -141,7 +143,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
               <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-start gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-primary-700 shadow-sm"><Store className="h-4 w-4" /></span>
-                  <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Seller / Store</p><p className="mt-1 text-sm font-black text-slate-900">{store?.name || 'Pet Store'}</p>{pickupLocation && <p className="mt-1 flex items-start gap-1 text-[10px] text-slate-500"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{pickupLocation}</p>}</div>
+                  <div><p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Seller / Store</p><p className="mt-1 text-sm font-black text-slate-900">{store?.name || 'Pet Store'}</p><p className="mt-1 text-[10px] font-bold text-primary-700">Buying: {getPetSaleUnitLabel(pet)}</p>{pickupLocation && <p className="mt-1 flex items-start gap-1 text-[10px] text-slate-500"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{pickupLocation}</p>}</div>
                 </div>
               </section>
 
@@ -157,7 +159,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
 
               <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-primary-100 bg-primary-50 p-3">
                 <input required type="checkbox" name="pickupConfirmation" checked={formData.pickupConfirmation} onChange={handleChange} className="mt-0.5 h-4 w-4 rounded border-primary-300 text-primary-600 focus:ring-primary-500" />
-                <span><strong className="block text-[10px] font-black uppercase tracking-wider text-primary-900">Pickup only</strong><span className="mt-0.5 block text-[9px] leading-4 text-primary-700">I understand that this pet must be collected from the seller at an agreed safe handover time and location.</span></span>
+                <span><strong className="block text-[10px] font-black uppercase tracking-wider text-primary-900">Pickup only</strong><span className="mt-0.5 block text-[9px] leading-4 text-primary-700">I understand that {getPetSaleUnitSubject(pet)} ({getPetSaleUnitLabel(pet).toLowerCase()}) must be collected together from the seller at an agreed safe handover time and location.</span></span>
               </label>
 
               <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4" aria-label="Pet Purchase and Pickup Agreement">
@@ -189,7 +191,7 @@ const PetPurchaseModal = ({ isOpen, onClose, pet, store, buyer, onSubmit, submit
               <section className="rounded-2xl bg-slate-950 p-4 text-white">
                 <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-primary-300" /><h3 className="pet-purchase-modal__section-title pet-purchase-modal__section-title--dark text-[10px] font-black uppercase tracking-[.18em]">Payment summary</h3></div>
                 <dl className="mt-4 space-y-2 text-[10px]">
-                  <div className="flex justify-between gap-3 text-slate-300"><dt>Listed price</dt><dd className="font-bold text-white">{formatPeso(price)}</dd></div>
+                  <div className="flex justify-between gap-3 text-slate-300"><dt>{getPetPriceLabel(pet)}</dt><dd className="font-bold text-white">{formatPeso(price)}</dd></div>
                   <div className="flex justify-between gap-3 text-slate-300"><dt>Additional charges</dt><dd className="font-bold text-white">{formatPeso(0)}</dd></div>
                   <div className="flex justify-between gap-3 border-t border-white/10 pt-2"><dt className="font-black uppercase tracking-wider">Total</dt><dd className="font-black">{formatPeso(price)}</dd></div>
                   <div className="flex justify-between gap-3 rounded-xl bg-white/10 p-2.5"><dt className="font-black text-primary-200">Due now</dt><dd className="font-black text-primary-200">{formatPeso(dueNow)}</dd></div>

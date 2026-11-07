@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ReviewSection from '../../components/ReviewSection';
 import PetPurchaseModal from '../../components/PetPurchaseModal';
 import { formatPeso } from '../../utils/paymentSummary';
+import { getPetPriceLabel, getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
 const statusStyles = {
   available: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -200,6 +201,7 @@ const PetDetail = () => {
   if (!pet) return <div className="py-16 text-center"><h2 className="text-xl font-black text-slate-900">Pet unavailable</h2><p className="mt-2 text-sm text-slate-500">{loadError || 'This pet could not be found.'}</p><div className="mt-4 flex justify-center gap-2">{loadError?.includes('try again') && <button type="button" onClick={() => window.location.reload()} className="inline-flex h-10 items-center rounded-xl border border-slate-200 px-4 text-xs font-black text-slate-700">Retry</button>}<Link to="/pets" className="inline-flex h-10 items-center rounded-xl bg-primary-600 px-4 text-xs font-black text-white">Back to Pets</Link></div></div>;
 
   const quickFacts = [
+    { icon: Package, label: 'Sold As', value: getPetSaleUnitLabel(pet) },
     { icon: PawPrint, label: 'Species', value: pet.species },
     { icon: Sparkles, label: 'Breed', value: pet.breed },
     { icon: BadgeCheck, label: 'Sex', value: pet.gender },
@@ -231,7 +233,7 @@ const PetDetail = () => {
 
           <div className="flex flex-col p-5 sm:p-7">
             <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-primary-600">{pet.species} · {pet.breed}</p><h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{pet.name}</h1></div><button type="button" onClick={toggleFavorite} aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${favorite ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}><Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} /></button></div>
-            <div className="mt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{pet.listingType === 'adoption' ? 'Adoption Fee' : 'Price'}</p><p className="text-2xl font-black text-slate-950">{formatPeso(pet.price)}</p></div>
+            <div className="mt-4"><p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{getPetPriceLabel(pet)}</p><p className="text-2xl font-black text-slate-950">{formatPeso(pet.price)}</p><p className="mt-1 text-[10px] font-semibold text-slate-500">{getPetSaleUnitLabel(pet)} · purchased together as one complete sale unit</p></div>
             {pet.legacyGroupedListing && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800">This historical grouped listing is unavailable while the seller reviews its individual pet records.</p>}
             {pet.availabilityNotes && <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">{pet.availabilityNotes}</p>}
             <div className="mt-auto hidden gap-2 pt-6 sm:grid sm:grid-cols-2">

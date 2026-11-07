@@ -141,7 +141,7 @@ const buildPublicPetFilter = (query = {}, storeIds = [], options = {}) => {
     conditions.push({ size: query.size });
   }
   if (query.gender) {
-    if (!['male', 'female'].includes(query.gender)) throw invalid('Invalid gender filter.');
+    if (!['male', 'female', 'mixed'].includes(query.gender)) throw invalid('Invalid sex filter.');
     conditions.push({ gender: query.gender });
   }
   if (query.breed) conditions.push({ breed: { $regex: escapeRegex(query.breed), $options: 'i' } });

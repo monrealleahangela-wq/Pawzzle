@@ -13,12 +13,12 @@ const {
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
-test('pet availability treats exactly one live animal as an individual listing', () => {
+test('pet availability treats exactly one listing as an atomic sale unit', () => {
   const availablePet = { _id: 'pet-1', name: 'Casper', quantity: 1, status: 'available', isAvailable: true, approvalStatus: 'approved' };
 
   assert.equal(isIndividualPetRecord(availablePet), true);
   assert.equal(getPetAvailabilityIssue(availablePet, 1), null);
-  assert.match(getPetAvailabilityIssue(availablePet, 2), /one individual pet/i);
+  assert.match(getPetAvailabilityIssue(availablePet, 2), /one complete sale unit/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, quantity: 5 }, 1), /manual cleanup/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, listingContext: 'supplier_catalog' }, 1), /not eligible/i);
   assert.match(getPetAvailabilityIssue({ ...availablePet, listingType: 'adoption' }, 1), /not eligible/i);
@@ -55,8 +55,8 @@ test('server create and update paths cannot turn pet listings into quantity inve
   assert.match(controller, /const updateData = pickPetListingFields\(req\.body\)/);
   assert.match(petRoutes, /body\('status'\).*available.*unavailable/);
   assert.match(adminPetRoutes, /body\('status'\).*available.*unavailable/);
-  assert.match(petRoutes, /Each pet listing must represent exactly one pet/);
-  assert.match(adminPetRoutes, /Each pet listing must represent exactly one pet/);
+  assert.match(petRoutes, /Each animal listing must represent exactly one complete sale unit/);
+  assert.match(adminPetRoutes, /Each animal listing must represent exactly one complete sale unit/);
 });
 
 test('seller pet forms expose only manual available/unavailable states and preserve product stock quantity', () => {
@@ -64,7 +64,7 @@ test('seller pet forms expose only manual available/unavailable states and prese
   const sellerPets = read('client/src/pages/admin/Pets.js');
   const productForm = read('client/src/components/forms/ProductFormModal.js');
 
-  assert.match(compactPetForm, /one sale listing for one individual pet/i);
+  assert.match(compactPetForm, /one animal, a pair, or a complete group/i);
   assert.match(compactPetForm, />Availability</);
   assert.match(compactPetForm, /Reserved, sold, and adopted states are controlled by transaction history/);
   assert.doesNotMatch(sellerPets, /delete individualPetForm\.status/);

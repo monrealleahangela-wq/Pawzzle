@@ -21,6 +21,15 @@ const {
   isSafePcciCertificateReference
 } = require('../utils/petListingAttributes');
 const { MAX_CATALOG_IMAGES, isCatalogImageReference } = require('../utils/catalogListing');
+const { normalizePetSaleUnit } = require('../utils/petSaleUnit');
+
+const validateNewSaleUnit = (_value, { req }) => {
+  const saleUnit = normalizePetSaleUnit(req.body);
+  if (saleUnit.saleUnit === 'single' && req.body.gender === 'mixed') {
+    throw new Error('A single-animal listing cannot use mixed sex.');
+  }
+  return true;
+};
 
 const listingDocumentValidation = [
   body('pcciRegistration.status').optional().isIn(['yes', 'no', 'not_sure']).withMessage('Invalid PCCI registration status'),
@@ -58,7 +67,7 @@ const createPetValidation = [
   body('breed').trim().notEmpty().withMessage('Breed is required'),
   body('age').isInt({ min: 0 }).withMessage('Age must be a positive number'),
   body('ageUnit').optional().isIn(['months', 'years']).withMessage('Invalid age unit'),
-  body('gender').isIn(['male', 'female']).withMessage('Gender must be male or female'),
+  body('gender').isIn(['male', 'female', 'mixed']).withMessage('Sex must be male, female, or mixed'),
   body('size').isIn(PET_SIZES).withMessage('Invalid size'),
   body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Weight must be greater than zero'),
   body('color').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Color or markings are too long'),
@@ -70,7 +79,10 @@ const createPetValidation = [
   body('temperamentTraits').isArray({ min: 1, max: PET_TEMPERAMENT_TRAITS.length }).withMessage('Select at least one observed temperament trait'),
   body('activityLevel').isIn(PET_ACTIVITY_LEVELS.filter(value => value !== 'unknown')).withMessage('Select a valid observed activity level'),
   body('listingType').optional().equals('sale').withMessage('Seller pet listings must be for sale'),
-  body('quantity').optional().equals('1').withMessage('Each pet listing must represent exactly one pet'),
+  body('saleUnit').optional().isIn(['single', 'pair', 'group']).withMessage('Invalid selling method'),
+  body('animalsPerUnit').optional().isInt({ min: 1, max: 1000 }).withMessage('Animals per sale unit must be between 1 and 1000'),
+  body().custom(validateNewSaleUnit),
+  body('quantity').optional().equals('1').withMessage('Each animal listing must represent exactly one complete sale unit'),
   body('fulfillmentType').optional().isIn(['pickup_only', 'shipping', 'both']).withMessage('Invalid fulfillment type'),
   body('paymentType').optional().equals('online_only').withMessage('PayMongo online payment is required'),
   body('depositAmount').optional().isFloat({ min: 0 }).withMessage('Deposit amount cannot be negative'),
@@ -92,7 +104,7 @@ const updatePetValidation = [
   body('breed').optional().trim().notEmpty().withMessage('Breed cannot be empty'),
   body('age').optional().isInt({ min: 0 }).withMessage('Age must be a positive number'),
   body('ageUnit').optional().isIn(['months', 'years']).withMessage('Invalid age unit'),
-  body('gender').optional().isIn(['male', 'female']).withMessage('Gender must be male or female'),
+  body('gender').optional().isIn(['male', 'female', 'mixed']).withMessage('Sex must be male, female, or mixed'),
   body('size').optional().isIn(PET_SIZES).withMessage('Invalid size'),
   body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Weight must be greater than zero'),
   body('color').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Color or markings are too long'),
@@ -101,6 +113,8 @@ const updatePetValidation = [
   body('vaccinationStatus').optional().isIn(['complete', 'partial', 'none']).withMessage('Invalid vaccination status'),
   body('healthCondition').optional().isIn(['healthy', 'needs_monitoring', 'condition_present']).withMessage('Invalid health condition'),
   body('status').optional().isIn(['available', 'unavailable']).withMessage('Availability must be available or unavailable'),
+  body('saleUnit').optional().isIn(['single', 'pair', 'group']).withMessage('Invalid selling method'),
+  body('animalsPerUnit').optional().isInt({ min: 1, max: 1000 }).withMessage('Animals per sale unit must be between 1 and 1000'),
   ...dssAttributeValidation,
   ...homeDetailsValidation,
   ...listingDocumentValidation

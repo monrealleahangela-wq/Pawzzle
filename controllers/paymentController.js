@@ -25,6 +25,7 @@ const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = req
 const { canAccessStore, canOperateStore } = require('../utils/authorizationPolicy');
 const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
 const { hasCurrentPickupAgreement } = require('../utils/petPickupPolicy');
+const { describePetSaleUnit } = require('../utils/petSaleUnit');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const { resolveCustomerProductSelection } = require('../services/customerProductVariantService');
@@ -697,6 +698,7 @@ const createAdoptionCheckoutSession = async (req, res) => {
     const reservedPet = await reservePetForAdoption(adoption.pet._id, adoption._id);
     if (!reservedPet) return res.status(409).json({ message: 'This pet is already reserved or unavailable.' });
 
+    const saleUnitLabel = adoption.petSnapshot?.saleUnitLabel || describePetSaleUnit(adoption.pet);
     let session;
     try {
       session = await ensureCheckoutSession({
@@ -706,8 +708,8 @@ const createAdoptionCheckoutSession = async (req, res) => {
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
-        description: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Reservation deposit' : 'Pet purchase'} for ${adoption.pet.name}`,
-        line_items: [{ amount: dueCentavos, currency: 'PHP', name: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Pet reservation' : 'Pet purchase'}: ${adoption.pet.name}`, quantity: 1 }],
+        description: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Reservation deposit' : 'Pet purchase'} for ${adoption.pet.name} (${saleUnitLabel})`,
+        line_items: [{ amount: dueCentavos, currency: 'PHP', name: `${adoption.pet.paymentConfig === 'deposit_first' ? 'Pet reservation' : 'Pet purchase'}: ${adoption.pet.name} — ${saleUnitLabel}`, quantity: 1 }],
         payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
         success_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=success&id=${adoption._id}`,
         cancel_url: `${FRONTEND_URL}/pets/${adoption.pet._id}?payment=cancelled&type=adoption&id=${adoption._id}`,

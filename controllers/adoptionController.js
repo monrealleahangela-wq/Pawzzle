@@ -9,6 +9,7 @@ const { isPlatformAdmin, isOperationalStaff } = require('../config/permissions')
 const { canOperateStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
 const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
+const { getPetSaleUnitSnapshot } = require('../utils/petSaleUnit');
 const { createNotification } = require('./notificationController');
 const {
     PET_PICKUP_POLICY,
@@ -214,11 +215,24 @@ const createAdoptionRequest = async (req, res) => {
             });
         }
 
+        const petSaleUnit = getPetSaleUnitSnapshot(pet);
         const adoptionRequest = new AdoptionRequest({
             purchaseRequestId: normalizedRequestId,
             purchaseFingerprint: fingerprint,
             isActivePurchase: true,
             pet: petId,
+            petSnapshot: {
+                name: pet.name,
+                species: pet.species,
+                breed: pet.breed,
+                saleUnit: petSaleUnit.saleUnit,
+                animalsPerUnit: petSaleUnit.animalsPerUnit,
+                saleUnitLabel: petSaleUnit.label,
+                listedPrice: pet.price,
+                gender: pet.gender,
+                image: pet.images?.[0],
+                capturedAt: new Date()
+            },
             customer: req.user._id,
             seller: pet.addedBy,
             store: pet.store,
@@ -263,7 +277,7 @@ const createAdoptionRequest = async (req, res) => {
             history: [{
                 status: 'inquiry_submitted',
                 updatedBy: req.user._id,
-                description: `Purchase checkout started for ${pet.name}. Pickup agreement ${PET_PICKUP_POLICY.version} accepted. Payment provider: PayMongo.`,
+                description: `Purchase checkout started for ${pet.name} (${petSaleUnit.label}). Pickup agreement ${PET_PICKUP_POLICY.version} accepted. Payment provider: PayMongo.`,
                 reason: 'Purchase Checkout Started'
             }]
         });
@@ -275,7 +289,7 @@ const createAdoptionRequest = async (req, res) => {
             await new Message({
                 conversation: conversationId,
                 sender: req.user._id,
-                content: `Purchase checkout started for ${pet.name}. Buyer: ${fullName.trim()}. Preferred pickup: ${selectedDate.toLocaleDateString()}. Payment is confirmed only after PayMongo verification.`,
+                content: `Purchase checkout started for ${pet.name} (${petSaleUnit.label}). Buyer: ${fullName.trim()}. Preferred pickup: ${selectedDate.toLocaleDateString()}. Payment is confirmed only after PayMongo verification.`,
                 type: 'system'
             }).save();
         } catch (messageError) {
@@ -481,7 +495,7 @@ const getMyAdoptionRequests = async (req, res) => {
         }
 
         const requests = await AdoptionRequest.find(filter)
-            .populate('pet', 'name species breed images price')
+            .populate('pet', 'name species breed images price saleUnit animalsPerUnit gender')
             .populate('customer', 'firstName lastName email')
             .populate('seller', 'firstName lastName email')
             .sort({ updatedAt: -1 });

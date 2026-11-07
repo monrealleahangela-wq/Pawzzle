@@ -64,6 +64,8 @@ const AdminPets = () => {
     dewormed: false,
     spayedNeutered: false,
     listingType: 'sale',
+    saleUnit: 'single',
+    animalsPerUnit: 1,
     images: [],
     pedigreePapers: false,
     pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' },
@@ -313,6 +315,14 @@ const AdminPets = () => {
         setSubmitting(false);
         return;
       }
+      if (petForm.saleUnit === 'group'
+          && (!Number.isInteger(Number(petForm.animalsPerUnit))
+            || Number(petForm.animalsPerUnit) < 3
+            || Number(petForm.animalsPerUnit) > 1000)) {
+        toast.error('Enter a group size from 3 to 1000 animals.');
+        setSubmitting(false);
+        return;
+      }
 
       // Convert back to single fields for backend
       let finalAge = years;
@@ -347,6 +357,8 @@ const AdminPets = () => {
       const payload = {
         ...individualPetForm,
         listingType: editingPet?.listingType === 'adoption' ? 'adoption' : 'sale',
+        saleUnit: petForm.saleUnit || 'single',
+        animalsPerUnit: petForm.saleUnit === 'pair' ? 2 : petForm.saleUnit === 'group' ? Number(petForm.animalsPerUnit) : 1,
         age: finalAge, 
         ageUnit: finalUnit,
         price: parseFloat(petForm.price) || 0,
@@ -595,7 +607,7 @@ const AdminPets = () => {
                 {[
                   { field: 'species', label: 'Species', options: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile'] },
                   { field: 'size', label: 'Size', options: ['small', 'medium', 'large', 'extra_large'] },
-                  { field: 'gender', label: 'Gender', options: ['male', 'female'] },
+                  { field: 'gender', label: 'Sex', options: ['male', 'female', 'mixed'] },
                   { field: 'isAvailable', label: 'Availability', options: [{ v: 'true', l: 'AVAILABLE' }, { v: 'false', l: 'NOT AVAILABLE' }] }
                 ].map(({ field, label, options }) => (
                   <div key={field} className="min-w-0">
@@ -663,6 +675,7 @@ const AdminPets = () => {
                         <div className="min-w-0">
                           <p className="mb-1 text-[9px] font-black uppercase leading-none tracking-wider text-rose-500">{pet.species} · {pet.gender}</p>
                           <h3 className="mb-1.5 line-clamp-2 min-h-[2.25rem] break-words text-[15px] font-black uppercase leading-tight text-slate-900">{pet.name}</h3>
+                          <p className="mb-1 inline-flex rounded-full bg-primary-50 px-2 py-1 text-[8px] font-black uppercase tracking-wider text-primary-700">{pet.saleUnit === 'pair' ? 'Pair · 2 animals' : pet.saleUnit === 'group' ? `Group · ${pet.animalsPerUnit} animals` : 'Single animal'}</p>
                           <p className="line-clamp-2 break-words text-[10px] font-bold uppercase leading-tight tracking-tight text-slate-400">{pet.breed} · {pet.age} {pet.ageUnit}</p>
                           <p className="mt-1 text-[8px] font-black uppercase tracking-wider text-slate-400">ID {String(pet._id).slice(-8).toUpperCase()} · PCCI {pet.pcciRegistration?.status === 'yes' ? 'provided' : 'not provided'}</p>
                         </div>
@@ -782,6 +795,7 @@ const AdminPets = () => {
                           </div>
                           <div>
                             <p className="text-xs font-black text-slate-900 uppercase">{req.pet?.name || 'Unknown'}</p>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-primary-700">{req.petSnapshot?.saleUnitLabel || (req.pet?.saleUnit === 'pair' ? 'Pair · 2 animals' : req.pet?.saleUnit === 'group' ? `Group · ${req.pet.animalsPerUnit} animals` : 'Single animal')}</p>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{req.pet?.species} · {req.pet?.breed}</p>
                           </div>
                         </div>

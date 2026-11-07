@@ -20,8 +20,8 @@ const basePetForm = {
   pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' }
 };
 
-const Harness = ({ editingPet = null }) => {
-  const [petForm, setPetForm] = useState({ ...basePetForm, status: editingPet?.status || 'available' });
+const Harness = ({ editingPet = null, initialForm = {} }) => {
+  const [petForm, setPetForm] = useState({ ...basePetForm, saleUnit: 'single', animalsPerUnit: 1, ...initialForm, status: editingPet?.status || initialForm.status || 'available' });
   return <PetListingFormModal
     editingPet={editingPet}
     petForm={petForm}
@@ -65,3 +65,19 @@ test('Home Details shows species-specific fields without guessing care requireme
   expect(screen.getByLabelText(/Minimum temperature/i)).toBeInTheDocument();
   expect(screen.getByLabelText(/Maximum humidity/i)).toBeInTheDocument();
 });
+
+test.each(['dog', 'cat', 'bird', 'rabbit', 'hamster', 'fish', 'reptile', 'other'])(
+  '%s listings can be sold as a pair or a seller-defined group',
+  species => {
+    render(<Harness initialForm={{ species }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /A pair/i }));
+    expect(screen.getByText(/1 pair \(2 animals\)/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mixed/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /A group \/ batch/i }));
+    const groupSize = screen.getByRole('spinbutton', { name: /Number of animals in this group/i });
+    fireEvent.change(groupSize, { target: { value: '12' } });
+    expect(screen.getByText(/1 group \(12 animals\)/i)).toBeInTheDocument();
+  }
+);

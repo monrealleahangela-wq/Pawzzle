@@ -44,7 +44,7 @@ const getLandingPageData = async (req, res) => {
       Pet.find(publicPetFilter)
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
-        .select('name breed price images gender age description'),
+        .select('name breed price images gender age description saleUnit animalsPerUnit'),
       
       // 2. Featured Products
       Product.find(publicProductFilter)

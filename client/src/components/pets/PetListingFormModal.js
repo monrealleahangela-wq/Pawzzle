@@ -73,16 +73,27 @@ const PetListingFormModal = ({
   const vaccinationRecordRequired = ['complete', 'partial'].includes(petForm.vaccinationStatus);
   const hasVaccinationRecord = Boolean(petForm.vetRecords?.[0]);
   const descriptionValid = Boolean(petForm.description?.trim().length >= 50);
+  const saleUnit = petForm.saleUnit || 'single';
+  const animalsPerUnit = saleUnit === 'single' ? 1 : saleUnit === 'pair' ? 2 : Number(petForm.animalsPerUnit);
+  const saleUnitValid = saleUnit !== 'group'
+    || (Number.isInteger(animalsPerUnit) && animalsPerUnit >= 3 && animalsPerUnit <= 1000);
+  const saleUnitLabel = saleUnit === 'pair' ? 'pair' : saleUnit === 'group' ? `group of ${animalsPerUnit || 'several'}` : 'animal';
   const isComplete = Boolean(
     petForm.images?.[0] && petForm.name?.trim() && petForm.species && petForm.breed?.trim()
     && petForm.gender && petForm.size && petForm.activityLevel && petForm.temperamentTraits?.length
     && hasBirthDate && hasPrice && descriptionValid
-    && (!vaccinationRecordRequired || hasVaccinationRecord)
+    && saleUnitValid && (!vaccinationRecordRequired || hasVaccinationRecord)
   );
   const pcci = petForm.pcciRegistration || {};
   const supportingDocuments = petForm.supportingDocuments || [];
   const homeDetails = petForm.homeDetails || {};
   const update = (field, value) => setPetForm(current => ({ ...current, [field]: value }));
+  const updateSaleUnit = value => setPetForm(current => ({
+    ...current,
+    saleUnit: value,
+    animalsPerUnit: value === 'single' ? 1 : value === 'pair' ? 2 : Math.max(3, Number(current.animalsPerUnit) || 3),
+    gender: value === 'single' && current.gender === 'mixed' ? 'male' : current.gender
+  }));
   const updateHome = (field, value) => setPetForm(current => ({
     ...current, homeDetails: { ...(current.homeDetails || {}), [field]: value }
   }));
@@ -126,7 +137,7 @@ const PetListingFormModal = ({
   return (
     <CompactFormModal
       title={editingPet ? 'Edit Pet Listing' : 'Add Pet for Sale'}
-      subtitle="Create one sale listing for one individual pet. Required fields are marked with *."
+      subtitle="Sell one animal, a pair, or a complete group in one listing. Required fields are marked with *."
       icon={PawPrint}
       formId="compactPetListingForm"
       onClose={onClose}
@@ -153,20 +164,33 @@ const PetListingFormModal = ({
         </div>
       </CompactFormSection>
 
-      <CompactFormSection step="2" icon={PawPrint} title="Basic Information" description="The individual pet details customers see in the marketplace.">
+      <CompactFormSection step="2" icon={PawPrint} title="Basic Information & Selling Method" description="Describe exactly what the customer receives from this listing.">
+        <div className="mb-4 rounded-2xl border border-primary-100 bg-primary-50/60 p-3">
+          <p className="text-[11px] font-black text-slate-800">How are these animals sold?<RequiredMark /></p>
+          <p className="mt-1 text-[10px] leading-4 text-slate-500">The selected unit is purchased as a whole. Its listed price covers every animal included.</p>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              ['single', 'One animal', 'One animal in this listing'],
+              ['pair', 'A pair', 'Two animals sold together'],
+              ['group', 'A group / batch', 'Three or more sold together']
+            ].map(([value, label, helper]) => <button key={value} type="button" onClick={() => updateSaleUnit(value)} className={`rounded-xl border p-3 text-left transition ${saleUnit === value ? 'border-primary-500 bg-white shadow-sm' : 'border-slate-200 bg-white/70 hover:border-primary-200'}`}><span className={`block text-[11px] font-black ${saleUnit === value ? 'text-primary-700' : 'text-slate-700'}`}>{label}</span><span className="mt-1 block text-[9px] leading-4 text-slate-500">{helper}</span></button>)}
+          </div>
+          {saleUnit === 'group' && <label className="mt-3 block text-[11px] font-bold text-slate-700">Number of animals in this group<RequiredMark /><input aria-label="Number of animals in this group" type="number" min="3" max="1000" step="1" className={compactInputClass} value={petForm.animalsPerUnit || ''} onChange={event => update('animalsPerUnit', event.target.value)} placeholder="e.g. 10" />{!saleUnitValid && <span className="mt-1 block text-[10px] font-semibold text-rose-600">Enter a whole number from 3 to 1000.</span>}</label>}
+          <p className="mt-3 rounded-xl bg-white px-3 py-2 text-[10px] font-semibold leading-4 text-slate-600">Customers will see: <strong className="text-slate-900">{saleUnit === 'single' ? '1 animal' : saleUnit === 'pair' ? '1 pair (2 animals)' : `1 group (${animalsPerUnit || 0} animals)`}</strong>. They cannot split this listing.</p>
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-[11px] font-bold text-slate-700">Pet Name<RequiredMark /><input className={compactInputClass} value={petForm.name} onChange={event => update('name', event.target.value)} placeholder="Pet name" /></label>
+          <label className="text-[11px] font-bold text-slate-700">Listing Name<RequiredMark /><input className={compactInputClass} value={petForm.name} onChange={event => update('name', event.target.value)} placeholder={saleUnit === 'single' ? 'Animal name' : 'Name for this pair or group'} /></label>
           <label className="text-[11px] font-bold text-slate-700">Species<RequiredMark /><select className={compactInputClass} value={petForm.species} onChange={event => setPetForm(current => ({ ...current, species: event.target.value, homeDetails: Object.fromEntries(Object.entries(current.homeDetails || {}).filter(([field]) => ['minimumLivingSpace', 'indoor', 'outdoor', 'apartment', 'smallHome', 'largeHome', ...HOME_COMMON_NOTES.map(([name]) => name)].includes(field))), ...(event.target.value === 'dog' ? {} : { pedigreePapers: false, pcciRegistration: { status: 'not_sure', registrationNumber: '', certificateUrl: '', informationStatus: 'not_provided' } }) }))}><option value="dog">Dog</option><option value="cat">Cat</option><option value="bird">Bird</option><option value="rabbit">Rabbit</option><option value="hamster">Hamster</option><option value="fish">Fish</option><option value="reptile">Reptile</option><option value="other">Other</option></select></label>
           <label className="text-[11px] font-bold text-slate-700">Breed<RequiredMark /><input className={compactInputClass} value={petForm.breed} onChange={event => update('breed', event.target.value)} placeholder="Breed or best description" /></label>
           <label className="text-[11px] font-bold text-slate-700">Adult / Expected Size<RequiredMark /><select className={compactInputClass} value={petForm.size || ''} onChange={event => update('size', event.target.value)}><option value="">Select size</option><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option><option value="extra_large">Extra large</option></select><span className="mt-1 block text-[10px] font-normal text-slate-400">Used with recorded activity—not breed assumptions—for space matching.</span></label>
           <label className="text-[11px] font-bold text-slate-700">Activity Level<RequiredMark /><select className={compactInputClass} value={petForm.activityLevel || ''} onChange={event => update('activityLevel', event.target.value)}><option value="">Select activity level</option><option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option></select><span className="mt-1 block text-[10px] font-normal text-slate-400">Choose from this pet’s observed behavior.</span></label>
-          <div><p className="text-[11px] font-bold text-slate-700">Sex<RequiredMark /></p><div className="mt-1 grid h-10 grid-cols-2 rounded-xl bg-slate-100 p-1">{['male', 'female'].map(value => <button key={value} type="button" onClick={() => update('gender', value)} className={`rounded-lg text-[11px] font-black capitalize ${petForm.gender === value ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500'}`}>{value}</button>)}</div></div>
+          <div><p className="text-[11px] font-bold text-slate-700">{saleUnit === 'single' ? 'Sex' : 'Sex Composition'}<RequiredMark /></p><div className={`mt-1 grid h-10 ${saleUnit === 'single' ? 'grid-cols-2' : 'grid-cols-3'} rounded-xl bg-slate-100 p-1`}>{(saleUnit === 'single' ? ['male', 'female'] : ['male', 'female', 'mixed']).map(value => <button key={value} type="button" onClick={() => update('gender', value)} className={`rounded-lg text-[11px] font-black capitalize ${petForm.gender === value ? 'bg-white text-primary-700 shadow-sm' : 'text-slate-500'}`}>{value}</button>)}</div></div>
           <label className="text-[11px] font-bold text-slate-700">Weight <span className="font-normal text-slate-400">(optional, kg)</span><input type="number" min="0.01" max="10000" step="0.01" className={compactInputClass} value={petForm.weight || ''} onChange={event => update('weight', event.target.value)} placeholder="e.g. 4.5" /></label>
           <label className="text-[11px] font-bold text-slate-700">Color / Markings <span className="font-normal text-slate-400">(optional)</span><input className={compactInputClass} value={petForm.color || ''} onChange={event => update('color', event.target.value)} placeholder="Observed color or markings" /></label>
           <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Birth Date<RequiredMark /><span className="relative block"><CalendarDays className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-slate-400" /><input type="date" max={new Date().toISOString().slice(0, 10)} className={`${compactInputClass} pl-10`} value={petForm.birthday || ''} onChange={event => updateBirthDate(event.target.value)} /></span>{petForm.birthday && <span className="mt-1 block text-[10px] text-slate-500">Calculated age: {Number(petForm.ageYears) || 0} year(s), {Number(petForm.ageMonths) || 0} month(s).</span>}{!hasBirthDate && <span className="mt-1 block text-[10px] font-semibold text-rose-600">Birth date is required so Pawzzle can calculate age.</span>}{editingPet && !petForm.birthday && <span className="mt-1 block text-[10px] text-amber-700">This legacy listing has no birth date. Add one when it is known; its saved age remains compatible.</span>}</label>
-          <label className="text-[11px] font-bold text-slate-700">{isLegacyAdoptionEdit ? 'Legacy Listing Fee' : 'Selling Price'}<RequiredMark /><input type="number" min={isLegacyAdoptionEdit ? '0' : '0.01'} step="0.01" className={compactInputClass} value={petForm.price} onChange={event => update('price', event.target.value)} placeholder="0.00" />{!hasPrice && <span className="mt-1 block text-[10px] font-semibold text-rose-600">{isLegacyAdoptionEdit ? 'Enter zero or a positive legacy fee.' : 'Selling price must be greater than zero.'}</span>}</label>
+          <label className="text-[11px] font-bold text-slate-700">{isLegacyAdoptionEdit ? 'Legacy Listing Fee' : `Selling Price for the ${saleUnitLabel}`}<RequiredMark /><input type="number" min={isLegacyAdoptionEdit ? '0' : '0.01'} step="0.01" className={compactInputClass} value={petForm.price} onChange={event => update('price', event.target.value)} placeholder="0.00" /><span className="mt-1 block text-[10px] font-normal text-slate-400">This is the total price for the complete sale unit.</span>{!hasPrice && <span className="mt-1 block text-[10px] font-semibold text-rose-600">{isLegacyAdoptionEdit ? 'Enter zero or a positive legacy fee.' : 'Selling price must be greater than zero.'}</span>}</label>
           <label className="text-[11px] font-bold text-slate-700">Availability<select aria-label="Availability" disabled={editingPet && !['available', 'unavailable'].includes(petForm.status)} className={compactInputClass} value={['available', 'unavailable'].includes(petForm.status) ? petForm.status : 'unavailable'} onChange={event => update('status', event.target.value)}><option value="available">Available</option><option value="unavailable">Unavailable</option></select><span className="mt-1 block text-[10px] font-normal text-slate-400">Use Unavailable to pause new purchases. Reserved, sold, and adopted states are controlled by transaction history.</span></label>
-          <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Description<RequiredMark /><textarea rows="4" className={compactTextareaClass} value={petForm.description} onChange={event => update('description', event.target.value)} placeholder="Describe the pet, care needs, history, and ideal home." /><span className={`mt-1 block text-[10px] ${descriptionValid ? 'text-slate-400' : 'font-semibold text-rose-600'}`}>{petForm.description?.length || 0}/50 minimum characters</span></label>
+          <label className="text-[11px] font-bold text-slate-700 sm:col-span-2">Description<RequiredMark /><textarea rows="4" className={compactTextareaClass} value={petForm.description} onChange={event => update('description', event.target.value)} placeholder="Describe every animal included, their care needs, history, and ideal home." /><span className={`mt-1 block text-[10px] ${descriptionValid ? 'text-slate-400' : 'font-semibold text-rose-600'}`}>{petForm.description?.length || 0}/50 minimum characters</span></label>
         </div>
       </CompactFormSection>
 

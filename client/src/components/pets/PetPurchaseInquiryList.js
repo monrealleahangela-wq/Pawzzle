@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, MessageSquare, PawPrint, RefreshCw } from 'lucide-react';
 import { adoptionService, getImageUrl } from '../../services/apiService';
+import { getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
 const STATUS_LABELS = {
   inquiry_submitted: 'Checkout Started', under_review: 'Under Review', reserved: 'Reserved',
@@ -65,6 +66,7 @@ const PetPurchaseInquiryList = () => {
           : <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {ordered.map(request => {
               const pet = request.pet || {};
+              const saleUnitLabel = request.petSnapshot?.saleUnitLabel || getPetSaleUnitLabel(pet);
               const conversationId = request.conversation?._id || request.conversation;
               const paymentStatus = request.paymentDetails?.paymentStatus;
               return <article key={request._id} className="flex min-w-0 gap-3 rounded-2xl border border-slate-200 p-3">
@@ -73,7 +75,7 @@ const PetPurchaseInquiryList = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-1">
-                    <div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{pet.name || 'Pet listing unavailable'}</p><p className="truncate text-xs text-slate-500">{pet.breed || pet.species || 'Pet purchase'}</p></div>
+                    <div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{pet.name || request.petSnapshot?.name || 'Pet listing unavailable'}</p><p className="truncate text-xs text-slate-500">{pet.breed || request.petSnapshot?.breed || pet.species || 'Pet purchase'}</p><p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-primary-700">{saleUnitLabel}</p></div>
                     <span className="rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-800">{STATUS_LABELS[request.status] || String(request.status || 'Pending').replaceAll('_', ' ')}</span>
                   </div>
                   <p className="mt-2 flex items-center gap-1 text-[10px] text-slate-400"><Clock className="h-3 w-3" />Updated {formatDate(request.updatedAt || request.createdAt)}</p>

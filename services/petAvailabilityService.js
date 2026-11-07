@@ -25,7 +25,7 @@ const isIndividualPetRecord = pet => {
 
 const getPetAvailabilityIssue = (pet, requestedQuantity = 1) => {
   if (!pet || pet.isDeleted) return 'Pet listing was not found.';
-  if (Number(requestedQuantity) !== 1) return 'Each pet listing represents one individual pet and must use quantity 1.';
+  if (Number(requestedQuantity) !== 1) return 'Each animal listing is one complete sale unit and must use quantity 1.';
   if (!isIndividualPetRecord(pet)) {
     return 'This legacy quantity-based pet listing requires manual cleanup before it can be purchased.';
   }

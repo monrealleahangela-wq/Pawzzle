@@ -12,6 +12,7 @@ import ReviewSection from '../../components/ReviewSection';
 import UserReportModal from '../../components/UserReportModal';
 import StoreContactIntel from '../../components/profile/StoreContactIntel';
 import { formatPeso } from '../../utils/paymentSummary';
+import { getPetPriceLabel, getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
 const StoreDetail = () => {
   const { storeId } = useParams();
@@ -566,7 +567,8 @@ const StoreDetail = () => {
                       <div className="flex-1 space-y-0.5 sm:space-y-4 px-1">
                         <h3 className="min-h-[2.5rem] text-sm font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-lg">{pet.name}</h3>
                         <p className="text-[7px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest truncate opacity-80">{pet.breed}</p>
-                        <p className="border-t border-slate-50 pt-1 text-[11px] font-black tracking-tighter text-primary-600 sm:pt-4 sm:text-xl">{formatPeso(pet.price)}</p>
+                        <p className="text-[7px] font-black uppercase tracking-wider text-primary-700 sm:text-[9px]">{getPetSaleUnitLabel(pet)}</p>
+                        <div className="border-t border-slate-50 pt-1 sm:pt-4"><p className="text-[7px] font-black uppercase tracking-wider text-slate-400">{getPetPriceLabel(pet)}</p><p className="text-[11px] font-black tracking-tighter text-primary-600 sm:text-xl">{formatPeso(pet.price)}</p></div>
                       </div>
                     </Link>
                   )) : (

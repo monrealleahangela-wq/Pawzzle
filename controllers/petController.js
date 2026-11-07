@@ -8,6 +8,7 @@ const { derivePetAge } = require('../utils/petAge');
 const { hasActivePetCommitment, isIndividualPetRecord } = require('../services/petAvailabilityService');
 const { isSafePcciCertificateReference } = require('../utils/petListingAttributes');
 const { normalizePetHomeDetails, keepCommonHomeDetails } = require('../utils/petHomeDetails');
+const { normalizePetSaleUnit } = require('../utils/petSaleUnit');
 const {
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
@@ -29,7 +30,8 @@ const PET_LISTING_FIELDS = [
   'vaccinationStatus', 'pedigreePapers', 'pcciRegistration', 'supportingDocuments',
   'healthNotes', 'availabilityNotes', 'temperament', 'temperamentTraits',
   'activityLevel', 'careNeeds', 'petCompatibility', 'videos', 'location',
-  'pickupInstructions', 'adoptionDetails', 'listingType', 'homeDetails'
+  'pickupInstructions', 'adoptionDetails', 'listingType', 'homeDetails',
+  'saleUnit', 'animalsPerUnit'
 ];
 
 const pickPetListingFields = input => Object.fromEntries(
@@ -69,6 +71,13 @@ const toPublicPet = (pet) => {
   delete publicPet.permits;
   delete publicPet.supportingDocuments;
   delete publicPet.pickupInstructions;
+
+  try {
+    Object.assign(publicPet, normalizePetSaleUnit(publicPet));
+  } catch {
+    publicPet.saleUnit = 'single';
+    publicPet.animalsPerUnit = 1;
+  }
 
   if (!isIndividualPetRecord(publicPet)) {
     publicPet.isAvailable = false;
@@ -226,6 +235,11 @@ const createPet = async (req, res) => {
     if (!derivedAge.valid) return res.status(400).json({ message: derivedAge.message });
 
     const listingData = pickPetListingFields(req.body);
+    const saleUnit = normalizePetSaleUnit(listingData);
+    if (saleUnit.saleUnit === 'single' && listingData.gender === 'mixed') {
+      return res.status(400).json({ message: 'A single-animal listing cannot use mixed sex.' });
+    }
+    Object.assign(listingData, saleUnit);
     if (Object.prototype.hasOwnProperty.call(listingData, 'homeDetails')) {
       listingData.homeDetails = normalizePetHomeDetails(listingData.homeDetails, listingData.species);
     }
@@ -318,6 +332,21 @@ const updatePet = async (req, res) => {
     console.log('📝 updatePet PERMISSION GRANTED');
 
     const updateData = pickPetListingFields(req.body);
+    const saleUnit = normalizePetSaleUnit(updateData, pet);
+    const nextGender = updateData.gender ?? pet.gender;
+    if (saleUnit.saleUnit === 'single' && nextGender === 'mixed') {
+      return res.status(400).json({ message: 'A single-animal listing cannot use mixed sex.' });
+    }
+    const changesSaleUnit = saleUnit.saleUnit !== (pet.saleUnit || 'single')
+      || saleUnit.animalsPerUnit !== Number(pet.animalsPerUnit || 1);
+    if (changesSaleUnit && (!['available', 'unavailable'].includes(pet.status)
+        || await hasActivePetCommitment(pet._id))) {
+      return res.status(409).json({ message: 'The selling method cannot be changed while this listing has an active or completed transaction.' });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'saleUnit')
+        || Object.prototype.hasOwnProperty.call(req.body, 'animalsPerUnit')) {
+      Object.assign(updateData, saleUnit);
+    }
     if (Object.prototype.hasOwnProperty.call(updateData, 'homeDetails')) {
       updateData.homeDetails = normalizePetHomeDetails(updateData.homeDetails, updateData.species || pet.species);
     } else if (updateData.species && updateData.species !== pet.species && pet.homeDetails) {

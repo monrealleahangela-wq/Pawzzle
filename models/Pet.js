@@ -10,6 +10,7 @@ const {
 const {
   SUITABILITY_VALUES, LIVING_SPACE_VALUES, SUITABILITY_FIELDS, NUMBER_FIELDS, TEXT_FIELDS
 } = require('../utils/petHomeDetails');
+const { normalizePetSaleUnit } = require('../utils/petSaleUnit');
 
 const homeDetailsSchema = new mongoose.Schema({
   minimumLivingSpace: { type: String, enum: LIVING_SPACE_VALUES },
@@ -53,7 +54,7 @@ const petSchema = new mongoose.Schema({
   },
   gender: {
     type: String,
-    enum: ['male', 'female'],
+    enum: ['male', 'female', 'mixed'],
     required: true
   },
   size: {
@@ -88,6 +89,19 @@ const petSchema = new mongoose.Schema({
     type: String,
     enum: ['sale', 'adoption'],
     default: 'sale'
+  },
+  // One listing is always one atomic sale unit. A sale unit may contain one
+  // animal, a pair, or a seller-declared group; it is reserved and sold whole.
+  saleUnit: {
+    type: String,
+    enum: ['single', 'pair', 'group'],
+    default: 'single'
+  },
+  animalsPerUnit: {
+    type: Number,
+    min: 1,
+    max: 1000,
+    default: 1
   },
   weight: {
     type: Number,
@@ -291,12 +305,27 @@ const petSchema = new mongoose.Schema({
   }
 });
 
+petSchema.pre('validate', function (next) {
+  try {
+    const normalized = normalizePetSaleUnit(this);
+    this.saleUnit = normalized.saleUnit;
+    this.animalsPerUnit = normalized.animalsPerUnit;
+    if (this.saleUnit === 'single' && this.gender === 'mixed') {
+      this.invalidate('gender', 'A single-animal listing cannot use mixed sex.');
+    }
+    next();
+  } catch (error) {
+    this.invalidate('saleUnit', error.message);
+    next();
+  }
+});
+
 // Update timestamp and sync fields on save
 petSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
 
-  // Status is authoritative for individual-pet availability. The deprecated
-  // quantity field remains untouched so historical grouped records are preserved.
+  // Status is authoritative for atomic sale-unit availability. The deprecated
+  // quantity field remains untouched so historical quantity records are preserved.
   this.isAvailable = this.status === 'available';
 
   next();
