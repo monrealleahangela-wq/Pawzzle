@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import {
   Package, Plus, Edit2, Trash2, X,
@@ -706,77 +707,77 @@ const SupplierDashboard = () => {
       )}
 
       {/* ── PRODUCT MODAL ── */}
-      {showProductModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div className="bg-white dark:bg-slate-900 w-full min-w-0 max-w-2xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[calc(100dvh-1rem)] border border-slate-200 dark:border-slate-800">
-            <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">{editingProduct ? 'Edit Product' : 'Add Product'}</h3>
-              <button onClick={() => setShowProductModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
+      {showProductModal && createPortal((
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-3" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="supplier-product-modal-title" className="flex max-h-[calc(100dvh-1rem)] w-full min-w-0 max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <header className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+              <div className="min-w-0"><p className="text-[8px] font-black uppercase tracking-[0.2em] text-primary-600">Supplier catalog</p><h3 id="supplier-product-modal-title" className="truncate text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">{editingProduct ? 'Edit Product' : 'Add Product'}</h3></div>
+              <button type="button" aria-label="Close product form" onClick={() => setShowProductModal(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800"><X className="h-4 w-4" /></button>
             </header>
-            <div className="flex-1 overflow-y-auto p-6 space-y-5">
-              <div className="rounded-2xl border border-primary-200 bg-primary-50 p-4 text-xs leading-5 text-primary-900">
+            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
+              <div className="grid gap-1 rounded-xl border border-primary-200 bg-primary-50 p-3 text-[10px] leading-4 text-primary-900 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-3">
                 <b className="flex items-center gap-2 uppercase"><ShieldCheck className="h-4 w-4" /> {requiresFdaReview(productForm.category) ? 'FDA compliance review required' : 'FDA review not required'}</b>
-                <p className="mt-1">{requiresFdaReview(productForm.category)
+                <p>{requiresFdaReview(productForm.category)
                   ? 'Food and medicine supplies stay unpublished until a Pawzzle Platform Administrator verifies the submitted FDA registration details and evidence. Pawzzle does not issue FDA registrations.'
                   : 'Accessories, toys, equipment, grooming, cleaning, live pets, and other non-regulated supplies publish without FDA review.'}</p>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[['pet_supply','Pet Supply'],['product','Other Product'],['live_pet','Live Pet']].map(([value,label]) => <button key={value} type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, itemType: value, category: value === 'live_pet' ? 'live_pets' : value === 'product' ? 'general_product' : (p.category === 'live_pets' || p.category === 'general_product' ? 'pet_food' : p.category), availableStock: value === 'live_pet' ? 1 : p.availableStock, minimumOrderQuantity: value === 'live_pet' ? 1 : p.minimumOrderQuantity }))} className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase ${productForm.itemType === value ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-slate-200 text-slate-500'} disabled:cursor-not-allowed`}>{label}</button>)}
               </div>
-              {productForm.itemType !== 'live_pet' && <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              {productForm.itemType !== 'live_pet' && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Product configuration</p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, productMode: 'simple', variants: [] }))} className={`rounded-xl border px-3 py-3 text-left ${productForm.productMode !== 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed`}>
+                  <button type="button" disabled={Boolean(editingProduct)} onClick={() => setProductForm(p => ({ ...p, productMode: 'simple', variants: [] }))} className={`rounded-xl border px-3 py-2 text-left ${productForm.productMode !== 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed`}>
                     <span className="block text-[10px] font-black uppercase">Simple product</span><span className="mt-1 block text-[10px] font-medium normal-case">One SKU, price, and stock quantity.</span>
                   </button>
-                  <button type="button" disabled={Boolean(editingProduct) || !variantCapabilities.enabled} onClick={() => setProductForm(p => ({ ...p, productMode: 'variant', variants: p.variants?.length ? p.variants : [emptyVariant()] }))} className={`rounded-xl border px-3 py-3 text-left ${productForm.productMode === 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed disabled:opacity-60`}>
+                  <button type="button" disabled={Boolean(editingProduct) || !variantCapabilities.enabled} onClick={() => setProductForm(p => ({ ...p, productMode: 'variant', variants: p.variants?.length ? p.variants : [emptyVariant()] }))} className={`rounded-xl border px-3 py-2 text-left ${productForm.productMode === 'variant' ? 'border-primary-600 bg-white text-primary-800' : 'border-slate-200 bg-white text-slate-500'} disabled:cursor-not-allowed disabled:opacity-60`}>
                     <span className="block text-[10px] font-black uppercase">Product with variants</span><span className="mt-1 block text-[10px] font-medium normal-case">Explicit combinations such as Chicken · 1 kg.</span>
                   </button>
                 </div>
                 {!variantCapabilities.enabled && <p className="mt-3 rounded-xl border border-primary-100 bg-white p-3 text-[10px] font-semibold leading-4 text-primary-900">Product variants require one-time platform activation. Ask the platform administrator to complete supplier variant database readiness, then refresh this page.</p>}
               </div>}
-              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.itemType === 'live_pet' ? 'Pet / Catalog Name' : 'Product Name'}</label>
                   <input type="text" value={productForm.name} onChange={e => setProductForm(p => ({ ...p, name: e.target.value }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" required />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.productMode === 'variant' ? 'Parent catalog SKU' : 'SKU'}</label>
                   <input type="text" value={productForm.sku} onChange={e => setProductForm(p => ({ ...p, sku: e.target.value }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" required />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" required />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Category</label>
                   <select value={productForm.category} onChange={e => setProductForm(p => ({ ...p, category: e.target.value }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none">
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none">
                     {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Wholesale Price (₱)</label>
                   <input type="number" value={productForm.wholesalePrice} onChange={e => setProductForm(p => ({ ...p, wholesalePrice: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
                 </div>}
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</label>
                   <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none disabled:opacity-60" />
                 </div>}
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Order Qty</label>
                   <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none disabled:opacity-60" />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none disabled:opacity-60" />
                 </div>}
                 {productForm.productMode !== 'variant' && <label className="space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unit of measure
-                  <select value={productForm.itemType === 'live_pet' ? 'piece' : productForm.unitOfMeasure} disabled={productForm.itemType === 'live_pet'} onChange={e => setProductForm(p => ({ ...p, unitOfMeasure: e.target.value }))} className="w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold normal-case text-slate-900 disabled:opacity-60">
+                  <select value={productForm.itemType === 'live_pet' ? 'piece' : productForm.unitOfMeasure} disabled={productForm.itemType === 'live_pet'} onChange={e => setProductForm(p => ({ ...p, unitOfMeasure: e.target.value }))} className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold normal-case text-slate-900 disabled:opacity-60">
                     {['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set', 'ml', 'gram', 'tube'].map(unit => <option key={unit} value={unit}>{unit}</option>)}
                   </select>
                 </label>}
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
                   <input type="number" value={productForm.deliveryLeadTimeDays} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: parseInt(e.target.value) || 1 }))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none" />
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
                 </div>
               </div>
               {productForm.productMode === 'variant' && <div className="space-y-3 rounded-2xl border border-primary-200 bg-primary-50 p-4">
@@ -824,52 +825,54 @@ const SupplierDashboard = () => {
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Description</label>
                 <textarea value={productForm.description} onChange={e => setProductForm(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-medium outline-none h-20 resize-none" />
+                  className="h-16 w-full resize-none rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium outline-none" />
               </div>
-              {requiresFdaReview(productForm.category) && <div className="grid gap-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 sm:grid-cols-2">
+              {requiresFdaReview(productForm.category) && <div className="grid gap-3 rounded-xl border border-primary-200 bg-primary-50 p-3 sm:grid-cols-2">
                 <div className="sm:col-span-2"><h4 className="text-xs font-black uppercase text-primary-900">FDA product registration details</h4><p className="mt-1 text-[10px] text-primary-800">Enter the registration details issued by the FDA and upload evidence below. Pawzzle administrators verify the submitted record; they do not issue FDA approval.</p></div>
                 <label className="text-[9px] font-black uppercase text-slate-600">FDA registration number <span className="text-primary-700">Required</span><input required value={productForm.fdaRegistrationNumber || ''} onChange={e => setProductForm(p => ({ ...p, fdaRegistrationNumber: e.target.value }))} placeholder="Enter the FDA product registration number" className="mt-1 w-full rounded-xl border border-primary-200 bg-white px-3 py-2.5 text-sm font-medium normal-case text-slate-900" /></label>
                 <label className="text-[9px] font-black uppercase text-slate-600">Registration expiry <span className="font-bold normal-case text-slate-400">(if shown)</span><input type="date" value={productForm.fdaRegistrationExpiry ? String(productForm.fdaRegistrationExpiry).slice(0, 10) : ''} onChange={e => setProductForm(p => ({ ...p, fdaRegistrationExpiry: e.target.value }))} className="mt-1 w-full rounded-xl border border-primary-200 bg-white px-3 py-2.5 text-sm font-medium normal-case text-slate-900" /></label>
               </div>}
-              {['pet_food', 'pet_treats'].includes(productForm.category) && <div className="grid gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:grid-cols-2">
+              {['pet_food', 'pet_treats'].includes(productForm.category) && <div className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:grid-cols-2">
                 <div className="sm:col-span-2"><h4 className="text-xs font-black uppercase text-emerald-900">Pet food and nutrition information</h4><p className="mt-1 text-[10px] text-emerald-800">Required for FDA compliance review of food and treats.</p></div>
-                <label className="text-[9px] font-black uppercase text-slate-600">Ingredients<textarea required value={productForm.ingredients || ''} onChange={e => setProductForm(p => ({ ...p, ingredients: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium normal-case" /></label>
-                <label className="text-[9px] font-black uppercase text-slate-600">Nutritional information<textarea required value={productForm.nutritionalInformation || ''} onChange={e => setProductForm(p => ({ ...p, nutritionalInformation: e.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium normal-case" /></label>
+                <label className="text-[9px] font-black uppercase text-slate-600">Ingredients<textarea required value={productForm.ingredients || ''} onChange={e => setProductForm(p => ({ ...p, ingredients: e.target.value }))} className="mt-1 min-h-16 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium normal-case" /></label>
+                <label className="text-[9px] font-black uppercase text-slate-600">Nutritional information<textarea required value={productForm.nutritionalInformation || ''} onChange={e => setProductForm(p => ({ ...p, nutritionalInformation: e.target.value }))} className="mt-1 min-h-16 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium normal-case" /></label>
               </div>}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Intended species
-                  <input value={(productForm.intendedSpecies || []).join(', ')} onChange={e => setProductForm(p => ({ ...p, intendedSpecies: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="Dog, cat" className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium normal-case text-slate-900" />
+                  <input value={(productForm.intendedSpecies || []).join(', ')} onChange={e => setProductForm(p => ({ ...p, intendedSpecies: e.target.value.split(',').map(value => value.trim()).filter(Boolean) }))} placeholder="Dog, cat" className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium normal-case text-slate-900" />
                 </label>
                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Safety / handling notes
-                  <input value={productForm.safetyNotes || ''} onChange={e => setProductForm(p => ({ ...p, safetyNotes: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium normal-case text-slate-900" />
+                  <input value={productForm.safetyNotes || ''} onChange={e => setProductForm(p => ({ ...p, safetyNotes: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium normal-case text-slate-900" />
                 </label>
               </div>
-              <div className="space-y-2 rounded-2xl border border-slate-200 p-4">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(12rem,0.6fr)]">
+              <div className="space-y-2 rounded-xl border border-slate-200 p-3">
                 <div><h4 className="text-[9px] font-black uppercase tracking-widest text-slate-600">{requiresFdaReview(productForm.category) ? 'FDA compliance evidence' : 'Supporting documents'}</h4><p className="mt-1 text-[10px] text-slate-500">{requiresFdaReview(productForm.category) ? 'Required: upload the FDA registration, product certificate, or equivalent evidence that matches the registration number above.' : 'Optional: upload product specifications, test results, or other supporting files. FDA evidence is not required for this category.'}</p></div>
                 <div className="flex flex-wrap gap-2">{(productForm.regulatoryDocuments || []).map((document, index) => <div key={`${document.documentUrl}-${index}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[10px] text-slate-700"><FileText className="h-3.5 w-3.5" /><span className="max-w-[12rem] truncate">{document.originalName || 'Supporting document'}</span><button type="button" onClick={() => setProductForm(p => ({ ...p, regulatoryDocuments: p.regulatoryDocuments.filter((_, itemIndex) => itemIndex !== index) }))} className="text-rose-600"><X className="h-3.5 w-3.5" /></button></div>)}</div>
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-[9px] font-black uppercase text-slate-600 hover:border-primary-500"><Plus className="h-4 w-4" /> {requiresFdaReview(productForm.category) ? 'Upload FDA evidence' : 'Add supporting files'}<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleComplianceUpload} /></label>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-[9px] font-black uppercase text-slate-600 hover:border-primary-500"><Plus className="h-4 w-4" /> {requiresFdaReview(productForm.category) ? 'Upload FDA evidence' : 'Add supporting files'}<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleComplianceUpload} /></label>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-slate-200 p-3">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Images</label>
                 <div className="flex gap-3 flex-wrap">
                   {productForm.images?.map((img, i) => (
-                    <div key={i} className="w-20 h-20 rounded-xl overflow-hidden relative group border border-slate-200">
+                    <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200">
                       <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
                         className="absolute inset-0 bg-rose-600/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Trash2 className="h-4 w-4 text-white" /></button>
                     </div>
                   ))}
-                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-primary-400">
-                    <Plus className="h-6 w-6 text-slate-400" />
+                  <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-400">
+                    <Plus className="h-5 w-5 text-slate-400" />
                     <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
                   </label>
                 </div>
               </div>
+              </div>
             </div>
-            <footer className="p-5 border-t border-slate-50 flex gap-3 shrink-0">
-              <button onClick={() => setShowProductModal(false)} className="px-6 py-2.5 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black uppercase">Cancel</button>
+            <footer className="flex shrink-0 gap-2 border-t border-slate-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+              <button type="button" onClick={() => setShowProductModal(false)} className="rounded-xl bg-slate-50 px-4 py-2 text-[10px] font-black uppercase text-slate-500 dark:bg-slate-800">Cancel</button>
               <button onClick={handleProductSubmit} disabled={submitting}
-                className="flex-1 py-3 bg-primary-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-primary-700 transition-all disabled:opacity-50">
+                className="flex-1 rounded-xl bg-primary-600 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-primary-700 disabled:opacity-50">
                 {submitting
                   ? 'Submitting...'
                   : requiresFdaReview(productForm.category)
@@ -879,7 +882,7 @@ const SupplierDashboard = () => {
             </footer>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 };

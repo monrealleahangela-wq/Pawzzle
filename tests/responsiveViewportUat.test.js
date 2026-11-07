@@ -183,6 +183,18 @@ test('calendar, specialized staff forms, and shared modals collapse inside narro
   assert.match(modal, /max-h-\[calc\(100dvh-1rem\)\]/);
 });
 
+test('supplier product submission stays compact and anchored to the viewport', () => {
+  const supplier = read('client/src/pages/supplier/SupplierDashboard.js');
+
+  assert.match(supplier, /createPortal\(\(/);
+  assert.match(supplier, /role="dialog" aria-modal="true"/);
+  assert.match(supplier, /aria-label="Close product form"/);
+  assert.match(supplier, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-3xl/);
+  assert.match(supplier, /space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5/);
+  assert.match(supplier, /lg:grid-cols-\[minmax\(0,1\.4fr\)_minmax\(12rem,0\.6fr\)\]/);
+  assert.match(supplier, /flex shrink-0 gap-2 border-t[^"`]*px-4 py-3/);
+});
+
 test('genuinely wide tables scroll inside their component instead of widening the page', () => {
   const css = read('client/src/styles/Global.css');
   const staff = read('client/src/pages/admin/StaffManagement.js');
