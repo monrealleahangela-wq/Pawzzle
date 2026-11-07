@@ -47,7 +47,16 @@ test('commerce behavior and accessible quantity actions are preserved', () => {
   assert.match(source, /navigate\('\/checkout'\)/);
   assert.match(source, /aria-label="Decrease quantity"/);
   assert.match(source, /aria-label="Increase quantity"/);
-  assert.match(source, /disabled=\{product\.stockQuantity === 0\}/);
+  assert.match(source, /disabled=\{!canPurchaseSelection\}/);
+});
+
+test('premium storefront treatment keeps Pawzzle styling and product trust cues', () => {
+  assert.match(source, /rounded-\[2rem\][^"\n]*border border-primary-100[^"\n]*bg-white\/55/);
+  assert.match(source, /bg-gradient-to-br from-white via-primary-50\/30 to-secondary-50\/30/);
+  assert.match(source, /Product details/);
+  assert.match(source, /productFacts\.map/);
+  assert.match(source, /Registration evidence verified by Pawzzle/);
+  assert.doesNotMatch(source, /bg-yellow|text-yellow|border-yellow/);
 });
 
 test('required desktop viewport widths retain two readable columns without fixed page width', () => {

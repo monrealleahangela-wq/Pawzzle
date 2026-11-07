@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { productService, getImageUrl } from '../../services/apiService';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Package, ArrowLeft, Plus, Minus, MapPin, Store, ShoppingBag, Star, Heart, ShieldCheck } from 'lucide-react';
+import { Package, ArrowLeft, Plus, Minus, MapPin, Store, ShoppingBag, Star, Heart, ShieldCheck, Tag, Scale, PawPrint, CheckCircle2 } from 'lucide-react';
 import LoginModal from '../../components/LoginModal';
 import ReviewSection from '../../components/ReviewSection';
 import { socialService } from '../../services/apiService';
@@ -187,40 +187,62 @@ const ProductDetail = () => {
   const purchaseLabel = product.productMode === 'variant' && !variantCapabilities.purchasingEnabled
     ? 'Purchasing unavailable'
     : (product.productMode === 'variant' && !selectedVariant ? 'Select an option' : (displayedStock > 0 ? null : 'Out of Stock'));
+  const availabilityLabel = product.productMode === 'variant' && !selectedVariant
+    ? 'Choose an option'
+    : (displayedStock > 0 ? `${displayedStock} in stock` : 'Out of stock');
+  const productFacts = [
+    { label: 'Category', value: product.category, icon: Tag },
+    { label: 'Brand', value: product.brand || 'Not specified', icon: Store },
+    product.weight ? { label: 'Package weight', value: `${product.weight} ${product.weightUnit || 'kg'}`, icon: Scale } : null,
+    { label: 'Good for', value: productSuitabilityLabel(product), icon: PawPrint }
+  ].filter(Boolean);
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 px-1 pb-24 sm:space-y-5 sm:px-0 lg:pb-12 animate-fade-in">
-      <Link to="/products" className="inline-flex items-center text-[10px] sm:text-sm font-black text-slate-400 hover:text-primary-600 uppercase tracking-widest transition-all px-2 md:px-0">
-        <ArrowLeft className="h-3 w-3 mr-1.5" />
+      <Link to="/products" className="group inline-flex items-center rounded-full border border-primary-100 bg-white/80 px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 shadow-sm backdrop-blur transition-all hover:-translate-x-0.5 hover:border-primary-200 hover:text-primary-700 hover:shadow-md sm:text-xs">
+        <ArrowLeft className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
         Back to Products
       </Link>
 
-      <div className="grid grid-cols-1 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8">
+      <div className="relative grid grid-cols-1 items-start gap-4 overflow-hidden rounded-[2rem] border border-primary-100 bg-white/55 p-3 shadow-[0_24px_70px_rgba(76,38,13,0.10)] backdrop-blur-sm sm:gap-6 sm:p-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 lg:p-7">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary-100/40 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-secondary-100/30 blur-3xl" />
         {/* Product Image */}
-        <div className="lg:sticky lg:top-4">
-          <div className="flex aspect-[4/3] w-full items-center justify-center rounded-3xl border border-slate-100 bg-slate-50 p-5 shadow-sm sm:p-7 lg:max-h-[34rem] lg:shadow-none">
+        <div className="relative lg:sticky lg:top-4">
+          <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[1.75rem] border border-white bg-gradient-to-br from-white via-primary-50/30 to-secondary-50/30 p-5 shadow-[0_20px_50px_rgba(76,38,13,0.08)] sm:p-8 lg:max-h-[34rem]">
+            <div className={`absolute left-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest shadow-sm backdrop-blur ${displayedStock > 0 || (product.productMode === 'variant' && !selectedVariant)
+              ? 'border-emerald-100 bg-white/90 text-emerald-700'
+              : 'border-rose-100 bg-white/90 text-rose-600'}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${displayedStock > 0 || (product.productMode === 'variant' && !selectedVariant) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              {availabilityLabel}
+            </div>
             {mainImage ? (
-              <img src={getImageUrl(mainImage)} alt={product.name} onError={() => setMainImage(null)} className="w-full h-full object-contain" />
+              <img src={getImageUrl(mainImage)} alt={product.name} onError={() => setMainImage(null)} className="h-full w-full object-contain drop-shadow-[0_20px_22px_rgba(0,0,0,0.08)] transition-transform duration-500 hover:scale-[1.02]" />
             ) : (
               <Package className="h-20 w-20 text-slate-200" />
             )}
           </div>
-          {product.images?.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setMainImage(image)} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${mainImage === image ? 'border-primary-500' : 'border-slate-100 opacity-70'}`}><img src={getImageUrl(image)} alt={`${product.name} view ${index + 1}`} onError={event => { event.currentTarget.style.display = 'none'; }} className="h-full w-full object-cover" /></button>)}</div>}
+          {product.images?.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto rounded-2xl border border-primary-100 bg-white/75 p-2 shadow-sm">{product.images.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setMainImage(image)} aria-label={`Show ${product.name} image ${index + 1}`} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white p-1 transition-all ${mainImage === image ? 'border-primary-500 shadow-md' : 'border-transparent opacity-60 hover:opacity-100'}`}><img src={getImageUrl(image)} alt={`${product.name} view ${index + 1}`} onError={event => { event.currentTarget.style.display = 'none'; }} className="h-full w-full rounded-lg object-cover" /></button>)}</div>}
         </div>
 
         {/* Product Details */}
-        <div className="space-y-4 px-2 sm:px-0 lg:space-y-3.5">
+        <div className="relative space-y-4 rounded-[1.75rem] border border-white/90 bg-white/85 p-4 shadow-[0_18px_45px_rgba(76,38,13,0.07)] sm:p-6 lg:space-y-4">
           <div>
-            <p className="text-[10px] font-black text-secondary-600 uppercase tracking-[0.2em] mb-1">{product.category}</p>
-            <div className="flex justify-between items-start gap-4">
-                <h1 className="mb-1.5 min-w-0 text-[clamp(1.5rem,3vw,2.65rem)] font-black uppercase leading-tight tracking-tight text-slate-900 break-words">{product.name}</h1>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-primary-700">
+                <Package className="h-3 w-3" /> {product.category}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">Product details</span>
+            </div>
+            <div className="flex items-start justify-between gap-4">
+                <h1 className="mb-1.5 min-w-0 text-[clamp(1.65rem,3vw,2.75rem)] font-black uppercase leading-[0.98] tracking-[-0.035em] text-slate-950 break-words">{product.name}</h1>
                 {user?.role !== 'super_admin' && (
                   <button 
                       onClick={handleToggleFavorite}
                       disabled={isTogglingFavorite}
-                      className={`p-3 rounded-2xl border-2 transition-all ${isFavorite 
-                          ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-lg shadow-rose-100' 
-                          : 'bg-white border-slate-100 text-slate-300 hover:border-slate-200 hover:text-slate-400'
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border transition-all sm:h-14 sm:w-14 ${isFavorite
+                          ? 'bg-rose-50 border-rose-100 text-rose-500 shadow-lg shadow-rose-100/70'
+                          : 'bg-white border-slate-200 text-slate-300 shadow-sm hover:-translate-y-0.5 hover:border-primary-200 hover:text-primary-500 hover:shadow-md'
                       }`}
                       title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                       aria-label={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
@@ -229,23 +251,26 @@ const ProductDetail = () => {
                   </button>
                 )}
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-black tracking-tighter text-slate-900 sm:text-2xl">{formatPeso(displayedPrice)}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-2.5">
+              <span className="text-2xl font-black tracking-[-0.04em] text-primary-800 sm:text-3xl">{formatPeso(displayedPrice)}</span>
               {product.brand && (
-                <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[8px] font-black uppercase tracking-widest">{product.brand}</span>
+                <span className="rounded-lg bg-slate-950 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-white">{product.brand}</span>
               )}
             </div>
 
             {regulatoryVerification?.authority === 'FDA' && regulatoryVerification?.status === 'approved' && (
               <div
-                className="mt-2 flex w-fit max-w-full items-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-primary-800"
+                className="mt-3 flex w-full max-w-lg items-center gap-3 rounded-2xl border border-primary-200 bg-gradient-to-r from-primary-50 to-white px-3.5 py-3 text-primary-900 shadow-sm"
                 role="status"
                 aria-label="FDA approved; FDA registration evidence verified by Pawzzle"
                 title="FDA registration evidence was reviewed by Pawzzle. Pawzzle does not issue FDA approval."
               >
-                <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="text-[10px] font-black uppercase tracking-widest">FDA Approved</span>
-                <span className="hidden border-l border-primary-200 pl-2 text-[9px] font-bold normal-case text-primary-700 sm:inline">Registration evidence verified</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-700 text-white shadow-md shadow-primary-200"><ShieldCheck className="h-4 w-4" aria-hidden="true" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase tracking-[0.16em]">FDA Approved</span>
+                  <span className="mt-0.5 block text-[9px] font-bold normal-case text-primary-700">Registration evidence verified by Pawzzle</span>
+                </span>
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary-600" aria-hidden="true" />
               </div>
             )}
 
@@ -296,29 +321,30 @@ const ProductDetail = () => {
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Category', value: product.category },
-              { label: 'Brand', value: product.brand || 'Premium' },
-              product.weight ? { label: 'Package weight', value: `${product.weight} ${product.weightUnit || 'kg'}` } : null,
-              { label: 'Good for', value: productSuitabilityLabel(product) }
-            ].filter(Boolean).map((stat, i) => (
-              <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
-                <p className="text-[11px] font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words sm:text-sm" title={String(stat.value)}>{stat.value}</p>
+            {productFacts.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="group flex min-w-0 items-center gap-2.5 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5 transition-colors hover:border-primary-100 hover:bg-primary-50/40">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-primary-600 shadow-sm"><Icon className="h-3.5 w-3.5" /></span>
+                <span className="min-w-0">
+                  <span className="mb-0.5 block text-[8px] font-black uppercase tracking-widest text-slate-400">{label}</span>
+                  <span className="line-clamp-2 block break-words text-[11px] font-black uppercase leading-tight text-slate-900 sm:text-xs" title={String(value)}>{value}</span>
+                </span>
               </div>
             ))}
           </div>
 
-          <div className="space-y-1.5">
-            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Description</h3>
-            <p className={`pr-4 text-[11px] font-bold italic leading-relaxed text-slate-500 sm:text-sm ${hasLongDescription && !showFullDescription ? 'line-clamp-3' : ''}`}>
+          <div className="rounded-2xl border border-primary-100 bg-gradient-to-br from-white to-primary-50/35 p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="h-5 w-1 rounded-full bg-primary-600" />
+              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Description</h3>
+            </div>
+            <p className={`text-[11px] font-semibold italic leading-relaxed text-slate-600 sm:text-sm ${hasLongDescription && !showFullDescription ? 'line-clamp-3' : ''}`}>
               "{description}"
             </p>
             {hasLongDescription && (
               <button
                 type="button"
                 onClick={() => setShowFullDescription(current => !current)}
-                className="text-[10px] font-black uppercase tracking-wide text-primary-600 hover:text-primary-700"
+                className="mt-2 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.14em] text-primary-700 hover:text-primary-900"
                 aria-expanded={showFullDescription}
               >
                 {showFullDescription ? 'Show less' : 'Read full description'}
