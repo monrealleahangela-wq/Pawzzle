@@ -502,38 +502,38 @@ const PurchaseOrders = () => {
       )}
 
       {/* ── CATALOG MODAL ── */}
-      {showCatalog && catalog && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div className="bg-white w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
-            <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">{catalog.supplier?.businessName}</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Product Catalog • {catalog.products?.length || 0} items</p>
+      {showCatalog && catalog && createPortal((
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-3">
+          <div role="dialog" aria-modal="true" aria-labelledby="supplier-catalog-title" className="flex max-h-[calc(100dvh-1rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:gap-3 sm:px-5">
+              <div className="min-w-0">
+                <h3 id="supplier-catalog-title" className="truncate text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">{catalog.supplier?.businessName}</h3>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Product catalog • {catalog.products?.length || 0} items</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {cart.length > 0 && (
-                  <button onClick={() => setShowCheckout(true)}
-                    className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-700">
-                    <ShoppingCart className="h-4 w-4" /> Cart ({cart.length}) • ₱{cartTotal.toLocaleString()}
+                  <button type="button" onClick={() => setShowCheckout(true)}
+                    className="flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-[9px] font-black uppercase text-white hover:bg-emerald-700 sm:px-4 sm:text-[10px]">
+                    <ShoppingCart className="h-4 w-4" /> Cart ({cart.length}) <span className="hidden sm:inline">• ₱{cartTotal.toLocaleString()}</span>
                   </button>
                 )}
-                <button onClick={() => setShowCatalog(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
+                <button type="button" aria-label="Close supplier catalog" onClick={() => setShowCatalog(false)} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
               </div>
             </header>
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {catalog.products?.map(p => {
                   const inCart = cart.find(i => String(i.supplierProductId) === String(p._id) && !i.supplierVariantId);
                   return (
-                    <div key={p._id} className={`bg-white border ${inCart ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-slate-100'} rounded-2xl overflow-hidden shadow-sm`}>
-                      <div className="h-28 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                    <div key={p._id} className={`overflow-hidden rounded-xl border bg-white ${inCart ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-slate-100'} shadow-sm`}>
+                      <div className="flex h-24 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 sm:h-28">
                         {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-8 w-8 text-indigo-300" />}
                       </div>
-                      <div className="p-4">
-                        {p.requiresPlatformReview === true && p.approvalStatus === 'approved' && <span className="mb-2 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-emerald-800">FDA Evidence Reviewed</span>}
+                      <div className="p-3">
+                        {p.requiresPlatformReview === true && p.approvalStatus === 'approved' && <span className="mb-1.5 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-emerald-800">FDA Evidence Reviewed</span>}
                         <p className="text-[8px] font-black text-indigo-500 uppercase">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
                         <h4 className="text-xs font-black text-slate-900 uppercase mt-0.5 line-clamp-1">{p.name}</h4>
-                        <div className="flex justify-between items-end mt-2">
+                        <div className="mt-1.5 flex items-end justify-between gap-3">
                           <div>
                             <p className="text-[8px] text-slate-400">Wholesale</p>
                             <p className="text-sm font-black text-slate-900">₱{p.wholesalePrice?.toLocaleString()}</p>
@@ -558,18 +558,18 @@ const PurchaseOrders = () => {
                             })}
                           </div>
                         ) : inCart ? (
-                          <div className="flex items-center justify-center gap-3 mt-3 bg-emerald-50 rounded-xl py-2">
+                          <div className="mt-2 flex items-center justify-center gap-3 rounded-xl bg-emerald-50 py-1.5">
                             <button onClick={() => updateCartQty(inCart, -1)} className="p-1 bg-white rounded-lg shadow-sm"><Minus className="h-3 w-3" /></button>
                             <span className="text-sm font-black text-emerald-700">{inCart.quantity}</span>
                             {p.itemType !== 'live_pet' && <button onClick={() => updateCartQty(inCart, 1)} disabled={inCart.quantity >= p.availableStock} className="p-1 bg-white rounded-lg shadow-sm disabled:opacity-30"><Plus className="h-3 w-3" /></button>}
                           </div>
                         ) : (
                           <button onClick={() => addToCart(p)} disabled={p.availableStock <= 0}
-                            className="w-full mt-3 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-indigo-600 transition-all disabled:opacity-30">
+                            className="mt-2 w-full rounded-xl bg-slate-900 py-2 text-[9px] font-black uppercase text-white transition-all hover:bg-indigo-600 disabled:opacity-30">
                             {p.availableStock <= 0 ? 'Out of Stock' : 'Add to Order'}
                           </button>
                         )}
-                        {p.itemType !== 'live_pet' && p.productMode !== 'variant' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-2 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase text-indigo-700">Compare suppliers and alternatives</button>}
+                        {p.itemType !== 'live_pet' && p.productMode !== 'variant' && <button type="button" onClick={() => setComparisonStoreProductId(storeProducts.find(sp => String(sp.supplierProductRef) === String(p._id))?._id || '')} className="mt-1.5 w-full rounded-xl border border-indigo-200 px-3 py-2 text-[9px] font-black uppercase leading-tight text-indigo-700">Compare suppliers and alternatives</button>}
                       </div>
                     </div>
                   );
@@ -578,7 +578,7 @@ const PurchaseOrders = () => {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
 
       {comparisonStoreProductId !== null && <SupplierOfferComparison
         storeProducts={storeProducts}

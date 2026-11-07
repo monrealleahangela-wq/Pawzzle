@@ -208,6 +208,17 @@ test('purchase request review stays compact with its controls anchored to the vi
   assert.match(procurement, /Inventory destination \(optional\)/);
 });
 
+test('supplier catalog stays compact with cart and close controls anchored to the viewport', () => {
+  const procurement = read('client/src/pages/admin/PurchaseOrders.js');
+
+  assert.match(procurement, /showCatalog && catalog && createPortal\(\(/);
+  assert.match(procurement, /role="dialog" aria-modal="true" aria-labelledby="supplier-catalog-title"/);
+  assert.match(procurement, /aria-label="Close supplier catalog"/);
+  assert.match(procurement, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-5xl/);
+  assert.match(procurement, /overflow-y-auto overscroll-contain p-3 sm:p-4/);
+  assert.match(procurement, /grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3/);
+});
+
 test('genuinely wide tables scroll inside their component instead of widening the page', () => {
   const css = read('client/src/styles/Global.css');
   const staff = read('client/src/pages/admin/StaffManagement.js');
