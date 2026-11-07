@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
 import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X, ClipboardCheck, FileText } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
@@ -313,36 +314,36 @@ const SupplierManagement = () => {
       </div>}
 
       {/* Detail Modal */}
-      {showDetailModal && supplierDetails && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div className="bg-white w-full max-w-3xl rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border border-slate-200">
-            <header className="p-5 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="text-lg font-black uppercase text-slate-900 tracking-tighter">{supplierDetails.supplier?.businessName}</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Profile and activity</p>
+      {showDetailModal && supplierDetails && createPortal((
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-2 backdrop-blur-sm sm:p-3">
+          <div role="dialog" aria-modal="true" aria-labelledby="supplier-details-title" className="flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h3 id="supplier-details-title" className="truncate text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">{supplierDetails.supplier?.businessName}</h3>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Supplier profile and activity</p>
               </div>
-              <button onClick={() => setShowDetailModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
+              <button type="button" aria-label="Close supplier details" onClick={() => setShowDetailModal(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
             </header>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {/* Supplier Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 {[
                   { label: 'Products', value: supplierDetails.productCount },
                   { label: 'Orders', value: supplierDetails.orderCount },
                   { label: 'Reliability', value: `${supplierDetails.supplier?.performance?.reliabilityScore || 100}%` },
                   { label: 'Avg Delivery', value: `${supplierDetails.supplier?.performance?.averageDeliveryDays || 0} days` }
                 ].map((s, i) => (
-                  <div key={i} className="bg-slate-50 rounded-xl p-4 text-center border border-slate-100">
+                  <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
-                    <p className="text-lg font-black text-slate-900 mt-1">{s.value}</p>
+                    <p className="mt-1 text-base font-black text-slate-900 sm:text-lg">{s.value}</p>
                   </div>
                 ))}
               </div>
 
               {/* Contact Info */}
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Contact Information</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+                <h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Contact information</h4>
+                <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 sm:text-sm">
                   <div><span className="text-[9px] font-bold text-slate-400 uppercase">Person:</span> <span className="font-bold text-slate-700">{supplierDetails.supplier?.contactPerson}</span></div>
                   <div><span className="text-[9px] font-bold text-slate-400 uppercase">Email:</span> <span className="font-bold text-slate-700">{supplierDetails.supplier?.email}</span></div>
                   <div><span className="text-[9px] font-bold text-slate-400 uppercase">Phone:</span> <span className="font-bold text-slate-700">{supplierDetails.supplier?.phone}</span></div>
@@ -351,11 +352,11 @@ const SupplierManagement = () => {
               </div>
 
               {supplierDetails.supplier?.supplierType !== 'store_added' && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                  <h4 className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Application Documents</h4>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+                  <h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Application Documents</h4>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {supplierDetails.supplier?.applicationDocuments?.filter(document => document.status !== 'superseded').map(document => (
-                      <a key={document._id} href={getImageUrl(document.documentUrl)} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-200 bg-white p-3 text-xs hover:border-primary-400">
+                      <a key={document._id} href={getImageUrl(document.documentUrl)} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-200 bg-white p-2.5 text-xs hover:border-primary-400">
                         <b className="block capitalize">{document.documentType?.replaceAll('_', ' ')}</b>
                         <span className="mt-1 block text-[9px] uppercase text-slate-500">{document.status}</span>
                         {document.reviewerFeedback && <span className="mt-1 block text-[10px] text-rose-600">{document.reviewerFeedback}</span>}
@@ -366,18 +367,18 @@ const SupplierManagement = () => {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Supplied Products</h4><div className="space-y-2">{supplierDetails.products?.map(product => <div key={product._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{product.name}</b><p className="text-[9px] text-slate-400">{product.sku} · {product.availableStock} available</p></div><b>₱{product.wholesalePrice?.toLocaleString()}</b></div>)}{!supplierDetails.products?.length && <p className="text-xs text-slate-400">No products listed.</p>}</div></div>
-                <div><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Purchase Orders</h4><div className="space-y-2">{supplierDetails.orders?.map(order => <div key={order._id} className="p-3 bg-slate-50 rounded-lg text-xs flex justify-between"><div><b>{order.orderNumber}</b><p className="text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b>{formatPeso(order.totalCost)}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="min-w-0"><h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Supplied products</h4><div className="max-h-48 space-y-1.5 overflow-y-auto overscroll-contain pr-1">{supplierDetails.products?.map(product => <div key={product._id} className="flex justify-between gap-3 rounded-lg bg-slate-50 p-2.5 text-xs"><div className="min-w-0"><b className="block truncate">{product.name}</b><p className="text-[9px] text-slate-400">{product.sku} · {product.availableStock} available</p></div><b className="shrink-0">₱{product.wholesalePrice?.toLocaleString()}</b></div>)}{!supplierDetails.products?.length && <p className="text-xs text-slate-400">No products listed.</p>}</div></div>
+                <div className="min-w-0"><h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Purchase orders</h4><div className="max-h-48 space-y-1.5 overflow-y-auto overscroll-contain pr-1">{supplierDetails.orders?.map(order => <div key={order._id} className="flex justify-between gap-3 rounded-lg bg-slate-50 p-2.5 text-xs"><div className="min-w-0"><b className="block truncate">{order.orderNumber}</b><p className="truncate text-[9px] text-slate-400">{order.store?.name} · {order.status} · {order.paymentStatus}</p></div><b className="shrink-0">{formatPeso(order.totalCost)}</b></div>)}{!supplierDetails.orders?.length && <p className="text-xs text-slate-400">No purchase orders.</p>}</div></div>
               </div>
 
               {/* Admin Actions */}
-              <div className="bg-primary-50 rounded-xl p-5 border border-primary-100">
-                <h4 className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-3">Admin Actions</h4>
-                <div className="space-y-3">
+              <div className="rounded-xl border border-primary-100 bg-primary-50 p-3 sm:p-4">
+                <h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-primary-600">Supplier actions</h4>
+                <div className="space-y-2">
                   <input type="text" placeholder="Reason (optional)" value={actionReason}
                     onChange={e => setActionReason(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-primary-200 rounded-xl text-sm outline-none" />
+                    className="w-full rounded-xl border border-primary-200 bg-white px-3 py-2 text-sm outline-none" />
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={editSupplier} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-[9px] font-black uppercase">Edit details</button>
                     {['pending_verification', 'rejected'].includes(supplierDetails.supplier?.status) && supplierDetails.supplier?.supplierType !== 'store_added' && (
@@ -407,10 +408,10 @@ const SupplierManagement = () => {
 
               {/* Audit Logs */}
               <div>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Recent Activity</h4>
-                <div className="space-y-2">
+                <h4 className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Recent activity</h4>
+                <div className="space-y-1.5">
                   {supplierDetails.recentLogs?.map((log, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 p-2.5">
                       <div className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-slate-700 truncate">{log.description}</p>
@@ -423,7 +424,7 @@ const SupplierManagement = () => {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 };

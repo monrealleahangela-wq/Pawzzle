@@ -96,3 +96,14 @@ test('plain-language labels remain and the retired role-permissions screen is in
   assert.match(dss, /Try Again/);
   assert.doesNotMatch(dss, /Universal[\s\S]*Meta-Intelligence/);
 });
+
+test('supplier details stay compact and anchored to the browser viewport', () => {
+  const suppliers = read('client/src/pages/superadmin/SupplierManagement.js');
+
+  assert.match(suppliers, /showDetailModal && supplierDetails && createPortal\(\(/);
+  assert.match(suppliers, /role="dialog" aria-modal="true" aria-labelledby="supplier-details-title"/);
+  assert.match(suppliers, /aria-label="Close supplier details"/);
+  assert.match(suppliers, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-4xl/);
+  assert.match(suppliers, /space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5/);
+  assert.match(suppliers, /max-h-48 space-y-1\.5 overflow-y-auto overscroll-contain/);
+});
