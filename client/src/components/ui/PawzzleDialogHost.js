@@ -80,6 +80,7 @@ const PawzzleDialogHost = () => {
       title={title}
       size="sm"
       showCloseButton={current.kind !== 'alert'}
+      viewportClassName="z-[2000]"
       className="border-primary/20 shadow-[0_24px_70px_rgba(67,31,13,0.28)]"
       data-testid="pawzzle-dialog"
     >
