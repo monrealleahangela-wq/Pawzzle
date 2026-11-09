@@ -1,6 +1,6 @@
 import React from 'react';
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ProductInventory from './ProductInventory';
 import { adminProductService, inventoryService } from '../../services/apiService';
@@ -57,6 +57,25 @@ test('store inventory keeps stock management but has no manual product creation 
   expect(screen.getByRole('heading', { name: /Product Inventory/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Update Stock/i })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Add Product$/i })).not.toBeInTheDocument();
+});
+
+test('general stock action loads inventory products even while product catalog is active', async () => {
+  const product = { _id: 'product-selector-1', name: 'Cat Food', sku: 'CAT-1', category: 'Pet Food', images: [] };
+  inventoryService.adminGetInventory.mockResolvedValue({
+    data: {
+      inventory: [{ product, quantity: 7, reorderLevel: 2, inventoryId: 'inventory-selector-1' }],
+      summary: { totalItems: 1, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 },
+      pagination: { currentPage: 1, totalPages: 1 }
+    }
+  });
+
+  render(<MemoryRouter><ProductInventory /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: /Update Stock/i }));
+
+  expect(screen.getByRole('dialog', { name: 'Inventory action' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Close stock update/i })).toBeInTheDocument();
+  await waitFor(() => expect(inventoryService.adminGetInventory).toHaveBeenCalledWith({ page: 1, limit: 500 }));
+  expect(await screen.findByRole('option', { name: /Cat Food.*7 in stock/i })).toHaveValue('product-selector-1');
 });
 
 test('out-of-stock inventory orders from suppliers instead of opening manual adjustment', async () => {
