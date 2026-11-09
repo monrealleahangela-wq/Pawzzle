@@ -57,6 +57,24 @@ test('restock mode explains that stock changes only after receiving inspection',
   expect(screen.getByText(/quantity will remain unchanged until delivery passes receiving inspection/i)).toBeInTheDocument();
 });
 
+test('opens the add-supplier confirmation above the still-open comparison modal', async () => {
+  purchaseOrderService.compareOffers.mockResolvedValue(response({ ...candidate, matchType: 'exact' }));
+  renderComparison();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Add this supplier' }));
+
+  const comparison = screen.getByRole('dialog', { name: 'Compare supplier offers' });
+  const confirmation = await screen.findByRole('dialog', { name: 'Add supplier offer?' });
+  expect(comparison).toBeInTheDocument();
+  expect(comparison.closest('[data-modal-viewport="true"]')).toHaveClass('z-[1300]');
+  expect(confirmation.closest('[data-modal-viewport="true"]')).toHaveClass('z-[2000]');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add supplier offer?' })).not.toBeInTheDocument());
+  expect(screen.getByRole('dialog', { name: 'Compare supplier offers' })).toBeInTheDocument();
+  expect(purchaseOrderService.addCartItem).not.toHaveBeenCalled();
+});
+
 test('keeps the compact close control visible and functional', async () => {
   purchaseOrderService.compareOffers.mockResolvedValue(response({ ...candidate, matchType: 'exact' }));
   renderComparison();

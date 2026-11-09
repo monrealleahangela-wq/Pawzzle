@@ -22,6 +22,8 @@ test('renders a branded confirmation and returns the confirmed choice', async ()
   });
 
   expect(screen.getByRole('dialog', { name: 'Approve attendance correction' })).not.toBeNull();
+  expect(screen.getByTestId('pawzzle-dialog').closest('[data-modal-viewport="true"]')
+    .classList.contains('z-[2000]')).toBe(true);
   expect(screen.getByText('Apply the reviewed attendance correction?')).not.toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Approve and apply' }));
   await expect(result).resolves.toBe(true);

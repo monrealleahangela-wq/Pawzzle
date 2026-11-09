@@ -13,6 +13,7 @@ const Modal = React.forwardRef(({
   size = 'md',
   showCloseButton = true,
   className,
+  viewportClassName,
   ...props
 }, ref) => {
   const titleId = React.useId();
@@ -29,7 +30,7 @@ const Modal = React.forwardRef(({
   };
 
   return (
-    <ModalViewport onClose={onClose} className="z-[1000] p-2 sm:p-4">
+    <ModalViewport onClose={onClose} className={cn('z-[1000] p-2 sm:p-4', viewportClassName)}>
       {/* Modal */}
       <div
         ref={ref}
