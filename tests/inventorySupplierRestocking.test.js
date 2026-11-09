@@ -22,13 +22,14 @@ test('manual adjustments cannot turn an out-of-stock product back into stocked i
   assert.equal(manualRestockBlockReason({ currentQuantity: 4, operation: 'add', quantity: 2 }), null);
 });
 
-test('all manual inbound inventory endpoints enforce supplier restocking at zero stock', () => {
+test('manual stock routes enforce supplier ordering and audited adjustment paths', () => {
   const inventoryController = read('controllers/inventoryController.js');
   const lotController = read('controllers/inventoryLotController.js');
   const productController = read('controllers/productController.js');
 
   assert.equal((inventoryController.match(/manualRestockBlockReason/g) || []).length >= 4, true);
-  assert.match(lotController, /manualRestockBlockReason/);
+  assert.match(lotController, /PURCHASE_ORDER_RECEIVING_REQUIRED/);
+  assert.match(lotController, /supplier purchase order and pass receiving inspection/);
   assert.match(productController, /manualRestockBlockReason/);
 });
 

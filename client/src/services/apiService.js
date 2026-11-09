@@ -325,6 +325,9 @@ export const inventoryService = {
   adminGetInventory: (params) => api.get('/inventory/admin', { params }),
   adminGetAlerts: () => api.get('/inventory/admin/alerts'),
   adminAddToInventory: (data) => api.post('/inventory/admin', data),
+  getAdjustmentRequests: (params) => api.get('/inventory/adjustment-requests', { params }),
+  createAdjustmentRequest: (data) => api.post('/inventory/adjustment-requests', data),
+  reviewAdjustmentRequest: (id, data) => api.patch(`/inventory/adjustment-requests/${id}/review`, data),
   // Item-level actions
   updateQuantity: (id, data) => api.put(`/inventory/${id}`, data),
   deleteInventoryItem: (id) => api.delete(`/inventory/${id}`),

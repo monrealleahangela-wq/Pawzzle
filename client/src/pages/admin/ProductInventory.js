@@ -7,7 +7,7 @@ import { PLATFORM_ADMIN_ROLES, STORE_ADMIN_ROLES, OPERATIONAL_ROLES, hasUiAction
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ProductFormModal from '../../components/forms/ProductFormModal';
 import { PRODUCT_CATEGORIES, normalizeProductCategory } from '../../constants/productCategories';
-import { Package, AlertTriangle, TrendingDown, Plus, Minus, RefreshCw, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock, Truck } from 'lucide-react';
+import { Package, AlertTriangle, TrendingDown, Plus, Minus, Edit, Trash2, Search, Box, X, Activity, Image as ImageIcon, ChevronRight, Shield, Zap, Layers, Tag, Star, Info, ChevronDown, ChevronUp, Video, FileText, MapPin, Clock, Truck, Paperclip, Check, Ban } from 'lucide-react';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 
 const PhilippinePeso = ({ className }) => (
@@ -43,6 +43,9 @@ const ProductInventory = () => {
   const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [variantCapabilities, setVariantCapabilities] = useState({ enabled: false, reasons: [] });
+  const [adjustmentRequests, setAdjustmentRequests] = useState([]);
+  const [canReviewAdjustments, setCanReviewAdjustments] = useState(false);
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
 
   // Filters
   const [productFilters, setProductFilters] = useState({ category: '', search: '' });
@@ -57,9 +60,11 @@ const ProductInventory = () => {
   const [inventoryForm, setInventoryForm] = useState({
     productId: '',
     quantity: 0,
-    operation: 'add',
+    operation: 'subtract',
     reorderLevel: 10,
-    notes: ''
+    adjustmentType: 'damage',
+    notes: '',
+    evidence: []
   });
 
   // Form States
@@ -132,7 +137,7 @@ const ProductInventory = () => {
         : await productService.getAllProducts(params);
 
       setProducts(response.data.products || []);
-      setPagination(response.data.pagination || pagination);
+      setPagination(current => response.data.pagination || current);
     } catch (error) {
       toast.error('Failed to load products');
     } finally {
@@ -147,7 +152,7 @@ const ProductInventory = () => {
       const response = await inventoryService.adminGetInventory(params);
 
       const serverInventory = response.data?.inventory || [];
-      const serverSummary = response.data?.summary || summary;
+      const serverSummary = response.data?.summary;
 
       setInventory(serverInventory.map(item => ({
         _id: item.product?._id,
@@ -165,14 +170,25 @@ const ProductInventory = () => {
         supplierName: item.supplier?.name || item.supplierRef?.businessName || null
       })));
 
-      setSummary(serverSummary);
-      setPagination(response.data?.pagination || pagination);
+      if (serverSummary) setSummary(serverSummary);
+      setPagination(current => response.data?.pagination || current);
     } catch (error) {
       toast.error('Failed to load inventory');
     } finally {
       setLoading(false);
     }
   }, [inventoryFilters, pagination.currentPage]);
+
+  const fetchAdjustmentRequests = useCallback(async () => {
+    try {
+      const response = await inventoryService.getAdjustmentRequests();
+      setAdjustmentRequests(response.data?.requests || []);
+      setCanReviewAdjustments(Boolean(response.data?.canReview));
+    } catch (_error) {
+      setAdjustmentRequests([]);
+      setCanReviewAdjustments(false);
+    }
+  }, []);
 
   // Real-time Updates
   useRealTimeUpdates({
@@ -187,11 +203,15 @@ const ProductInventory = () => {
   const canDelete = hasUiActionPermission(user, 'inventory', 'delete', isAdmin);
   const canAdjustStock = canUpdate;
   const canManageProcurement = hasUiActionPermission(user, 'procurement', 'manage', isAdmin);
+  const isStoreOwner = STORE_ADMIN_ROLES.has(user?.role);
 
   useEffect(() => {
     if (activeTab === 'products') fetchProducts();
-    else fetchInventory();
-  }, [activeTab, fetchProducts, fetchInventory]);
+    else {
+      fetchInventory();
+      fetchAdjustmentRequests();
+    }
+  }, [activeTab, fetchProducts, fetchInventory, fetchAdjustmentRequests]);
 
   // Debounced search
   useEffect(() => {
@@ -409,110 +429,113 @@ const ProductInventory = () => {
       setInventoryForm({
         productId: item._id,
         quantity: 0,
-        operation: 'add',
+        operation: 'subtract',
         reorderLevel: item.reorderLevel || 10,
-        notes: ''
+        adjustmentType: 'damage',
+        notes: '',
+        evidence: []
       });
     } else {
       setSelectedInventoryItem(null);
       setInventoryForm({
         productId: '',
         quantity: 0,
-        operation: 'add',
+        operation: 'subtract',
         reorderLevel: 10,
-        notes: ''
+        adjustmentType: 'damage',
+        notes: '',
+        evidence: []
       });
     }
     setShowInventoryModal(true);
   };
 
+  const handleAdjustmentEvidence = async (file) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return toast.warn('Evidence files must be 10 MB or smaller.');
+    setEvidenceUploading(true);
+    const formData = new FormData();
+    formData.append('document', file);
+    try {
+      const response = await uploadService.uploadDocument(formData);
+      setInventoryForm(current => ({
+        ...current,
+        evidence: [...current.evidence, {
+          url: response.data.url,
+          publicId: response.data.publicId,
+          originalName: response.data.originalName || file.name
+        }].slice(0, 5)
+      }));
+      toast.success('Evidence attached.');
+    } catch (_error) {
+      toast.error('Unable to upload the evidence file.');
+    } finally {
+      setEvidenceUploading(false);
+    }
+  };
+
   const handleInventorySubmit = async (e) => {
     e.preventDefault();
     const quantity = Number(inventoryForm.quantity);
-    if (!inventoryForm.productId) return toast.warn('Choose a product before updating its stock.');
-    if (!Number.isInteger(quantity) || quantity < 0) return toast.warn('Enter a whole number that is 0 or greater.');
-    if (inventoryForm.operation !== 'set' && quantity === 0) {
-      return toast.warn('Enter how many items you want to add or remove.');
-    }
-    const selectedProduct = selectedInventoryItem
-      || products.find(product => product._id === inventoryForm.productId);
-    const currentQuantity = Number(selectedInventoryItem?.currentStock ?? selectedProduct?.stockQuantity ?? 0);
-    const nextQuantity = inventoryForm.operation === 'add'
-      ? currentQuantity + quantity
-      : inventoryForm.operation === 'subtract'
-        ? Math.max(0, currentQuantity - quantity)
-        : quantity;
-    if (currentQuantity <= 0 && nextQuantity > 0) {
-      return toast.warn('Out-of-stock products must be reordered from a supplier and received through inspection.');
-    }
+    const target = selectedInventoryItem || inventory.find(item => item._id === inventoryForm.productId);
+    if (!target?.inventoryId) return toast.warn('Choose an inventory product first.');
+    if (!Number.isInteger(quantity) || quantity < 1) return toast.warn('Enter a whole number greater than 0.');
+    if (quantity > Number(target.currentStock || 0)) return toast.warn('The reduction cannot be greater than the current stock.');
+    if (String(inventoryForm.notes || '').trim().length < 8) return toast.warn('Enter a clear reason of at least 8 characters.');
+    if (!isStoreOwner && inventoryForm.evidence.length === 0) return toast.warn('Attach evidence before submitting this request.');
 
     setSubmitting(true);
     try {
-      if (selectedInventoryItem && selectedInventoryItem.inventoryId) {
-        await inventoryService.updateQuantity(selectedInventoryItem.inventoryId, {
-          quantity,
-          operation: inventoryForm.operation,
-          notes: inventoryForm.notes
-        });
-      } else {
-        await inventoryService.adminAddToInventory({
-          productId: inventoryForm.productId,
-          quantity,
-          operation: inventoryForm.operation,
-          reorderLevel: Number(inventoryForm.reorderLevel),
-          notes: inventoryForm.notes
-        });
-      }
-
-      const productName = selectedInventoryItem?.name || products.find(product => product._id === inventoryForm.productId)?.name || 'Product';
-      const successMessages = {
-        add: `${quantity} item${quantity === 1 ? '' : 's'} added to ${productName}.`,
-        subtract: `${quantity} item${quantity === 1 ? '' : 's'} removed from ${productName}.`,
-        set: `${productName} stock is now ${quantity}.`
-      };
-      toast.success(successMessages[inventoryForm.operation]);
+      const response = await inventoryService.createAdjustmentRequest({
+        inventoryId: target.inventoryId,
+        quantity,
+        adjustmentType: inventoryForm.adjustmentType,
+        reason: inventoryForm.notes,
+        evidence: inventoryForm.evidence
+      });
+      toast.success(response.data?.message || 'Stock reduction request submitted.');
 
       setShowInventoryModal(false);
       fetchInventory();
+      fetchAdjustmentRequests();
       if (activeTab === 'products') fetchProducts();
     } catch (error) {
-      toast.error('Unable to update inventory. Please check the quantity and try again.');
+      toast.error(error.response?.data?.message || 'Unable to submit the stock reduction request.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inventoryProduct = selectedInventoryItem
-    || products.find(product => product._id === inventoryForm.productId);
-  const currentInventoryStock = Number(
-    selectedInventoryItem?.currentStock ?? inventoryProduct?.stockQuantity ?? 0
-  );
-  const requiresSupplierRestock = Boolean(inventoryProduct && currentInventoryStock <= 0);
-  const requestedInventoryQuantity = Math.max(0, Number(inventoryForm.quantity) || 0);
-  const projectedInventoryStock = inventoryForm.operation === 'add'
-    ? currentInventoryStock + requestedInventoryQuantity
-    : inventoryForm.operation === 'subtract'
-      ? Math.max(0, currentInventoryStock - requestedInventoryQuantity)
-      : requestedInventoryQuantity;
-  const inventoryOperationOptions = [
-    { value: 'add', label: 'Add items', description: 'New delivery or returned stock', icon: Plus },
-    { value: 'subtract', label: 'Remove items', description: 'Damaged, missing, or used stock', icon: Minus },
-    { value: 'set', label: 'Correct total', description: 'Replace stock with a counted total', icon: RefreshCw }
-  ];
-  const inventoryQuantityCopy = {
-    add: {
-      label: 'How many items are you adding?',
-      help: 'This amount will be added to the current stock.'
-    },
-    subtract: {
-      label: 'How many items are you removing?',
-      help: 'Stock will never be reduced below 0.'
-    },
-    set: {
-      label: 'What is the correct total stock?',
-      help: 'This replaces the current stock with the number entered.'
+  const handleReviewAdjustment = async (request, decision) => {
+    const confirmed = await pawzzleConfirm({
+      title: decision === 'approve' ? 'Approve stock reduction?' : 'Reject stock reduction?',
+      message: decision === 'approve'
+        ? `Remove ${request.quantity} unit${request.quantity === 1 ? '' : 's'} from ${request.product?.name || 'this product'}?`
+        : 'Reject this request without changing stock?',
+      confirmText: decision === 'approve' ? 'Approve reduction' : 'Reject request',
+      tone: decision === 'approve' ? 'warning' : 'danger'
+    });
+    if (!confirmed) return;
+    try {
+      const response = await inventoryService.reviewAdjustmentRequest(request._id, {
+        decision,
+        reviewNotes: decision === 'reject' ? 'Rejected after inventory review.' : 'Evidence and reason reviewed.'
+      });
+      toast.success(response.data?.message || 'Request reviewed.');
+      fetchAdjustmentRequests();
+      fetchInventory();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to review this request.');
     }
-  }[inventoryForm.operation];
+  };
+
+  const inventoryProduct = selectedInventoryItem
+    || inventory.find(product => product._id === inventoryForm.productId);
+  const currentInventoryStock = Number(
+    selectedInventoryItem?.currentStock ?? inventoryProduct?.currentStock ?? inventoryProduct?.stockQuantity ?? 0
+  );
+  const requestedInventoryQuantity = Math.max(0, Number(inventoryForm.quantity) || 0);
+  const projectedInventoryStock = Math.max(0, currentInventoryStock - requestedInventoryQuantity);
 
   return (
     <div className="min-h-screen min-w-0 bg-slate-50/50 p-4 sm:p-6 lg:p-7 space-y-5 sm:space-y-6">
@@ -700,6 +723,52 @@ const ProductInventory = () => {
                 </div>
               ))}
             </div>
+
+            {adjustmentRequests.length > 0 && (
+              <section className="rounded-2xl border border-primary-100 bg-white p-4 shadow-sm" aria-labelledby="stock-requests-title">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 id="stock-requests-title" className="text-sm font-black text-slate-900">
+                      {canReviewAdjustments ? 'Stock reduction requests' : 'Your stock reduction requests'}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-500">Pending requests do not change stock until an authorized review is completed.</p>
+                  </div>
+                  <span className="rounded-full bg-primary-50 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-primary-700">
+                    {adjustmentRequests.filter(request => request.status === 'pending').length} pending
+                  </span>
+                </div>
+                <div className="grid gap-2 lg:grid-cols-2">
+                  {adjustmentRequests.slice(0, 6).map(request => {
+                    const requester = request.requestedBy;
+                    const requesterName = [requester?.firstName, requester?.lastName].filter(Boolean).join(' ') || requester?.username || 'Staff member';
+                    const isOwnRequest = String(requester?._id || requester) === String(user?._id);
+                    return (
+                      <article key={request._id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-black text-slate-900">{request.product?.name || 'Inventory product'}</p>
+                            <p className="mt-1 text-[11px] text-slate-600">{request.quantity} unit{request.quantity === 1 ? '' : 's'} · {request.adjustmentType?.replaceAll('_', ' ')} · {requesterName}</p>
+                            <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{request.reason}</p>
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${request.status === 'pending' ? 'bg-amber-100 text-amber-800' : request.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{request.status}</span>
+                        </div>
+                        {request.evidence?.length > 0 && (
+                          <a href={getImageUrl(request.evidence[0].url)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-primary-700 hover:underline">
+                            <Paperclip className="h-3 w-3" /> View evidence
+                          </a>
+                        )}
+                        {canReviewAdjustments && request.status === 'pending' && !isOwnRequest && (
+                          <div className="mt-3 flex gap-2">
+                            <button type="button" onClick={() => handleReviewAdjustment(request, 'approve')} className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 text-[10px] font-black text-white hover:bg-emerald-700"><Check className="h-3.5 w-3.5" /> Approve</button>
+                            <button type="button" onClick={() => handleReviewAdjustment(request, 'reject')} className="inline-flex h-8 flex-1 items-center justify-center gap-1 rounded-lg border border-rose-200 bg-white px-3 text-[10px] font-black text-rose-700 hover:bg-rose-50"><Ban className="h-3.5 w-3.5" /> Reject</button>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {/* Stock List */}
             <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-lg">
@@ -1447,18 +1516,18 @@ const ProductInventory = () => {
       {/* Inventory Adjustment Modal */}
       {showInventoryModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-2">
-          <div role="dialog" aria-modal="true" aria-labelledby="stock-dialog-title" className="bg-white rounded-[2rem] max-w-xl w-full max-h-[94vh] shadow-2xl animate-in zoom-in-95 duration-300 border border-slate-200 overflow-hidden flex flex-col">
-            <header className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="stock-dialog-title" className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-300">
+            <header className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl shrink-0"><Activity className="h-6 w-6" /></div>
+                <div className="shrink-0 rounded-xl bg-primary-50 p-2.5 text-primary-700"><Activity className="h-5 w-5" /></div>
                 <div className="min-w-0">
-                  <h3 id="stock-dialog-title" className="text-xl font-black text-slate-900 tracking-tight">Change Product Stock</h3>
-                  <p className="mt-1 text-xs text-slate-500">Add items, remove items, or correct the total count.</p>
+                  <h3 id="stock-dialog-title" className="text-lg font-black tracking-tight text-slate-900">Inventory action</h3>
+                  <p className="text-[11px] text-slate-500">Order new stock or report stock that must be removed.</p>
                 </div>
               </div>
-              <button type="button" aria-label="Close stock update" onClick={() => setShowInventoryModal(false)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all shrink-0"><X className="h-5 w-5" /></button>
+              <button type="button" aria-label="Close stock update" onClick={() => setShowInventoryModal(false)} className="shrink-0 rounded-xl bg-slate-50 p-2.5 text-slate-500 transition-all hover:bg-rose-50 hover:text-rose-600"><X className="h-5 w-5" /></button>
             </header>
-            <form onSubmit={handleInventorySubmit} className="p-5 sm:p-6 space-y-6 bg-slate-50/20 overflow-y-auto">
+            <form onSubmit={handleInventorySubmit} className="space-y-4 overflow-y-auto bg-slate-50/20 p-4">
               {selectedInventoryItem ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
@@ -1476,77 +1545,77 @@ const ProductInventory = () => {
               ) : (
                 <div className="space-y-2">
                   <label htmlFor="stock-product" className="text-sm font-bold text-slate-800">Choose a product</label>
-                  <select id="stock-product" required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 appearance-none">
-                    <option value="">Select a product</option>
-                    {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  <select id="stock-product" required value={inventoryForm.productId} onChange={e => setInventoryForm(p => ({ ...p, productId: e.target.value }))} className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5">
+                    <option value="">Select an inventory product</option>
+                    {inventory.filter(item => !item.productVariantId).map(item => <option key={item.inventoryId} value={item._id}>{item.name} — {item.currentStock} in stock</option>)}
                   </select>
                 </div>
               )}
 
-              {requiresSupplierRestock && (
-                <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-                  <div className="flex items-start gap-3">
-                    <Truck className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
-                    <div>
-                      <p className="text-sm font-black">Supplier restock required</p>
-                      <p className="mt-1 text-xs leading-relaxed text-amber-800">This product is out of stock. Its quantity can increase only after a supplier purchase order is delivered and accepted during receiving inspection.</p>
-                    </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-primary-100 bg-primary-50/60 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <Truck className="mt-0.5 h-4 w-4 shrink-0 text-primary-700" />
+                    <div><p className="text-xs font-black text-slate-900">Need more stock?</p><p className="mt-1 text-[10px] leading-relaxed text-slate-600">Place a supplier order. Stock increases only after delivery and receiving inspection.</p></div>
+                  </div>
+                  {inventoryProduct && (canManageProcurement ? (
+                    <Link to={`/admin/purchase-orders?tab=suppliers&restockProduct=${encodeURIComponent(inventoryProduct._id)}`} className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary-700 px-3 text-[10px] font-black text-white hover:bg-slate-900">Order stock</Link>
+                  ) : <p className="mt-3 text-[10px] font-bold text-primary-800">Ask a procurement officer to place the order.</p>)}
+                </div>
+                <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3">
+                  <div className="flex items-start gap-2.5">
+                    <Minus className="mt-0.5 h-4 w-4 shrink-0 text-rose-700" />
+                    <div><p className="text-xs font-black text-slate-900">Report stock loss</p><p className="mt-1 text-[10px] leading-relaxed text-slate-600">{isStoreOwner ? 'Applied now and recorded in the audit trail.' : 'Applied only after owner or manager approval.'}</p></div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <fieldset disabled={requiresSupplierRestock} className={`space-y-3 ${requiresSupplierRestock ? 'opacity-45' : ''}`}>
-                <legend className="text-sm font-bold text-slate-800">What do you want to do?</legend>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {inventoryOperationOptions.map(op => {
-                    const OperationIcon = op.icon;
-                    const selected = inventoryForm.operation === op.value;
-                    return (
-                      <button key={op.value} type="button" aria-pressed={selected} onClick={() => setInventoryForm(p => ({ ...p, operation: op.value }))} className={`min-h-28 rounded-2xl border p-4 text-left transition-all ${selected ? 'border-emerald-500 bg-emerald-50 text-emerald-900 shadow-sm ring-2 ring-emerald-100' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}`}>
-                        <OperationIcon className={`h-5 w-5 mb-3 ${selected ? 'text-emerald-600' : 'text-slate-400'}`} />
-                        <span className="block text-sm font-black">{op.label}</span>
-                        <span className="mt-1 block text-[11px] leading-snug text-slate-500">{op.description}</span>
-                      </button>
-                    );
-                  })}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="stock-reason-category" className="text-xs font-bold text-slate-800">Reason category</label>
+                  <select id="stock-reason-category" value={inventoryForm.adjustmentType} onChange={e => setInventoryForm(p => ({ ...p, adjustmentType: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary-500">
+                    <option value="damage">Damaged</option><option value="expired">Expired</option><option value="missing">Missing</option><option value="internal_use">Used by the store</option><option value="count_discrepancy">Count discrepancy</option><option value="other">Other</option>
+                  </select>
                 </div>
-              </fieldset>
 
-              <div className="space-y-2">
-                <label htmlFor="stock-quantity" className="text-sm font-bold text-slate-800">{inventoryQuantityCopy.label}</label>
-                <input id="stock-quantity" type="number" min="0" step="1" required disabled={requiresSupplierRestock} value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-lg font-black text-slate-900 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="Enter quantity" />
-                <p className="text-xs text-slate-500">{inventoryQuantityCopy.help}</p>
+                <div className="space-y-1.5">
+                  <label htmlFor="stock-quantity" className="text-xs font-bold text-slate-800">Quantity to remove</label>
+                  <input id="stock-quantity" type="number" min="1" max={currentInventoryStock || undefined} step="1" required value={inventoryForm.quantity} onChange={e => setInventoryForm(p => ({ ...p, quantity: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-primary-500" placeholder="0" />
+                </div>
               </div>
 
               {inventoryProduct && (
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 flex items-center justify-between gap-4" aria-live="polite">
                   <div>
-                    <p className="text-xs font-bold text-emerald-900">Stock after this update</p>
-                    <p className="mt-1 text-[11px] text-emerald-700">Current {currentInventoryStock} → New total {projectedInventoryStock}</p>
+                    <p className="text-xs font-bold text-emerald-900">Expected stock after approval</p>
+                    <p className="mt-1 text-[11px] text-emerald-700">Current {currentInventoryStock} → Expected {projectedInventoryStock}</p>
                   </div>
                   <p className="text-3xl font-black text-emerald-700">{projectedInventoryStock}</p>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label htmlFor="stock-reason" className="text-sm font-bold text-slate-800">Why are you changing the stock? <span className="font-normal text-slate-400">(Optional)</span></label>
-                <input id="stock-reason" type="text" disabled={requiresSupplierRestock} value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5 disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="Example: New delivery, damaged item, or inventory count" />
+              <div className="space-y-1.5">
+                <label htmlFor="stock-reason" className="text-xs font-bold text-slate-800">Explain what happened <span className="text-rose-600">Required</span></label>
+                <textarea id="stock-reason" rows="2" required minLength="8" value={inventoryForm.notes} onChange={e => setInventoryForm(p => ({ ...p, notes: e.target.value }))} className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-800 outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-600/5" placeholder="Example: Two sealed bags were damaged by water during storage." />
+              </div>
+
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div><p className="text-xs font-bold text-slate-800">Evidence {isStoreOwner ? '(recommended)' : '(required)'}</p><p className="text-[10px] text-slate-500">Photo or PDF, up to 10 MB.</p></div>
+                  <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[10px] font-black text-slate-700 hover:bg-slate-100">
+                    <Paperclip className="h-3.5 w-3.5" /> {evidenceUploading ? 'Uploading…' : 'Attach evidence'}
+                    <input type="file" className="sr-only" disabled={evidenceUploading || inventoryForm.evidence.length >= 5} accept="image/*,.pdf" onChange={event => { handleAdjustmentEvidence(event.target.files?.[0]); event.target.value = ''; }} />
+                  </label>
+                </div>
+                {inventoryForm.evidence.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{inventoryForm.evidence.map((item, index) => <span key={`${item.url}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700"><Check className="h-3 w-3" /> {item.originalName || `Evidence ${index + 1}`}</span>)}</div>}
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
                 <button type="button" onClick={() => setShowInventoryModal(false)} className="sm:w-32 py-3.5 border border-slate-200 bg-white text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all">Cancel</button>
-                {requiresSupplierRestock ? (canManageProcurement ? (
-                  <Link to={`/admin/purchase-orders?tab=suppliers&restockProduct=${encodeURIComponent(inventoryProduct._id)}`} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 py-3.5 text-sm font-black text-white shadow-lg shadow-primary-100 transition-all hover:bg-slate-900">
-                    <Truck className="h-5 w-5" /> Order New Stock
-                  </Link>
-                ) : (
-                  <span className="flex flex-1 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 py-3.5 text-sm font-black text-amber-700">Procurement access required</span>
-                )) : (
-                  <button disabled={submitting} type="submit" className="flex-1 py-3.5 bg-emerald-600 text-white rounded-xl text-sm font-black hover:bg-slate-900 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50">
-                    {submitting ? 'Updating stock...' : 'Update Stock'}
+                  <button disabled={submitting || evidenceUploading || currentInventoryStock < 1} type="submit" className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary-700 py-3 text-sm font-black text-white shadow-lg shadow-primary-100 transition-all hover:bg-slate-900 active:scale-[0.99] disabled:opacity-50">
+                    {submitting ? 'Submitting…' : isStoreOwner ? 'Reduce Stock Now' : 'Submit for Approval'}
                     {!submitting && <ChevronRight className="h-5 w-5" />}
                   </button>
-                )}
               </div>
             </form>
           </div>

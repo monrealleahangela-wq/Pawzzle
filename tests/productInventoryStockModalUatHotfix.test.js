@@ -3,33 +3,37 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const source = fs.readFileSync(
-  path.join(__dirname, '../client/src/pages/admin/ProductInventory.js'),
-  'utf8'
-);
+const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+const page = read('client/src/pages/admin/ProductInventory.js');
+const routes = read('routes/inventory.js');
+const controller = read('controllers/inventoryAdjustmentController.js');
 
-test('stock modal explains each existing inventory operation in plain language', () => {
-  assert.match(source, /Change Product Stock/);
-  assert.match(source, /Add items, remove items, or correct the total count/);
-  assert.match(source, /value: 'add', label: 'Add items'/);
-  assert.match(source, /value: 'subtract', label: 'Remove items'/);
-  assert.match(source, /value: 'set', label: 'Correct total'/);
-  assert.doesNotMatch(source, /label: 'ADD STOCK'|label: 'REDUCE STOCK'|label: 'SET TOTAL'/);
+test('compact stock modal separates supplier ordering from audited reductions', () => {
+  assert.match(page, /Inventory action/);
+  assert.match(page, /Order new stock or report stock that must be removed/);
+  assert.match(page, /Need more stock\?/);
+  assert.match(page, /Place a supplier order/);
+  assert.match(page, /Report stock loss/);
+  assert.doesNotMatch(page, /Add items, remove items, or correct the total count/);
+  assert.doesNotMatch(page, /value: 'add', label: 'Add items'/);
+  assert.match(page, /max-h-\[92vh\]/);
 });
 
-test('stock modal prevents ambiguous quantities and previews the resulting total', () => {
-  assert.match(source, /How many items are you adding\?/);
-  assert.match(source, /How many items are you removing\?/);
-  assert.match(source, /What is the correct total stock\?/);
-  assert.match(source, /Stock after this update/);
-  assert.match(source, /Current \{currentInventoryStock\} → New total \{projectedInventoryStock\}/);
-  assert.match(source, /Number\.isInteger\(quantity\)/);
+test('staff reductions require reason and evidence while owners retain an audit trail', () => {
+  assert.match(page, /Explain what happened/);
+  assert.match(page, /Evidence \{isStoreOwner \? '\(recommended\)' : '\(required\)'\}/);
+  assert.match(page, /Submit for Approval/);
+  assert.match(page, /Reduce Stock Now/);
+  assert.match(controller, /cleanReason\.length < 8/);
+  assert.match(controller, /!authority\.isOwner && cleanEvidence\.length === 0/);
+  assert.match(controller, /Applied directly by the store owner/);
 });
 
-test('stock modal is responsive and accessible without changing inventory APIs', () => {
-  assert.match(source, /role="dialog" aria-modal="true"/);
-  assert.match(source, /grid grid-cols-1 sm:grid-cols-3/);
-  assert.match(source, /aria-pressed=\{selected\}/);
-  assert.match(source, /inventoryService\.updateQuantity/);
-  assert.match(source, /inventoryService\.adminAddToInventory/);
+test('stock reductions have independent review and idempotent audit records', () => {
+  assert.match(routes, /\/adjustment-requests/);
+  assert.match(routes, /\/adjustment-requests\/:id\/review/);
+  assert.match(controller, /You cannot review your own stock reduction request/);
+  assert.match(controller, /quantity: \{ \$gte: request\.quantity \}/);
+  assert.match(controller, /idempotencyKey: `inventory-adjustment:\$\{request\._id\}`/);
+  assert.match(controller, /InventoryTransaction\.create/);
 });

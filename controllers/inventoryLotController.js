@@ -1,9 +1,6 @@
 const InventoryLot = require('../models/InventoryLot');
 const InventoryTransaction = require('../models/InventoryTransaction');
-const Inventory = require('../models/Inventory');
-const InventoryLedgerService = require('../services/inventoryLedgerService');
 const resolveStore = require('../utils/resolveStore');
-const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 
 const listLots = async (req, res) => {
   try {
@@ -60,28 +57,10 @@ const getExpiryAlerts = async (req, res) => {
 };
 
 const receiveLot = async (req, res) => {
-  try {
-    const store = await resolveStore(req);
-    if (!store) return res.status(400).json({ message: 'Store is required.' });
-    const identity = req.body.productVariantId
-      ? { productVariant: req.body.productVariantId }
-      : { productVariant: { $exists: false } };
-    const inventory = await Inventory.findOne({ store, product: req.body.productId, ...identity, isActive: true });
-    const restockBlockReason = manualRestockBlockReason({
-      currentQuantity: inventory?.quantity || 0,
-      operation: 'add',
-      quantity: req.body.quantity
-    });
-    if (restockBlockReason) return res.status(409).json({ message: restockBlockReason });
-    const lot = await InventoryLedgerService.receiveLot({
-      ...req.body, store, product: req.body.productId,
-      productVariant: req.body.productVariantId || undefined,
-      performedBy: req.user._id
-    });
-    res.status(201).json({ message: 'Inventory lot received.', lot });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+  return res.status(409).json({
+    code: 'PURCHASE_ORDER_RECEIVING_REQUIRED',
+    message: 'New stock must come from a supplier purchase order and pass receiving inspection.'
+  });
 };
 
 const listTransactions = async (req, res) => {

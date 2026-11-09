@@ -24,8 +24,8 @@ jest.mock('../../services/apiService', () => ({
     updateProduct: jest.fn(),
     deleteProduct: jest.fn()
   },
-  inventoryService: { adminGetInventory: jest.fn() },
-  uploadService: { uploadMultipleImages: jest.fn() },
+  inventoryService: { adminGetInventory: jest.fn(), getAdjustmentRequests: jest.fn(), createAdjustmentRequest: jest.fn(), reviewAdjustmentRequest: jest.fn() },
+  uploadService: { uploadMultipleImages: jest.fn(), uploadDocument: jest.fn() },
   getImageUrl: value => value
 }));
 
@@ -48,6 +48,7 @@ beforeEach(() => {
   window.localStorage.setItem('user', JSON.stringify({ role: 'admin' }));
   adminProductService.getAllProducts.mockImplementation(() => new Promise(() => {}));
   adminProductService.getVariantCapabilities.mockResolvedValue({ data: { enabled: false, reasons: ['test gate'] } });
+  inventoryService.getAdjustmentRequests.mockResolvedValue({ data: { requests: [], canReview: true } });
 });
 
 test('store inventory keeps stock management but has no manual product creation action', () => {
@@ -78,4 +79,25 @@ test('out-of-stock inventory orders from suppliers instead of opening manual adj
   expect(restockLink).toHaveTextContent('Order New Stock');
   expect(restockLink).toHaveAttribute('href', '/admin/purchase-orders?tab=suppliers&restockProduct=product-1');
   expect(screen.queryByRole('button', { name: 'Adjust Stock' })).not.toBeInTheDocument();
+});
+
+test('in-stock inventory opens compact supplier-order and stock-loss workflow', async () => {
+  const product = { _id: 'product-2', name: 'Dog Food', sku: 'DOG-1', category: 'Pet Food', stockQuantity: 8, images: [] };
+  adminProductService.getAllProducts.mockResolvedValue({ data: { products: [product], pagination: { currentPage: 1, totalPages: 1 } } });
+  inventoryService.adminGetInventory.mockResolvedValue({
+    data: {
+      inventory: [{ product, quantity: 8, reorderLevel: 3, inventoryId: 'inventory-2' }],
+      summary: { totalItems: 8, lowStockItems: 0, outOfStockItems: 0, totalValue: 0 },
+      pagination: { currentPage: 1, totalPages: 1 }
+    }
+  });
+
+  render(<MemoryRouter><ProductInventory /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('tab', { name: /Inventory Status/i }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Adjust Stock' }));
+
+  expect(screen.getByRole('dialog', { name: 'Inventory action' })).toBeInTheDocument();
+  expect(screen.getByText('Need more stock?')).toBeInTheDocument();
+  expect(screen.getByText('Report stock loss')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Reduce Stock Now/i })).toBeInTheDocument();
 });

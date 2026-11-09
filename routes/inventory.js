@@ -18,6 +18,11 @@ const {
   receiveLot,
   listTransactions
 } = require('../controllers/inventoryLotController');
+const {
+  listAdjustmentRequests,
+  createAdjustmentRequest,
+  reviewAdjustmentRequest
+} = require('../controllers/inventoryAdjustmentController');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { storeAdminOnly, canAccessStore } = require('../middleware/storeAuth');
 
@@ -56,6 +61,21 @@ router.get('/lots', authenticate, requirePermission('inventory.view', 'inventory
 router.post('/lots/receive', authenticate, requirePermission('inventory.receive'), receiveLot);
 router.get('/expiry-alerts', authenticate, requirePermission('inventory.view', 'inventory.vaccine'), getExpiryAlerts);
 router.get('/transactions', authenticate, requirePermission('inventory.view'), listTransactions);
+
+// Stock reductions are auditable requests. Supplier receiving is the only
+// normal stock-in path; staff reductions require independent review.
+router.get('/adjustment-requests', authenticate, requirePermission('inventory.view'), listAdjustmentRequests);
+router.post('/adjustment-requests', authenticate, storeAdminOnly, requirePermission('inventory.adjust'), [
+  body('inventoryId').isMongoId().withMessage('Valid inventory ID is required'),
+  body('quantity').isInt({ min: 1 }).withMessage('Quantity must be a whole number greater than 0'),
+  body('adjustmentType').isIn(['damage', 'expired', 'missing', 'internal_use', 'count_discrepancy', 'other']).withMessage('Choose a valid reason category'),
+  body('reason').isString().trim().isLength({ min: 8, max: 1000 }).withMessage('A clear reason is required'),
+  body('evidence').optional().isArray({ max: 5 }).withMessage('Evidence must be a list of uploaded files')
+], createAdjustmentRequest);
+router.patch('/adjustment-requests/:id/review', authenticate, storeAdminOnly, [
+  body('decision').isIn(['approve', 'reject']).withMessage('Choose approve or reject'),
+  body('reviewNotes').optional().isString().trim().isLength({ max: 1000 })
+], reviewAdjustmentRequest);
 
 // ─── Store-specific routes ────────────────────────────────────────────────────
 router.get('/store/:storeId', authenticate, canAccessStore, getStoreInventory);

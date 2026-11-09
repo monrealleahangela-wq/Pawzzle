@@ -185,6 +185,16 @@ const updateInventoryQuantity = async (req, res) => {
         message: 'Variant balances cannot be edited directly. Receive mapped supplier stock or use a ledger-backed variant adjustment.'
       });
     }
+    if (!isPlatformAdmin(req.user) && !(await canOperateStore(req.user, inventory.store, ['inventory.adjust']))) {
+      return res.status(403).json({ message: 'Access denied. You can only update inventory for your own store.' });
+    }
+
+    return res.status(409).json({
+      code: 'AUDITED_ADJUSTMENT_REQUIRED',
+      message: operation === 'add'
+        ? 'Order stock from a supplier. Inventory increases only after receiving inspection.'
+        : 'Submit a stock reduction request with a reason and evidence. Approved requests are applied automatically.'
+    });
 
     // Verify store access (Super admin bypasses this)
     if (!isPlatformAdmin(req.user)) {
@@ -258,6 +268,14 @@ const updateInventoryQuantity = async (req, res) => {
 const addToInventory = async (req, res) => {
   try {
     const { productId, quantity, reorderLevel, maxStock, location, supplier, costPrice, notes } = req.body;
+    if (Number(quantity) > 0) {
+      return res.status(409).json({
+        code: 'AUDITED_ADJUSTMENT_REQUIRED',
+        message: req.body.operation === 'subtract'
+          ? 'Submit a stock reduction request with a reason and evidence.'
+          : 'Order stock from a supplier. Inventory increases only after receiving inspection.'
+      });
+    }
 
     // Verify product exists
     const product = await Product.findById(productId);
@@ -548,6 +566,14 @@ const addToAdminInventory = async (req, res) => {
     }
 
     const { productId, quantity, reorderLevel, maxStock, location, supplier, costPrice, notes } = req.body;
+    if (Number(quantity) > 0) {
+      return res.status(409).json({
+        code: 'AUDITED_ADJUSTMENT_REQUIRED',
+        message: req.body.operation === 'subtract'
+          ? 'Submit a stock reduction request with a reason and evidence.'
+          : 'Order stock from a supplier. Inventory increases only after receiving inspection.'
+      });
+    }
 
     const product = await Product.findById(productId);
     if (!product) {

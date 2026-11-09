@@ -443,6 +443,15 @@ const updateStock = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    if (Number(stockQuantity) !== Number(product.stockQuantity || 0)) {
+      return res.status(409).json({
+        code: 'AUDITED_ADJUSTMENT_REQUIRED',
+        message: Number(stockQuantity) > Number(product.stockQuantity || 0)
+          ? 'Order stock from a supplier. Inventory increases only after receiving inspection.'
+          : 'Submit a stock reduction request with a reason and evidence.'
+      });
+    }
+
     if (product.productMode === 'variant') {
       return res.status(409).json({ message: 'Variant stock is managed per exact ProductVariant through the inventory ledger.' });
     }
