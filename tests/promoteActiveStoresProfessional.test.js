@@ -27,11 +27,10 @@ const createCollection = () => {
   };
 };
 
-test('active store upgrade targets only verified, operational stores', () => {
+test('active store upgrade targets every operational store regardless of legacy verification metadata', () => {
   assert.deepEqual(ACTIVE_STORE_FILTER, {
     isActive: true,
-    isDeleted: { $ne: true },
-    verificationStatus: 'verified'
+    isDeleted: { $ne: true }
   });
   assert.deepEqual(pendingUpgradeFilter().$or, [
     { subscriptionTier: { $ne: 'professional' } },

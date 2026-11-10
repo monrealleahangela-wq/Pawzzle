@@ -54,7 +54,7 @@ test('effective plan honors prepaid transitions and expires them safely', () => 
   }
 });
 
-test('active verified legacy stores retain Professional access unless they explicitly opt out', () => {
+test('active legacy stores retain Professional access regardless of stale verification metadata unless they opt out', () => {
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
     if (/^\.\.\/models\/(Product|Pet|Service|Store|User)$/.test(request)) return {};
@@ -71,9 +71,10 @@ test('active verified legacy stores retain Professional access unless they expli
     };
 
     assert.equal(getEffectiveTier(legacy), 'professional');
+    assert.equal(getEffectiveTier({ ...legacy, verificationStatus: 'pending' }), 'professional');
+    assert.equal(getEffectiveTier({ ...legacy, verificationStatus: undefined }), 'professional');
     assert.equal(getEffectiveTier({ ...legacy, createdAt: afterCutoff }), 'free');
     assert.equal(getEffectiveTier({ ...legacy, isActive: false }), 'free');
-    assert.equal(getEffectiveTier({ ...legacy, verificationStatus: 'pending' }), 'free');
     assert.equal(getEffectiveTier({ ...legacy, subscriptionLegacyGrantOptOutAt: new Date() }), 'free');
   } finally {
     Module._load = originalLoad;
