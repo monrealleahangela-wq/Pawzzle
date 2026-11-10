@@ -117,17 +117,17 @@ const StorePayout = () => {
                 </div>
 
                 {/* Balance Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                         { label: 'Available Balance', value: formatPeso(stats?.balance || 0), highlight: true },
-                        { label: 'Net Earnings', value: formatPeso((stats?.totalRevenue || 0) - (stats?.totalPlatformFees || 0)) },
-                        { label: 'Platform Fees (10%)', value: formatPeso(stats?.totalPlatformFees || 0) },
+                        { label: 'Store Earnings', value: formatPeso(stats?.totalRevenue || 0), note: 'No Pawzzle platform fee' },
                         { label: 'Pending Payouts', value: formatPeso(stats?.pendingPayouts || 0) },
                         { label: 'Total Withdrawn', value: formatPeso(stats?.totalWithdrawn || 0) }
                     ].map(c => (
                         <div key={c.label} className={`rounded-2xl border p-4 ${c.highlight ? 'bg-slate-900 border-slate-800 text-white shadow-md' : 'bg-white border-slate-100 text-slate-900 shadow-sm'}`}>
                             <p className={`text-[9px] font-black uppercase tracking-widest mb-2 leading-tight ${c.highlight ? 'text-primary-400' : 'text-slate-400'}`}>{c.label}</p>
                             <p className={`text-lg sm:text-xl font-black ${c.highlight ? 'text-white' : 'text-slate-900'}`}>{c.value}</p>
+                            {c.note && <p className="mt-1 text-[9px] font-bold text-emerald-600">{c.note}</p>}
                         </div>
                     ))}
                 </div>

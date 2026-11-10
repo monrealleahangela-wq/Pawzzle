@@ -6,6 +6,7 @@ const reservationCheckInService = require('./reservationCheckInService');
 const AdoptionRequest = require('../models/AdoptionRequest');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const ProcurementPayment = require('../models/ProcurementPayment');
+const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const StockSyncService = require('./stockSyncService');
 const RevenueService = require('./revenueService');
 const { createNotification } = require('../controllers/notificationController');
@@ -13,6 +14,10 @@ const { internalCreateDelivery } = require('../controllers/deliveryController');
 const { removePurchasedItemsFromCart } = require('./checkoutCartService');
 const { consumeOrderReservations } = require('./inventoryReservationService');
 const { applyItemFulfillmentStage } = require('./variantOrderLifecycleService');
+const {
+  finalizeSubscriptionPayment,
+  markSubscriptionSessionFailed
+} = require('./storeSubscriptionPaymentService');
 const {
   releasePetReservation,
   reservePetForAdoption,
@@ -582,11 +587,12 @@ const finalizeAdoption = async (adoption, payment) => {
 
 const findBySession = async session => {
   const metadata = session?.attributes?.metadata || {};
-  if (metadata.record_id && ['order', 'order_batch', 'booking', 'adoption', 'procurement'].includes(metadata.record_type)) {
+  if (metadata.record_id && ['order', 'order_batch', 'booking', 'adoption', 'procurement', 'subscription'].includes(metadata.record_type)) {
     const Model = metadata.record_type === 'order' ? Order
       : metadata.record_type === 'order_batch' ? OrderCheckoutBatch
       : metadata.record_type === 'booking' ? Booking
-        : metadata.record_type === 'procurement' ? PurchaseOrder : AdoptionRequest;
+        : metadata.record_type === 'procurement' ? PurchaseOrder
+          : metadata.record_type === 'subscription' ? StoreSubscriptionPayment : AdoptionRequest;
     const record = await Model.findById(metadata.record_id);
     if (record) return { record, type: metadata.record_type };
   }
@@ -603,6 +609,8 @@ const findBySession = async session => {
   if (adoption) return { record: adoption, type: 'adoption' };
   const procurement = await PurchaseOrder.findOne(sessionFilter);
   if (procurement) return { record: procurement, type: 'procurement' };
+  const subscription = await StoreSubscriptionPayment.findOne(sessionFilter);
+  if (subscription) return { record: subscription, type: 'subscription' };
   const orderBatch = await OrderCheckoutBatch.findOne(sessionFilter);
   if (orderBatch) return { record: orderBatch, type: 'order_batch' };
   const order = await Order.findOne({
@@ -627,6 +635,7 @@ const reconcilePaidSession = async session => {
   if (target.type === 'order_batch') return { type: target.type, record: await finalizeOrderBatch(target.record, payment) };
   if (target.type === 'booking') return { type: target.type, record: await finalizeBooking(target.record, payment) };
   if (target.type === 'procurement') return { type: target.type, record: await finalizeProcurement(target.record, payment) };
+  if (target.type === 'subscription') return { type: target.type, record: await finalizeSubscriptionPayment(target.record, payment) };
   return { type: target.type, record: await finalizeAdoption(target.record, payment) };
 };
 
@@ -634,7 +643,9 @@ const markSessionFailed = async session => {
   const target = await findBySession(session);
   if (!target) return null;
   let updated;
-  if (target.type === 'order_batch') {
+  if (target.type === 'subscription') {
+    updated = await markSubscriptionSessionFailed(target.record);
+  } else if (target.type === 'order_batch') {
     updated = await OrderCheckoutBatch.findOneAndUpdate({
       _id: target.record._id,
       paymentStatus: { $nin: ['paid', 'failed'] }

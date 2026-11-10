@@ -13,6 +13,9 @@ test('seller plan catalog uses the approved active-listing allowances', () => {
   assert.equal(SUBSCRIPTION_PLANS.starter.listingLimit, 30);
   assert.equal(SUBSCRIPTION_PLANS.growth.listingLimit, 70);
   assert.equal(SUBSCRIPTION_PLANS.professional.listingLimit, null);
+  assert.equal(SUBSCRIPTION_PLANS.starter.termDays, 30);
+  assert.equal(SUBSCRIPTION_PLANS.growth.locationLimit, 1);
+  assert.equal(SUBSCRIPTION_PLANS.professional.locationLimit, 1);
   assert.equal(normalizeSubscriptionTier('basic'), 'free');
   assert.equal(normalizeSubscriptionTier('premium'), 'growth');
   assert.equal(normalizeSubscriptionTier('enterprise'), 'professional');
@@ -77,8 +80,47 @@ test('seller settings expose usage and the complete plan comparison', () => {
   const component = read('client/src/components/settings/SubscriptionPlanSettings.js');
   const settings = read('client/src/pages/admin/AdminSettings.js');
   assert.match(component, /Active listings/);
-  assert.match(component, /Existing listings are never deleted on downgrade/);
-  assert.match(component, /Security, verification, FDA review, and payment protection remain available on every plan/);
+  assert.match(component, /Renew with PayMongo/);
+  assert.match(component, /does not renew automatically/);
+  assert.match(component, /no marketplace platform fee/i);
   assert.match(settings, /\['plan', 'Subscription'\]/);
   assert.match(settings, /<SubscriptionPlanSettings/);
+});
+
+test('paid plan checkout is server-authoritative and webhook reconciled', () => {
+  const controller = read('controllers/subscriptionController.js');
+  const reconciliation = read('services/paymentReconciliationService.js');
+  const routes = read('routes/stores.js');
+  assert.match(controller, /SUBSCRIPTION_PLANS\[requestedTier\]/);
+  assert.match(controller, /amountCentavos: Math\.round\(plan\.monthlyPrice \* 100\)/);
+  assert.match(controller, /record_type: 'subscription'/);
+  assert.match(controller, /StoreSubscriptionPayment\.init\(\)/);
+  assert.match(reconciliation, /finalizeSubscriptionPayment/);
+  assert.match(routes, /my-store\/subscription\/checkout/);
+  assert.match(routes, /storeOwnerOnly, createSubscriptionCheckout/);
+});
+
+test('new marketplace transactions charge no platform fee', () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (/^\.\.\/models\/(Store|Order|Booking)$/.test(request)) return {};
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/revenueService')];
+    const RevenueService = require('../services/revenueService');
+    const totals = RevenueService.totalsFor({ totalAmount: 1000, pricingBreakdown: { vatAmount: 107.14 } }, 'order');
+    assert.equal(totals.platformFee, 0);
+    assert.equal(totals.netAmount, 1000);
+    assert.equal(totals.recognizedRevenue, 892.86);
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/revenueService')];
+  }
+});
+
+test('store order details no longer display a ten-percent commission deduction', () => {
+  const orderDetail = read('client/src/pages/customer/OrderDetail.js');
+  assert.doesNotMatch(orderDetail, /lineTotal\s*\*\s*0\.9/);
+  assert.match(orderDetail, /Store earnings/);
 });

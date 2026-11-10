@@ -308,7 +308,7 @@ const AdminSettings = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-8 space-y-6">
           {activeTab === 'plan' ? (
-            <SubscriptionPlanSettings />
+            <SubscriptionPlanSettings canManage={['admin', 'store_owner'].includes(user?.role)} />
           ) : activeTab === 'delivery' ? (
             <DeliveryPricingSettings
               pricing={deliveryPricing}

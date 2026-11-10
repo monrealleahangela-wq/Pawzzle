@@ -89,7 +89,7 @@ const SuperAdminDashboard = () => {
         <Metric label="Total stores" value={number(platform.totalStores)} icon={Store} />
         <Metric label="Verified stores" value={number(platform.verifiedStores)} icon={ShieldCheck} />
         <Metric label="Pending applications" value={number(platform.pendingApplications)} icon={ClipboardCheck} />
-        <Metric label="Platform revenue" value={peso(revenue.totalPlatformFees)} icon={Wallet} note="Recorded platform fees" />
+        <Metric label="Subscription revenue" value={peso(revenue.totalSubscriptionRevenue)} icon={Wallet} note={`${number(revenue.paidSubscriptionCount)} confirmed PayMongo payments`} />
         <Metric label="Total orders" value={number(data?.orders?.total)} icon={ShoppingBag} />
         <Metric label="Total bookings" value={number(data?.bookings?.total)} icon={BarChart3} />
         <Metric label="Active customers" value={number(platform.totalCustomers)} icon={Users} />
@@ -97,7 +97,7 @@ const SuperAdminDashboard = () => {
       </section>
 
       <section className="grid gap-4 xl:grid-cols-3">
-        <Panel title="Platform revenue trend" subtitle="Paid orders and bookings · gross transaction value" className="xl:col-span-2"><RevenueChart rows={data?.monthlyRevenue || []} /></Panel>
+        <Panel title="Subscription revenue trend" subtitle="Confirmed PayMongo Store plan payments" className="xl:col-span-2"><RevenueChart rows={data?.monthlyRevenue || []} /></Panel>
         <Panel title="Application status" subtitle="Actual store application records"><Bars rows={data?.applicationStatus || []} label={row => titleCase(row._id)} /></Panel>
       </section>
 

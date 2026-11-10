@@ -22,7 +22,8 @@ const getPayoutStats = async (req, res) => {
         res.json({
             balance: store.balance || 0,
             totalRevenue: store.stats?.totalRevenue || 0,
-            totalPlatformFees: store.stats?.totalPlatformFees || (store.stats?.totalRevenue ? store.stats.totalRevenue * 0.1 : 0),
+            historicalPlatformFees: store.stats?.totalPlatformFees || 0,
+            platformFeeRate: 0,
             pendingPayouts: TotalPendingAmount,
             totalWithdrawn: TotalWithdrawnAmount,
             payoutMethods: store.payoutMethods || []

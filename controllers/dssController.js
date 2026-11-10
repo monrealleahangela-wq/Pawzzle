@@ -14,6 +14,7 @@ const Delivery = require('../models/Delivery');
 const Supplier = require('../models/Supplier');
 const StoreApplication = require('../models/StoreApplication');
 const PurchaseOrder = require('../models/PurchaseOrder');
+const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const DecisionSupportService = require('../services/decisionSupportService');
 const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff, normalizeRole } = require('../config/permissions');
 const {
@@ -916,14 +917,20 @@ const getSuperAdminInsights = async (req, res) => {
         const bookingRevenue = allBookings.reduce((s, b) => s + (b.totalPrice || 0), 0);
         const totalGrossRevenue = platformRevenue + bookingRevenue;
 
-        const orderFees = allOrders.reduce((s, o) => s + (o.platformFee || 0), 0);
-        const bookingFees = allBookings.reduce((s, b) => s + (b.platformFee || 0), 0);
-        const totalPlatformIncome = orderFees + bookingFees;
+        const subscriptionRevenueRows = await StoreSubscriptionPayment.aggregate([
+            { $match: { status: 'paid' } },
+            { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+        ]);
+        const totalSubscriptionRevenue = subscriptionRevenueRows[0]?.total || 0;
+        const paidSubscriptionCount = subscriptionRevenueRows[0]?.count || 0;
+        const historicalPlatformFees = allOrders.reduce((s, o) => s + (o.platformFee || 0), 0)
+            + allBookings.reduce((s, b) => s + (b.platformFee || 0), 0);
 
-        // Monthly platform revenue
+        // Subscription payments are Pawzzle's platform revenue. Customer order
+        // and booking totals remain gross marketplace transaction volume.
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        const monthlyRevenue = await Order.aggregate([
+        const monthlyOrderVolume = await Order.aggregate([
             { $match: { createdAt: { $gte: sixMonthsAgo }, paymentStatus: 'paid', isDeleted: { $ne: true } } },
             { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalAmount' }, fees: { $sum: '$platformFee' }, orders: { $sum: 1 } } },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
@@ -933,17 +940,22 @@ const getSuperAdminInsights = async (req, res) => {
             { $group: { _id: { month: { $month: '$createdAt' }, year: { $year: '$createdAt' } }, revenue: { $sum: '$totalPrice' }, fees: { $sum: '$platformFee' }, bookings: { $sum: 1 } } },
             { $sort: { '_id.year': 1, '_id.month': 1 } }
         ]);
-        const monthlyRevenueMap = new Map(monthlyRevenue.map(row => [`${row._id.year}-${row._id.month}`, row]));
+        const monthlyRevenue = await StoreSubscriptionPayment.aggregate([
+            { $match: { status: 'paid', 'paymentDetails.paidAt': { $gte: sixMonthsAgo } } },
+            { $group: { _id: { month: { $month: '$paymentDetails.paidAt' }, year: { $year: '$paymentDetails.paidAt' } }, revenue: { $sum: '$amount' }, payments: { $sum: 1 } } },
+            { $sort: { '_id.year': 1, '_id.month': 1 } }
+        ]);
+        const monthlyVolumeMap = new Map(monthlyOrderVolume.map(row => [`${row._id.year}-${row._id.month}`, row]));
         monthlyBookingRevenue.forEach(row => {
             const key = `${row._id.year}-${row._id.month}`;
-            const existing = monthlyRevenueMap.get(key) || { _id: row._id, revenue: 0, fees: 0, orders: 0 };
+            const existing = monthlyVolumeMap.get(key) || { _id: row._id, revenue: 0, fees: 0, orders: 0 };
             existing.revenue += row.revenue || 0;
             existing.fees += row.fees || 0;
             existing.bookings = row.bookings || 0;
-            monthlyRevenueMap.set(key, existing);
+            monthlyVolumeMap.set(key, existing);
         });
 
-        const combinedMonthlyRevenue = [...monthlyRevenueMap.values()].sort((a, b) => a._id.year - b._id.year || a._id.month - b._id.month);
+        const combinedMonthlyVolume = [...monthlyVolumeMap.values()].sort((a, b) => a._id.year - b._id.year || a._id.month - b._id.month);
 
         // User growth trend
         const userGrowth = await User.aggregate([
@@ -1098,10 +1110,14 @@ const getSuperAdminInsights = async (req, res) => {
             recentUsers,
             revenue: {
                 totalGross: totalGrossRevenue,
-                totalPlatformFees: totalPlatformIncome,
+                totalSubscriptionRevenue,
+                paidSubscriptionCount,
+                historicalPlatformFees,
+                platformFeeRate: 0,
                 totalOrderRevenue: platformRevenue,
                 totalBookingRevenue: bookingRevenue,
-                combined: totalGrossRevenue
+                grossTransactionValue: totalGrossRevenue,
+                combined: totalSubscriptionRevenue
             },
             orders: {
                 total: totalOrderCount,
@@ -1131,7 +1147,8 @@ const getSuperAdminInsights = async (req, res) => {
                 successful: successfulAdoptions,
                 successRate: totalAdoptions ? parseFloat(((successfulAdoptions / totalAdoptions) * 100).toFixed(1)) : 0
             },
-            monthlyRevenue: combinedMonthlyRevenue,
+            monthlyRevenue,
+            monthlyGrossTransactionValue: combinedMonthlyVolume,
             userGrowth,
             customerGrowth,
             storeGrowth,

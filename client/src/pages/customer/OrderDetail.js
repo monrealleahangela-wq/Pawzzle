@@ -551,7 +551,7 @@ const OrderDetail = () => {
                   </span>
                   {user?.role !== 'customer' && (
                     <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mt-1">
-                      +{formatPeso(item.lineTotal * 0.9)} Net
+                      {formatPeso(item.lineTotal)} Store earnings
                     </p>
                   )}
                 </div>

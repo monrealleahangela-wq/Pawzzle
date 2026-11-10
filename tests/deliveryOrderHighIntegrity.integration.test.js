@@ -217,9 +217,9 @@ test('real MongoDB makes cancellation resources and pickup payout exactly once',
   assert.equal(completedOrder.fulfillmentTimeline.filter(row => row.status === 'delivered').length, 1);
   assert.equal((await Pet.findById(pickupPet).lean()).status, 'sold');
   const updatedStore = await Store.findById(store).lean();
-  assert.equal(updatedStore.balance, 90);
+  assert.equal(updatedStore.balance, 100);
   assert.equal(updatedStore.stats.totalRevenue, 100);
-  assert.equal(updatedStore.stats.totalPlatformFees, 10);
+  assert.equal(updatedStore.stats.totalPlatformFees, 0);
 
   const rollbackPickupPet = id();
   const rollbackPickupOrder = id();

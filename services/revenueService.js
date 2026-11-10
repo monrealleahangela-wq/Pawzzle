@@ -12,8 +12,10 @@ class RevenueService {
     const totalAmount = Number(type === 'order' ? doc.totalAmount : doc.totalPrice);
     const vatAmount = Number(doc.pricingBreakdown?.vatAmount || 0);
     const recognizedRevenue = Number(Math.max(0, totalAmount - vatAmount).toFixed(2));
-    const platformFee = Number((recognizedRevenue * 0.10).toFixed(2));
-    const netAmount = Number((totalAmount - platformFee).toFixed(2));
+    // Pawzzle is sustained by Store subscriptions. New customer sales are not
+    // charged a marketplace commission; the legacy fields remain for old rows.
+    const platformFee = 0;
+    const netAmount = Number(totalAmount.toFixed(2));
     return { recognizedRevenue, platformFee, netAmount };
   }
 

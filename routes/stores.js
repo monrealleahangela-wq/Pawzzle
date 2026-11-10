@@ -30,6 +30,12 @@ const {
   updateStoreSubscription
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
+const {
+  createSubscriptionCheckout,
+  getSubscriptionPayments,
+  verifySubscriptionPayment,
+  cancelSubscriptionPayment
+} = require('../controllers/subscriptionController');
 const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly, requirePermission } = require('../middleware/auth');
 
 // Validation rules
@@ -65,6 +71,10 @@ const updateStoreValidation = [
 router.get('/my-store', authenticate, adminOrStaff, getMyStore);
 router.get('/subscription-plans', authenticate, getSubscriptionPlans);
 router.get('/my-store/subscription', authenticate, adminOrStaff, getMyStoreSubscription);
+router.get('/my-store/subscription/payments', authenticate, storeOwnerOnly, getSubscriptionPayments);
+router.post('/my-store/subscription/checkout', authenticate, storeOwnerOnly, createSubscriptionCheckout);
+router.get('/my-store/subscription/payments/:id/verify', authenticate, storeOwnerOnly, verifySubscriptionPayment);
+router.post('/my-store/subscription/payments/:id/cancel', authenticate, storeOwnerOnly, cancelSubscriptionPayment);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.get('/settings', authenticate, storeOwnerOnly, getMyStore);
 router.put('/settings', authenticate, storeOwnerOnly, updateStoreValidation, updateStore);

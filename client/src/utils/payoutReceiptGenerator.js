@@ -67,15 +67,13 @@ export const generatePayoutReceipt = (payout) => {
     doc.line(20, 68, 190, 68);
 
     // Financial Breakdown Table
-    const grossAmount = payout.amount / 0.9;
-    const platformFee = grossAmount * 0.1;
+    const grossAmount = payout.amount;
     
     autoTable(doc, {
         startY: 75,
         head: [['DESCRIPTION', 'DETAILS', 'AMOUNT']],
         body: [
-            ['Gross Earnings', 'Total revenue before fees', `PHP ${grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
-            ['Platform Fee', 'Pawzzle Service Fee (10%)', `- PHP ${platformFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+            ['Store Earnings', 'No Pawzzle platform fee', `PHP ${grossAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
             ['Net Payout', 'Amount disbursed to account', `PHP ${payout.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]
         ],
         theme: 'striped',
