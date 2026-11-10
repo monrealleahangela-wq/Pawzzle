@@ -38,12 +38,16 @@ const getEffectiveTier = store => {
   if (store?.pendingSubscription?.tier && store?.pendingSubscription?.effectiveAt
     && new Date(store.pendingSubscription.effectiveAt).getTime() <= Date.now()) {
     if (store.pendingSubscription.expiresAt
-      && new Date(store.pendingSubscription.expiresAt).getTime() <= Date.now()) return 'free';
+      && new Date(store.pendingSubscription.expiresAt).getTime() <= Date.now()) {
+      return isLegacyProfessionalStore(store) ? 'professional' : 'free';
+    }
     return normalizeSubscriptionTier(store.pendingSubscription.tier);
   }
   const configuredTier = normalizeSubscriptionTier(store?.subscriptionTier);
   if (configuredTier === 'free') return isLegacyProfessionalStore(store) ? 'professional' : 'free';
-  if (store?.subscriptionExpires && new Date(store.subscriptionExpires).getTime() <= Date.now()) return 'free';
+  if (store?.subscriptionExpires && new Date(store.subscriptionExpires).getTime() <= Date.now()) {
+    return isLegacyProfessionalStore(store) ? 'professional' : 'free';
+  }
   return configuredTier;
 };
 
