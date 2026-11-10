@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const Store = require('../models/Store');
+const { assertCanAddStaff } = require('../services/storeSubscriptionService');
 const crypto = require('crypto');
 const { sendStaffInvitation } = require('../utils/emailService');
 const Delivery = require('../models/Delivery');
@@ -370,6 +371,7 @@ const createStaff = async (req, res) => {
         }
         const store = await Store.findById(targetStoreId);
         if (!store) return res.status(404).json({ message: 'Store branch not found.' });
+        await assertCanAddStaff(store);
         const generatedStaffId = await reserveStaffId(targetStoreId);
         const storeServices = await Service.find({ store: targetStoreId, isActive: true, isDeleted: { $ne: true } });
         const normalizedProfessionalProfile = cleanProfessionalProfile(professionalProfile);
@@ -484,7 +486,9 @@ const createStaff = async (req, res) => {
         }
         return res.status(error.statusCode || 500).json({
             message: error.statusCode ? error.message : error.code === 11000 ? 'Identity already exists' : 'Internal server failure during staff boarding',
-            error: error.message
+            error: error.message,
+            code: error.code,
+            details: error.details
         });
     }
 };

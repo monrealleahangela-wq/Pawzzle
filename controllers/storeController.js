@@ -28,6 +28,8 @@ const {
   withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
 const { buildPublicPetFilter } = require('../utils/catalogListing');
+const { getPublicPlanCatalog, normalizeSubscriptionTier, SUBSCRIPTION_PLANS } = require('../config/subscriptionPlans');
+const { getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
 
 const findCustomerVisibleStore = async id => {
   const ownerIds = await getCustomerVisibleOwnerIds();
@@ -836,6 +838,49 @@ const previewDeliveryPricing = async (req, res) => {
   }
 };
 
+const getSubscriptionPlans = async (_req, res) => {
+  res.json({ plans: getPublicPlanCatalog() });
+};
+
+const getMyStoreSubscription = async (req, res) => {
+  try {
+    const store = isOperationalStaff(req.user) && req.user.store
+      ? await Store.findById(req.user.store)
+      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } });
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    const subscription = await getStoreSubscriptionSummary(store);
+    res.json({ subscription, plans: getPublicPlanCatalog() });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to load the store plan.' });
+  }
+};
+
+const updateStoreSubscription = async (req, res) => {
+  try {
+    const tier = normalizeSubscriptionTier(req.body.tier);
+    if (!SUBSCRIPTION_PLANS[tier] || !['free', 'starter', 'growth', 'professional'].includes(String(req.body.tier || '').toLowerCase())) {
+      return res.status(400).json({ message: 'Select Free, Starter, Growth, or Professional.' });
+    }
+    const expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) return res.status(400).json({ message: 'Enter a valid subscription expiry date.' });
+    const store = await Store.findByIdAndUpdate(
+      req.params.id,
+      { $set: { subscriptionTier: tier, subscriptionExpires: tier === 'free' ? null : expiresAt } },
+      { new: true, runValidators: true }
+    );
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    await ActivityLog.create({
+      user: req.user._id,
+      action: 'Store Subscription Updated',
+      details: `${store.name} was assigned to the ${SUBSCRIPTION_PLANS[tier].name} plan.`,
+      ipAddress: req.ip
+    });
+    res.json({ message: 'Store plan updated.', subscription: await getStoreSubscriptionSummary(store) });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to update the store plan.' });
+  }
+};
+
 // Get all store locations for map (Filtered for Cavite only)
 const getStoreLocations = async (req, res) => {
   try {
@@ -873,5 +918,8 @@ module.exports = {
   updateRefundPolicy,
   getDeliveryPricing,
   updateDeliveryPricing,
-  previewDeliveryPricing
+  previewDeliveryPricing,
+  getSubscriptionPlans,
+  getMyStoreSubscription,
+  updateStoreSubscription
 };

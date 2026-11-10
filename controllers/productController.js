@@ -17,6 +17,7 @@ const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy
 const { listCustomerVariants } = require('../services/customerProductVariantService');
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { getPublicProductRegulatoryVerification } = require('../services/productRegulatoryVerificationService');
+const { assertCanActivateListing } = require('../services/storeSubscriptionService');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode', 'productMode',
@@ -285,6 +286,10 @@ const createProduct = async (req, res) => {
       stockStatus: initialStock > 0 ? 'in_stock' : 'out_of_stock'
     };
 
+    const createsActiveListing = productData.isActive !== false
+      && !['draft', 'hidden'].includes(productData.visibility || 'published');
+    if (createsActiveListing) await assertCanActivateListing(storeId);
+
     const product = new Product(productData);
     await product.save();
 
@@ -304,7 +309,7 @@ const createProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Create product error:', error);
-    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message, code: error.code, details: error.details });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -368,6 +373,11 @@ const updateProduct = async (req, res) => {
       updateData.stockQuantity = 0;
       updateData.stockStatus = 'out_of_stock';
     }
+    const wasActiveListing = product.isActive !== false && !['draft', 'hidden'].includes(product.visibility) && !product.isDeleted;
+    const nextActiveListing = (updateData.isActive ?? product.isActive) !== false
+      && !['draft', 'hidden'].includes(updateData.visibility ?? product.visibility)
+      && !product.isDeleted;
+    if (!wasActiveListing && nextActiveListing) await assertCanActivateListing(product.store);
     
     // Explicitly update only mutable fields
     Object.assign(product, updateData);
@@ -388,7 +398,7 @@ const updateProduct = async (req, res) => {
   } catch (error) {
     console.error('Update product error:', error);
 
-    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message, code: error.code, details: error.details });
     
     // Specifically handle unique constraint violations (e.g., SKU already in use)
     if (error.code === 11000) {

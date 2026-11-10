@@ -9,6 +9,7 @@ import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import DeliveryPricingSettings from '../../components/settings/DeliveryPricingSettings';
 import BusinessTaxComplianceSettings from '../../components/settings/BusinessTaxComplianceSettings';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import SubscriptionPlanSettings from '../../components/settings/SubscriptionPlanSettings';
 
 const emptyDeliveryPricing = {
   enabled: false,
@@ -21,7 +22,7 @@ const emptyDeliveryPricing = {
   maximumDistanceKm: ''
 };
 
-const SETTINGS_SECTIONS = new Set(['delivery', 'booking', 'modules', 'tax', 'refund', 'staff', 'notifications', 'appearance']);
+const SETTINGS_SECTIONS = new Set(['plan', 'delivery', 'booking', 'modules', 'tax', 'refund', 'staff', 'notifications', 'appearance']);
 
 const AdminSettings = () => {
   const { user, updateUser } = useAuth();
@@ -268,6 +269,7 @@ const AdminSettings = () => {
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const settingsGroups = [
+    { label: 'Plan', tabs: [['plan', 'Subscription']] },
     { label: 'General', tabs: [['booking', 'Hours'], ['modules', 'Modules']] },
     { label: 'Business & Tax', tabs: [['tax', 'Tax Information']] },
     { label: 'Delivery', tabs: [['delivery', 'Delivery & Shipping']] },
@@ -305,7 +307,9 @@ const AdminSettings = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-8 space-y-6">
-          {activeTab === 'delivery' ? (
+          {activeTab === 'plan' ? (
+            <SubscriptionPlanSettings />
+          ) : activeTab === 'delivery' ? (
             <DeliveryPricingSettings
               pricing={deliveryPricing}
               setPricing={setDeliveryPricing}

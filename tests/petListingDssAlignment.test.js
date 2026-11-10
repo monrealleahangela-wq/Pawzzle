@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const Pet = require('../models/Pet');
+const Product = require('../models/Product');
+const Service = require('../models/Service');
+const User = require('../models/User');
 const Store = require('../models/Store');
 const DecisionSupportService = require('../services/decisionSupportService');
 const { getPetAvailabilityIssue } = require('../services/petAvailabilityService');
@@ -144,10 +147,18 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and igno
   const originalFindStore = Store.findOne;
   const originalSave = Pet.prototype.save;
   const originalFindPet = Pet.findById;
+  const originalProductCount = Product.countDocuments;
+  const originalPetCount = Pet.countDocuments;
+  const originalServiceCount = Service.countDocuments;
+  const originalUserCount = User.countDocuments;
   const ownerId = '507f1f77bcf86cd799439011';
   const storeId = '507f1f77bcf86cd799439012';
   let saved;
-  Store.findOne = async () => ({ _id: storeId });
+  Store.findOne = async () => ({ _id: storeId, subscriptionTier: 'free' });
+  Product.countDocuments = async () => 0;
+  Pet.countDocuments = async () => 0;
+  Service.countDocuments = async () => 0;
+  User.countDocuments = async () => 0;
   Pet.prototype.save = async function save() {
     const error = this.validateSync();
     if (error) throw error;
@@ -200,6 +211,10 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and igno
     Store.findOne = originalFindStore;
     Pet.prototype.save = originalSave;
     Pet.findById = originalFindPet;
+    Product.countDocuments = originalProductCount;
+    Pet.countDocuments = originalPetCount;
+    Service.countDocuments = originalServiceCount;
+    User.countDocuments = originalUserCount;
   }
 });
 

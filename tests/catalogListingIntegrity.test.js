@@ -3,6 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const Product = require('../models/Product');
+const Pet = require('../models/Pet');
+const Service = require('../models/Service');
+const Store = require('../models/Store');
+const User = require('../models/User');
 const StockSyncService = require('../services/stockSyncService');
 const { createProduct, getAllProducts } = require('../controllers/productController');
 const {
@@ -169,6 +173,11 @@ test('seller product creation persists normalized weight, cover order, and serve
   const originalSave = Product.prototype.save;
   const originalFindById = Product.findById;
   const originalInitialize = StockSyncService.initializeInventoryForProduct;
+  const originalStoreFindById = Store.findById;
+  const originalProductCount = Product.countDocuments;
+  const originalPetCount = Pet.countDocuments;
+  const originalServiceCount = Service.countDocuments;
+  const originalUserCount = User.countDocuments;
   let saved;
   Product.prototype.save = async function save() {
     const error = this.validateSync();
@@ -178,6 +187,11 @@ test('seller product creation persists normalized weight, cover order, and serve
   };
   Product.findById = () => ({ populate: async () => saved });
   StockSyncService.initializeInventoryForProduct = async () => {};
+  Store.findById = () => ({ select: async () => ({ _id: '507f1f77bcf86cd799439011', subscriptionTier: 'free' }) });
+  Product.countDocuments = async () => 0;
+  Pet.countDocuments = async () => 0;
+  Service.countDocuments = async () => 0;
+  User.countDocuments = async () => 0;
   const req = {
     user: { _id: '507f1f77bcf86cd799439012', role: 'store_owner', store: '507f1f77bcf86cd799439011' },
     body: {
@@ -204,6 +218,11 @@ test('seller product creation persists normalized weight, cover order, and serve
     Product.prototype.save = originalSave;
     Product.findById = originalFindById;
     StockSyncService.initializeInventoryForProduct = originalInitialize;
+    Store.findById = originalStoreFindById;
+    Product.countDocuments = originalProductCount;
+    Pet.countDocuments = originalPetCount;
+    Service.countDocuments = originalServiceCount;
+    User.countDocuments = originalUserCount;
   }
 });
 

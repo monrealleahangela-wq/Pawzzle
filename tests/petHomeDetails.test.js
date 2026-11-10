@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const Pet = require('../models/Pet');
 const Store = require('../models/Store');
 const User = require('../models/User');
+const Product = require('../models/Product');
+const Service = require('../models/Service');
 const { createPet, updatePet, getPetById } = require('../controllers/petController');
 const { normalizePetHomeDetails, keepCommonHomeDetails } = require('../utils/petHomeDetails');
 
@@ -53,9 +55,17 @@ test('create and edit persist validated Home Details while rejecting invalid edi
   const originalPetFind = Pet.findById;
   const originalUpdate = Pet.findByIdAndUpdate;
   const originalStores = Store.find;
+  const originalProductCount = Product.countDocuments;
+  const originalPetCount = Pet.countDocuments;
+  const originalServiceCount = Service.countDocuments;
+  const originalUserCount = User.countDocuments;
   let saved;
   let operation;
-  Store.findOne = async () => ({ _id: storeId });
+  Store.findOne = async () => ({ _id: storeId, subscriptionTier: 'free' });
+  Product.countDocuments = async () => 0;
+  Pet.countDocuments = async () => 0;
+  Service.countDocuments = async () => 0;
+  User.countDocuments = async () => 0;
   Store.find = () => ({ select() { return this; }, async lean() { return [{ _id: storeId }]; } });
   Pet.prototype.save = async function () { assert.equal(this.validateSync(), undefined); saved = this.toObject(); return this; };
   Pet.findById = () => ({
@@ -91,6 +101,10 @@ test('create and edit persist validated Home Details while rejecting invalid edi
     Pet.prototype.save = originalSave;
     Pet.findById = originalPetFind;
     Pet.findByIdAndUpdate = originalUpdate;
+    Product.countDocuments = originalProductCount;
+    Pet.countDocuments = originalPetCount;
+    Service.countDocuments = originalServiceCount;
+    User.countDocuments = originalUserCount;
   }
 });
 test('customer pet fetch includes Home Details without private seller documents', async () => {

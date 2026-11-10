@@ -8,6 +8,7 @@ const { calculateTransactionTax, resolveTransactionTaxConfiguration } = require(
 const { canOperateStore } = require('../utils/authorizationPolicy');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const { normalizeRecommendationCriteria } = require('../utils/serviceAdvisorPetContract');
+const { assertCanActivateListing } = require('../services/storeSubscriptionService');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -128,6 +129,8 @@ const createService = async (req, res) => {
     if (!(await canOperateStore(req.user, store._id, ['services.create', 'services.manage']))) {
       return res.status(403).json({ message: 'You can only create services for your own or assigned store' });
     }
+
+    await assertCanActivateListing(store);
 
     const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, req.params.storeId, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
@@ -258,6 +261,7 @@ const createAdminService = async (req, res) => {
       console.log('🏪 Using default store:', serviceStore);
     }
 
+    await assertCanActivateListing(serviceStore);
     const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStore, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
     const service = new Service({
@@ -336,6 +340,9 @@ const updateService = async (req, res) => {
         category: req.body.category ?? service.category,
         subCategory: req.body.subCategory ?? service.subCategory
       });
+    }
+    if (service.isActive === false && updates.isActive === true) {
+      await assertCanActivateListing(service.store._id);
     }
     Object.assign(service, updates);
     await service.save();

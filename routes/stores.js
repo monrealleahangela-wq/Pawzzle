@@ -24,7 +24,10 @@ const {
   updateRefundPolicy,
   getDeliveryPricing,
   updateDeliveryPricing,
-  previewDeliveryPricing
+  previewDeliveryPricing,
+  getSubscriptionPlans,
+  getMyStoreSubscription,
+  updateStoreSubscription
 } = require('../controllers/storeController');
 const { submitExpansionRequest, upload } = require('../controllers/storeApplicationController');
 const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly, requirePermission } = require('../middleware/auth');
@@ -60,6 +63,8 @@ const updateStoreValidation = [
 
 // Protected routes (literal paths MUST come before /:id wildcard)
 router.get('/my-store', authenticate, adminOrStaff, getMyStore);
+router.get('/subscription-plans', authenticate, getSubscriptionPlans);
+router.get('/my-store/subscription', authenticate, adminOrStaff, getMyStoreSubscription);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
 router.get('/settings', authenticate, storeOwnerOnly, getMyStore);
 router.put('/settings', authenticate, storeOwnerOnly, updateStoreValidation, updateStore);
@@ -89,6 +94,7 @@ router.post('/expansion-request', authenticate, adminOnly, upload.fields([
   { name: 'mayorsPermit', maxCount: 1 },
   { name: 'businessRegistration', maxCount: 1 }
 ]), submitExpansionRequest);
+router.patch('/:id/subscription', authenticate, superAdminOnly, updateStoreSubscription);
 router.post('/:id/approve-verification', authenticate, superAdminOnly, approveVerification);
 router.post('/:id/reject-verification', authenticate, superAdminOnly, rejectVerification);
 

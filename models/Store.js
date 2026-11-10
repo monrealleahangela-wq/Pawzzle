@@ -410,8 +410,8 @@ const storeSchema = new mongoose.Schema({
   },
   subscriptionTier: {
     type: String,
-    enum: ['basic', 'premium', 'enterprise'],
-    default: 'basic'
+    enum: ['free', 'starter', 'growth', 'professional', 'basic', 'premium', 'enterprise'],
+    default: 'free'
   },
   subscriptionExpires: Date,
   stats: {

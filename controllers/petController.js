@@ -21,6 +21,7 @@ const {
   isMarketplacePet,
   normalizeCatalogImages
 } = require('../utils/catalogListing');
+const { assertCanActivateListing } = require('../services/storeSubscriptionService');
 
 const PET_LISTING_FIELDS = [
   'name', 'species', 'breed', 'birthday', 'age', 'ageUnit', 'gender', 'size',
@@ -265,6 +266,8 @@ const createPet = async (req, res) => {
       store: store._id
     };
 
+    if (petData.status === 'available' && petData.isAvailable) await assertCanActivateListing(store);
+
     const pet = new Pet(petData);
     await pet.save();
 
@@ -404,6 +407,12 @@ const updatePet = async (req, res) => {
     }
 
     console.log('📝 updatePet EXECUTING UPDATE');
+    const wasActiveListing = pet.status === 'available' && pet.isAvailable && !pet.isDeleted;
+    const nextActiveListing = (updateData.status ?? pet.status) === 'available'
+      && (updateData.isAvailable ?? pet.isAvailable) === true
+      && !pet.isDeleted;
+    if (!wasActiveListing && nextActiveListing) await assertCanActivateListing(updateData.store || pet.store);
+
     const updateOperation = { $set: updateData };
     const unset = {};
     if (clearWeight) unset.weight = 1;
@@ -426,7 +435,7 @@ const updatePet = async (req, res) => {
     });
   } catch (error) {
     console.error('📝 updatePet CRASHED:', error);
-    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message, code: error.code, details: error.details });
     res.status(500).json({ 
       message: 'Server error during pet update', 
       error: error.message
