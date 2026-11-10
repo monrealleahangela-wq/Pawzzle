@@ -1,8 +1,86 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../../services/authService';
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, ShieldCheck, RefreshCw, Sparkles } from 'lucide-react';
+import {
+  Mail, Lock, User, Eye, EyeOff, ArrowLeft, ArrowRight,
+  ShieldCheck, RefreshCw, Sparkles, HeartHandshake, Store
+} from 'lucide-react';
+
+const registrationBenefits = [
+  { icon: ShieldCheck, title: 'Secure registration', text: 'Email verification helps protect your account' },
+  { icon: Store, title: 'One Pawzzle account', text: 'Shop, book services, and manage pet care' },
+  { icon: HeartHandshake, title: 'Trusted community', text: 'Connect with verified stores and providers' }
+];
+
+const RegistrationShell = ({ children }) => (
+  <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#fbf7f4] px-3 py-6 sm:px-6 sm:py-10">
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+      <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-100/60 blur-3xl" />
+      <div className="absolute -bottom-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-secondary-200/50 blur-3xl" />
+      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary-100/60" />
+    </div>
+
+    <main className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-primary-100/80 bg-white shadow-premium animate-fade-in lg:min-h-[43rem] lg:grid-cols-[0.9fr_1.1fr]">
+      <aside className="relative hidden overflow-hidden bg-primary-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute -right-24 -top-20 h-64 w-64 rounded-full border border-white/10" />
+          <div className="absolute -right-12 -top-10 h-44 w-44 rounded-full bg-primary-700/40" />
+          <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full border border-white/10" />
+        </div>
+
+        <div className="relative">
+          <div className="mb-14 flex items-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-2 shadow-lg">
+              <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
+            </div>
+            <div>
+              <p className="text-lg font-black tracking-tight !text-white">PAWZZLE</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] !text-[#e7c6aa]">Pet community</p>
+            </div>
+          </div>
+
+          <p className="mb-4 text-xs font-black uppercase tracking-[0.28em] !text-[#f0b47f]">Join the community</p>
+          <h1 className="max-w-sm text-4xl font-black leading-[1.08] tracking-tight !text-white">
+            A better way to care for your pet starts here.
+          </h1>
+          <p className="mt-5 max-w-sm text-sm leading-6 !text-[#d8c6ba]">
+            Create one secure account for trusted products, local pet services, and your growing Pawzzle community.
+          </p>
+        </div>
+
+        <div className="relative space-y-3">
+          {registrationBenefits.map(({ icon: Icon, title, text }) => (
+            <div key={title} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/35 text-primary-200">
+                <Icon className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-bold !text-white">{title}</p>
+                <p className="mt-0.5 text-xs !text-[#cdb8aa]">{text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <section className="relative flex items-center justify-center px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
+        <div className="w-full max-w-md">
+          <div className="mb-7 flex items-center gap-3 lg:hidden">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 p-2 ring-1 ring-primary-100">
+              <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
+            </div>
+            <div>
+              <p className="font-black tracking-tight text-slate-900">PAWZZLE</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-primary-600">Pet community</p>
+            </div>
+          </div>
+          {children}
+        </div>
+      </section>
+    </main>
+  </div>
+);
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -32,10 +110,7 @@ const Register = () => {
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [deliveryMethod, setDeliveryMethod] = useState('email');
   const otpRefs = useRef([]);
-
-  const navigate = useNavigate();
 
   // Resend cooldown timer
   useEffect(() => {
@@ -151,25 +226,19 @@ const Register = () => {
 
   if (step === 2) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-        {/* Decorative Blobs */}
-        <div className="fixed inset-0 z-[-1] pointer-events-none">
-          <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
-          <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-3s' }} />
+      <RegistrationShell>
+        <div className="mb-8">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+            <ShieldCheck className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <p className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-primary-600">Email verification</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Check your inbox</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Enter the 6-digit code sent to <span className="font-bold text-slate-700">{formData.email}</span>.
+          </p>
         </div>
 
-        <div className="max-w-md w-full animate-fade-in">
-          <div className="glass-morphism rounded-[40px] p-10 md:p-12 border border-white/40 shadow-2xl relative">
-            <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
-               <ShieldCheck className="h-12 w-12 text-white" />
-            </div>
-
-            <div className="text-center mt-8 mb-10 space-y-2">
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Secure Verification</h2>
-              <p className="text-slate-500 font-medium text-xs">A 6-digit code has been sent to <span className="text-primary-600 font-black">{formData.email}</span></p>
-            </div>
-
-            <div className="flex justify-center gap-2 mb-10">
+        <div className="mb-7 flex justify-between gap-2" role="group" aria-label="Email verification code">
               {otpDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -177,138 +246,143 @@ const Register = () => {
                   type="text" inputMode="numeric" maxLength={1}
                   value={digit} onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  className="w-11 h-16 text-center text-2xl font-black rounded-2xl border border-slate-100 bg-white/50 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all shadow-sm"
+                  aria-label={`Verification digit ${index + 1}`}
+                  autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                  className="h-14 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-black text-slate-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
                 />
               ))}
-            </div>
-
-            <div className="mb-8 text-center">
-              {resendCooldown > 0 ? (
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 py-2 px-4 rounded-full inline-block">Resend available in {resendCooldown}s</p>
-              ) : (
-                <button onClick={handleResendOTP} className="text-[10px] font-black text-primary-600 uppercase tracking-widest flex items-center gap-2 mx-auto hover:text-primary-700 hover:scale-105 transition-all">
-                  <RefreshCw className="h-3 w-3" /> Resend Verification Code
-                </button>
-              )}
-            </div>
-
-            <button onClick={handleVerifyOTP} disabled={otpLoading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
-              {otpLoading ? 'Verifying...' : 'Complete Registration'}
-            </button>
-
-            <button onClick={() => setStep(1)} className="mt-8 text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center justify-center gap-2 mx-auto hover:text-slate-600">
-               <ArrowLeft className="h-3 w-3" /> Start Over
-            </button>
-          </div>
         </div>
-      </div>
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-center">
+          {resendCooldown > 0 ? (
+            <p className="text-xs font-bold text-slate-500">You can request a new code in {resendCooldown}s</p>
+          ) : (
+            <button onClick={handleResendOTP} className="mx-auto flex items-center gap-2 text-sm font-bold text-primary-600 transition hover:text-primary-700">
+              <RefreshCw className="h-4 w-4" aria-hidden="true" /> Send a new code
+            </button>
+          )}
+        </div>
+
+        <button onClick={handleVerifyOTP} disabled={otpLoading} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60">
+          {otpLoading ? 'Verifying your code...' : 'Verify and continue'}
+        </button>
+
+        <button onClick={() => setStep(1)} className="mx-auto mt-6 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 transition hover:text-primary-600">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Change account details
+        </button>
+      </RegistrationShell>
     );
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-6 overflow-hidden">
-      {/* Decorative Blobs */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-3s' }} />
+    <RegistrationShell>
+      <div className="mb-8">
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] !text-primary-700">Create account</p>
+        <h2 className="text-4xl font-black tracking-tight !text-slate-950 sm:text-5xl">Join Pawzzle</h2>
+        <p className="mt-3 text-base font-medium !text-slate-500">Create one account for shopping, pet care, and trusted local services.</p>
       </div>
 
-      <div className="max-w-md w-full animate-fade-in">
-        <div className="glass-morphism rounded-[40px] p-10 md:p-12 border border-white/40 shadow-2xl relative">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
-            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
-          </div>
-
-          <div className="text-center mt-8 mb-10 space-y-2">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Join the Pack</h2>
-            <p className="text-slate-500 font-medium">Create your premium pet profile</p>
-          </div>
-
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="register-username" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Username / Name</label>
-                <div className="input-container group">
-                  <User className="input-icon h-5 w-5" />
+      <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="register-username" className="mb-2 block text-sm font-bold !text-slate-700">Username</label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                   <input
-                    id="register-username" name="username" type="text" required
-                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                    placeholder="TheLuckyPaw"
+                    id="register-username"
+                    name="username"
+                    type="text"
+                    required
+                    autoComplete="username"
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                    placeholder="Choose a username"
                     value={formData.username}
                     onChange={handleChange}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="register-email" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Email Address</label>
-                <div className="input-container group">
-                  <Mail className="input-icon h-5 w-5" />
+              <div>
+                <label htmlFor="register-email" className="mb-2 block text-sm font-bold !text-slate-700">Email address</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                   <input
-                    id="register-email" name="email" type="email" required
-                    className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                    placeholder="woof@example.com"
+                    id="register-email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                    placeholder="name@example.com"
                     value={formData.email}
                     onChange={handleChange}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="register-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Passphrase</label>
-                  <div className="input-container group">
-                    <Lock className="input-icon h-4 w-4" />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="register-password" className="mb-2 block text-sm font-bold !text-slate-700">Password</label>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     <input
-                      id="register-password" name="password" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
-                      placeholder="••••••••"
+                      id="register-password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      autoComplete="new-password"
+                      aria-describedby="password-guidance"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                      placeholder="Create password"
                       value={formData.password}
                       onChange={handleChange}
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="input-icon-right pointer-events-auto hover:text-primary-500">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-primary-50 hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="register-confirm-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Confirm</label>
-                  <div className="input-container group">
-                    <Lock className="input-icon h-4 w-4" />
+                <div>
+                  <label htmlFor="register-confirm-password" className="mb-2 block text-sm font-bold !text-slate-700">Confirm password</label>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     <input
-                      id="register-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required
-                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 text-xs select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
-                      placeholder="••••••••"
+                      id="register-confirm-password"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      autoComplete="new-password"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                      placeholder="Repeat password"
                       value={formData.confirmPassword}
                       onChange={handleChange}
                     />
-                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={showConfirmPassword} className="input-icon-right pointer-events-auto hover:text-primary-500">
-                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'} aria-pressed={showConfirmPassword} className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-primary-50 hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500/30">
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-1">
-               <Sparkles className="h-3 w-3 text-primary-500" />
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upper, Lower, Number & Symbol</p>
+            <div id="password-guidance" className="flex items-start gap-3 rounded-2xl border border-primary-100 bg-primary-50/70 px-4 py-3">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary-700" aria-hidden="true" />
+              <p className="text-sm font-medium leading-6 !text-slate-600">Use at least 8 characters with an uppercase letter, lowercase letter, number, and symbol.</p>
             </div>
 
-            <button type="submit" disabled={loading} className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100">
-              {loading ? 'Processing...' : 'Create Account'}
+            <button type="submit" disabled={loading} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60">
+              {loading ? 'Creating your account...' : 'Create account'}
+              {!loading && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
             </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center">
-            <p className="text-sm text-slate-500 font-medium">
-              Already have an account?{' '}
-              <Link to="/login" className="text-primary-600 font-black hover:underline underline-offset-4">Sign In</Link>
-            </p>
-          </div>
-        </div>
+      <div className="mt-8 border-t border-slate-200 pt-6 text-center">
+        <p className="text-sm font-medium !text-slate-500">
+          Already have an account?{' '}
+          <Link to="/login" className="font-black text-primary-700 transition hover:text-primary-800 hover:underline hover:underline-offset-4">Sign in</Link>
+        </p>
       </div>
-    </div>
+    </RegistrationShell>
   );
 };
 
