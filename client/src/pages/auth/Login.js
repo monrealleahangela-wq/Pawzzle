@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X } from 'lucide-react';
+import {
+  Mail, Lock, Eye, EyeOff, AlertCircle, Send, MessageSquare, X,
+  ArrowRight, HeartHandshake, ShieldCheck, Store
+} from 'lucide-react';
 import { supportService } from '../../services/apiService';
 import { portalHomeForUser, professionalVerificationStatus, requiresProfessionalVerification } from '../../utils/authorization';
 import ModalViewport from '../../components/ui/ModalViewport';
@@ -147,33 +150,87 @@ const Login = () => {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden p-3 sm:p-6">
-      {/* Decorative Blobs */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary-50 rounded-full blur-[120px] animate-blob" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-secondary-50 rounded-full blur-[100px] animate-blob" style={{ animationDelay: '-3s' }} />
+    <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#fbf7f4] px-3 py-6 sm:px-6 sm:py-10">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-100/60 blur-3xl" />
+        <div className="absolute -bottom-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-secondary-200/50 blur-3xl" />
+        <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary-100/60" />
       </div>
 
-      <div className="max-w-md w-full animate-fade-in">
-        <div className="glass-morphism relative rounded-[2rem] border border-white/40 p-6 shadow-2xl sm:rounded-[40px] sm:p-10 md:p-12">
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-xl shadow-primary-200 rotate-6 group hover:rotate-12 transition-transform duration-500 overflow-hidden p-4">
-            <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain" />
+      <main className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-primary-100/80 bg-white shadow-premium animate-fade-in lg:min-h-[43rem] lg:grid-cols-[0.9fr_1.1fr]">
+        <aside className="relative hidden overflow-hidden bg-primary-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+            <div className="absolute -right-24 -top-20 h-64 w-64 rounded-full border border-white/10" />
+            <div className="absolute -right-12 -top-10 h-44 w-44 rounded-full bg-primary-700/40" />
+            <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full border border-white/10" />
           </div>
 
-          <div className="text-center mt-8 mb-10 space-y-2">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-            <p className="text-slate-500 font-medium">Continue your premium pet experience</p>
+          <div className="relative">
+            <div className="mb-14 flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-2 shadow-lg">
+                <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
+              </div>
+              <div>
+                <p className="text-lg font-black tracking-tight">PAWZZLE</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary-200">Pet community</p>
+              </div>
+            </div>
+
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.28em] text-primary-300">Welcome home</p>
+            <h1 className="max-w-sm text-4xl font-black leading-[1.08] tracking-tight">
+              Everything your pet needs, in one trusted place.
+            </h1>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-primary-100/80">
+              Sign in to shop, book trusted pet care, and stay connected with verified stores in your community.
+            </p>
           </div>
+
+          <div className="relative space-y-3">
+            {[
+              { icon: ShieldCheck, title: 'Verified community', text: 'Trusted accounts and reviewed stores' },
+              { icon: Store, title: 'Marketplace access', text: 'Products, pets, and local services' },
+              { icon: HeartHandshake, title: 'Care made simpler', text: 'Bookings and orders in one account' }
+            ].map(({ icon: Icon, title, text }) => (
+              <div key={title} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/35 text-primary-200">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">{title}</p>
+                  <p className="mt-0.5 text-xs text-primary-100/65">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <section className="relative flex items-center justify-center px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
+          <div className="w-full max-w-md">
+            <div className="mb-7 flex items-center gap-3 lg:hidden">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 p-2 ring-1 ring-primary-100">
+                <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
+              </div>
+              <div>
+                <p className="font-black tracking-tight text-slate-900">PAWZZLE</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-primary-600">Pet community</p>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-primary-600">Account access</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Welcome back</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Sign in to continue to your Pawzzle account.</p>
+            </div>
 
           {/* Deactivation Notice */}
           {deactivationInfo && (
-            <div className="mb-8 p-6 bg-rose-50 border border-rose-100 rounded-[2rem] animate-slide-up">
+            <div className="mb-6 rounded-2xl border border-rose-100 bg-rose-50 p-4 animate-slide-up">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-white rounded-2xl text-rose-500 shadow-sm">
                   <AlertCircle size={24} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-black text-rose-900 uppercase tracking-widest leading-none">Account Disabled</h3>
+                  <h3 className="text-sm font-black text-rose-900">Account disabled</h3>
                   <p className="text-xs text-rose-600 font-bold leading-relaxed pt-1">
                     {deactivationInfo.reason}
                   </p>
@@ -196,38 +253,43 @@ const Login = () => {
 
           {/* Form */}
           {!twoFactorRequired ? (
-            <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="login-identifier" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Email or Username</label>
-                  <div className="input-container group">
-                    <Mail className="input-icon h-5 w-5" />
+                  <label htmlFor="login-identifier" className="text-sm font-bold text-slate-700">Email or username</label>
+                  <div className="relative group">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-600" aria-hidden="true" />
                     <input
                       id="login-identifier" name="email" type="text" required
-                      className="input input-with-icon bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4"
-                      placeholder="email@example.com or username"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-12 pr-4 text-sm font-medium text-slate-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                      placeholder="Enter your email or username"
                       value={formData.email}
                       onChange={handleChange}
-                      autoComplete="off"
+                      autoComplete="username"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="login-password" className="ml-1 text-xs font-black uppercase tracking-widest text-muted">Secret Key</label>
-                  <div className="input-container group">
-                    <Lock className="input-icon h-5 w-5" />
+                  <div className="flex items-center justify-between gap-3">
+                    <label htmlFor="login-password" className="text-sm font-bold text-slate-700">Password</label>
+                    <Link to="/forgot-password" className="text-xs font-bold text-primary-600 transition hover:text-primary-700 hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative group">
+                    <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-primary-600" aria-hidden="true" />
                     <input
                       id="login-password" name="password" type={showPassword ? 'text' : 'password'} required
-                      className="input input-with-both-icons bg-white/50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none transition-all font-medium text-slate-700 py-4 pr-12 select-none [appearance:none] [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-store-indicator]:hidden"
-                      placeholder="••••••••"
+                      className="h-14 w-full select-none rounded-2xl border border-slate-200 bg-slate-50/70 pl-12 pr-12 text-sm font-medium text-slate-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10 [appearance:none] [&::-ms-clear]:hidden [&::-ms-reveal]:hidden [&::-webkit-credentials-store-indicator]:hidden"
+                      placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleChange}
                       autoComplete="current-password"
                     />
                     <button
                       type="button"
-                      className="input-icon-right pointer-events-auto hover:text-primary-500 transition-colors"
+                      className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 transition hover:bg-primary-50 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                       aria-pressed={showPassword}
@@ -238,18 +300,13 @@ const Login = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between px-1">
-                <Link to="/forgot-password" size="sm" className="text-xs font-bold text-primary-600 hover:text-primary-700">
-                  Forgot password?
-                </Link>
-              </div>
-
               <button
                 type="submit"
                 disabled={loading}
-                className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100 relative overflow-hidden group"
+                className="group flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60"
               >
-                <span className="relative z-10">{loading ? 'Verifying...' : 'Access Account'}</span>
+                <span>{loading ? 'Signing you in...' : 'Sign in'}</span>
+                {!loading && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />}
               </button>
             </form>
           ) : (
@@ -258,14 +315,14 @@ const Login = () => {
                 <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-primary-600">
                   <Lock size={32} />
                 </div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Two-Step Verification</h3>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Two-step verification</h3>
                 <p className="text-xs text-slate-500 font-bold mt-2">
                   We've sent a 6-digit code to <span className="text-primary-600">{loginEmail}</span>
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Verification Code</label>
+                <label className="text-sm font-bold text-slate-700">Verification code</label>
                 <input
                   type="text"
                   maxLength="6"
@@ -280,7 +337,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={verifyingOtp}
-                className="btn btn-primary w-full py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary-100"
+                className="h-14 w-full rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 disabled:opacity-60"
               >
                 {verifyingOtp ? 'Verifying Code...' : 'Confirm Identity'}
               </button>
@@ -288,30 +345,33 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setTwoFactorRequired(false)}
-                className="w-full text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 py-2"
+                className="w-full py-2 text-sm font-bold text-slate-500 hover:text-primary-600"
               >
                 Back to Login
               </button>
             </form>
           )}
 
-          <div className="mt-10 pt-8 border-t border-slate-100 text-center space-y-4">
-            <p className="text-sm text-slate-500 font-medium">
-              New to the community?{' '}
-              <Link to="/register" className="text-primary-600 font-black hover:underline underline-offset-4">
-                Create Profile
+            <div className="my-6 flex items-center gap-3" aria-hidden="true">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">or continue with</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <button onClick={handleGoogleLogin} className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition hover:border-primary-200 hover:bg-primary-50/40 focus:outline-none focus:ring-4 focus:ring-primary-500/10">
+              <GoogleIcon />
+              <span className="text-sm font-bold text-slate-700">Continue with Google</span>
+            </button>
+
+            <p className="mt-7 text-center text-sm text-slate-500">
+              New to Pawzzle?{' '}
+              <Link to="/register" className="font-black text-primary-600 hover:text-primary-700 hover:underline underline-offset-4">
+                Create an account
               </Link>
             </p>
           </div>
-
-          <div className="mt-8">
-            <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
-              <GoogleIcon />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Google</span>
-            </button>
-          </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
       {/* Support Modal */}
       {showSupportModal && (

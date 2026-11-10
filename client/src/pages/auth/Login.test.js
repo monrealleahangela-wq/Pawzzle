@@ -24,17 +24,29 @@ describe('Login form controls', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByLabelText('Email or Username')).toHaveAttribute('id', 'login-identifier');
+    expect(screen.getByLabelText('Email or username')).toHaveAttribute('id', 'login-identifier');
 
-    const password = screen.getByLabelText('Secret Key');
+    const password = screen.getByLabelText('Password');
     const toggle = screen.getByRole('button', { name: 'Show password' });
     expect(password).toHaveAttribute('type', 'password');
-    expect(password.parentElement).toHaveClass('input-container');
-    expect(password).toHaveClass('input-with-both-icons');
+    expect(password).toHaveAttribute('autocomplete', 'current-password');
 
     fireEvent.click(toggle);
 
     expect(password).toHaveAttribute('type', 'text');
     expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('presents clear sign-in and account creation actions', () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Sign in$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute('href', '/register');
   });
 });
