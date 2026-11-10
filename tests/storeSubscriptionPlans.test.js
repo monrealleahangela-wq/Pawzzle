@@ -73,9 +73,29 @@ test('active legacy stores retain Professional access regardless of stale verifi
     assert.equal(getEffectiveTier(legacy), 'professional');
     assert.equal(getEffectiveTier({ ...legacy, verificationStatus: 'pending' }), 'professional');
     assert.equal(getEffectiveTier({ ...legacy, verificationStatus: undefined }), 'professional');
+    assert.equal(getEffectiveTier({
+      ...legacy,
+      subscriptionTier: 'professional',
+      subscriptionExpires: new Date(Date.now() - 1000)
+    }), 'professional');
+    assert.equal(getEffectiveTier({
+      ...legacy,
+      subscriptionTier: 'professional',
+      pendingSubscription: {
+        tier: 'starter',
+        effectiveAt: new Date(Date.now() - 5000),
+        expiresAt: new Date(Date.now() - 1000)
+      }
+    }), 'professional');
     assert.equal(getEffectiveTier({ ...legacy, createdAt: afterCutoff }), 'free');
     assert.equal(getEffectiveTier({ ...legacy, isActive: false }), 'free');
     assert.equal(getEffectiveTier({ ...legacy, subscriptionLegacyGrantOptOutAt: new Date() }), 'free');
+    assert.equal(getEffectiveTier({
+      ...legacy,
+      subscriptionTier: 'professional',
+      subscriptionExpires: new Date(Date.now() - 1000),
+      subscriptionLegacyGrantOptOutAt: new Date()
+    }), 'free');
   } finally {
     Module._load = originalLoad;
     delete require.cache[require.resolve('../services/storeSubscriptionService')];
@@ -235,6 +255,33 @@ test('subscription summary counts all customer-facing listing types and active s
     assert.equal(summary.allowances.listings, 30);
     assert.equal(summary.capabilities.canAddListing, true);
     assert.equal(summary.capabilities.canAddStaff, true);
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+  }
+});
+
+test('expired legacy Professional metadata still satisfies the supplier catalog entitlement', async () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    const model = request.match(/^\.\.\/models\/(Product|Pet|Service|Store|User)$/)?.[1];
+    if (model === 'Store') return { findById: () => ({ select: async () => null }) };
+    if (model) return { countDocuments: async () => 0 };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+    const { assertStoreEntitlement, LEGACY_PROFESSIONAL_GRANT_CUTOFF } = require('../services/storeSubscriptionService');
+    const { ENTITLEMENTS } = require('../config/subscriptionPlans');
+    const summary = await assertStoreEntitlement({
+      _id: 'defense-store',
+      subscriptionTier: 'professional',
+      subscriptionExpires: new Date(Date.now() - 1000),
+      createdAt: new Date(LEGACY_PROFESSIONAL_GRANT_CUTOFF.getTime() - 1000),
+      isActive: true,
+      isDeleted: false
+    }, ENTITLEMENTS.SUPPLIER_CATALOG);
+    assert.equal(summary.tier, 'professional');
   } finally {
     Module._load = originalLoad;
     delete require.cache[require.resolve('../services/storeSubscriptionService')];
