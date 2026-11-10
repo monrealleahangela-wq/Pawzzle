@@ -13,6 +13,13 @@ const { authenticate, adminOrStaff, requirePermission } = require('../middleware
 const { MAX_CATALOG_IMAGES, PRODUCT_WEIGHT_UNITS, isCatalogImageReference } = require('../utils/catalogListing');
 const { normalizeProductCategory } = require('../utils/productCategories');
 const productVariants = require('../controllers/productVariantController');
+const { requireSubscriptionEntitlement, requireSubscriptionEntitlementWhen } = require('../middleware/subscriptionEntitlement');
+const { ENTITLEMENTS } = require('../config/subscriptionPlans');
+const variantsPlan = requireSubscriptionEntitlement(ENTITLEMENTS.PRODUCT_VARIANTS);
+const variantPayloadPlan = requireSubscriptionEntitlementWhen(ENTITLEMENTS.PRODUCT_VARIANTS,
+  req => req.body?.productMode === 'variant' || (Array.isArray(req.body?.variants) && req.body.variants.length > 0));
+const featuredPlan = requireSubscriptionEntitlementWhen(ENTITLEMENTS.FEATURED_PRODUCTS,
+  req => req.body?.isFeatured === true || req.body?.featured === true);
 
 // Enhanced Validation rules for detailed product management
 const createProductValidation = [
@@ -96,14 +103,14 @@ const updateProductValidation = [
 // Admin routes (filtered by user's store)
 router.get('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), getAllProducts);
 router.get('/variant-capabilities', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), productVariants.capabilities);
-router.post('/variant-products', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), createProductValidation, productVariants.createVariantProduct);
+router.post('/variant-products', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, createProductValidation, productVariants.createVariantProduct);
 router.get('/:productId/normalized-variants', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), productVariants.list);
-router.post('/:productId/normalized-variants', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), productVariants.create);
-router.patch('/:productId/normalized-variants/:variantId', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), productVariants.update);
-router.post('/:productId/normalized-variants/:variantId/discontinue', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), productVariants.discontinue);
+router.post('/:productId/normalized-variants', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, productVariants.create);
+router.patch('/:productId/normalized-variants/:variantId', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, productVariants.update);
+router.post('/:productId/normalized-variants/:variantId/discontinue', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, productVariants.discontinue);
 router.get('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), getProductById);
-router.post('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), createProductValidation, createProduct);
-router.put('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), updateProductValidation, updateProduct);
+router.post('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantPayloadPlan, featuredPlan, createProductValidation, createProduct);
+router.put('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantPayloadPlan, featuredPlan, updateProductValidation, updateProduct);
 router.delete('/:id', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), deleteProduct);
 
 module.exports = router;

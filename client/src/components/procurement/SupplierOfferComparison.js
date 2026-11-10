@@ -40,13 +40,14 @@ const SupplierOfferComparison = ({ storeProducts, initialStoreProductId, onCartU
     let active = true;
     setLoading(true);
     setError('');
-    purchaseOrderService.compareOffers(storeProductId, { page, search, targetType }).then(response => {
+    const loadOffers = restockMode ? purchaseOrderService.compareOffers : purchaseOrderService.compareSupplierOffers;
+    loadOffers(storeProductId, { page, search, targetType }).then(response => {
       if (active) setData(response.data);
     }).catch(requestError => {
       if (active) setError(requestError.response?.data?.message || 'Unable to load supplier offers.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [storeProductId, targetType, page, search, refresh]);
+  }, [storeProductId, targetType, page, search, refresh, restockMode]);
 
   const confirmMatch = async offer => {
     const matchType = matchTypes[offer.supplierProductId] || 'equivalent';

@@ -1,5 +1,7 @@
 const SupportMessage = require('../models/SupportMessage');
 const User = require('../models/User');
+const Store = require('../models/Store');
+const { getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
 
 // Create a support message (Public/Guest)
 const createSupportMessage = async (req, res) => {
@@ -13,11 +15,21 @@ const createSupportMessage = async (req, res) => {
         // Try to link to a user if email matches
         const user = await User.findOne({ email });
 
+        let store = null;
+        let serviceLevel = 'community';
+        if (user) {
+            store = user.store ? await Store.findById(user.store) : await Store.findOne({ owner: user._id, isDeleted: { $ne: true } });
+            if (store) serviceLevel = (await getStoreSubscriptionSummary(store)).plan.supportLevel;
+        }
+        const priorityRank = { community: 0, standard: 1, faster: 2, priority: 3 }[serviceLevel] || 0;
         const newSupportMessage = new SupportMessage({
             email,
             subject: subject || 'Account Recovery Request',
             message,
-            user: user ? user._id : null
+            user: user ? user._id : null,
+            store: store?._id,
+            serviceLevel,
+            priorityRank
         });
 
         await newSupportMessage.save();
@@ -88,10 +100,11 @@ const getAllSupportMessages = async (req, res) => {
         }
 
         const messages = await SupportMessage.find(query)
-            .sort({ createdAt: -1 })
+            .sort({ priorityRank: -1, createdAt: 1 })
             .skip((parseInt(page) - 1) * parseInt(limit))
             .limit(parseInt(limit))
-            .populate('user', 'username firstName lastName role email');
+            .populate('user', 'username firstName lastName role email')
+            .populate('store', 'name subscriptionTier');
 
         const totalMessages = await SupportMessage.countDocuments(query);
 

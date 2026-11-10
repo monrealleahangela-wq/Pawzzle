@@ -71,7 +71,7 @@ test('store invitation is server-scoped, tokenized, expiring, single-use, and fo
 test('store-added supplier endpoints are permissioned and never require platform documents', () => {
   const routes = read('routes/suppliers.js');
   const controller = read('controllers/supplierController.js');
-  assert.match(routes, /post\('\/store-managed', authenticate, requirePermission\('suppliers\.manage', 'procurement\.manage'\), createStoreSupplier\)/);
+  assert.match(routes, /post\('\/store-managed', authenticate, requirePermission\('suppliers\.manage', 'procurement\.manage'\), supplierCatalogPlan, createStoreSupplier\)/);
   assert.match(routes, /patch\('\/store-managed\/:id\/status'[\s\S]*updateStoreSupplierAssociation/);
   const storeCreate = controller.match(/const createStoreSupplier[\s\S]*?const getStoreManagedSuppliers/)?.[0] || '';
   assert.match(storeCreate, /supplierType: 'store_added'/);

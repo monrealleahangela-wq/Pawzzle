@@ -14,6 +14,7 @@ const loadController = mocks => {
   Module._load = function load(request, parent, isMain) {
     if (request === '../models/Store') return mocks.Store;
     if (request === '../models/StoreSubscriptionPayment') return mocks.Payment;
+    if (request === '../models/ActivityLog') return { create: async () => {} };
     if (request === '../services/paymongoService') return mocks.PayMongo;
     if (request === '../services/storeSubscriptionPaymentService') return mocks.subscriptionService;
     return originalLoad.call(this, request, parent, isMain);
@@ -178,6 +179,94 @@ test('wrong PayMongo amount fails closed without activating the Store plan', asy
     assert.equal(purchase.status, 'failed');
     assert.equal(purchase.activeKey, undefined);
     assert.equal(storeLookups, 0);
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeSubscriptionPaymentService')];
+  }
+});
+
+test('a paid downgrade is queued for the next term without replacing the active plan', async () => {
+  const originalLoad = Module._load;
+  const paidAtSeconds = 1794268800;
+  const currentTermEnd = new Date((paidAtSeconds * 1000) + (12 * 24 * 60 * 60 * 1000));
+  const purchase = {
+    _id: 'subscription-downgrade', store: 'store-3', requestedBy: 'owner-3', targetTier: 'starter',
+    billingInterval: 'monthly', amountCentavos: 29900,
+    planSnapshot: { name: 'Pawzzle Starter', termDays: 30 }, status: 'pending_payment',
+    paymentDetails: {}, activeKey: 'store:store-3', async save() {}
+  };
+  const store = {
+    subscriptionTier: 'professional', subscriptionExpires: currentTermEnd,
+    subscriptionBillingInterval: 'annual', async save() {}
+  };
+  const query = value => ({ session: async () => value });
+  Module._load = function load(request, parent, isMain) {
+    if (request === 'mongoose') return { connection: { transaction: async work => work('transaction-session') } };
+    if (request === '../models/Store') return { findById: () => query(store) };
+    if (request === '../models/StoreSubscriptionPayment') return {
+      findById: () => query(purchase), findOne: () => query(null)
+    };
+    if (request === '../models/ActivityLog') return { create: async () => {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeSubscriptionPaymentService')];
+    const { finalizeSubscriptionPayment } = require('../services/storeSubscriptionPaymentService');
+    await finalizeSubscriptionPayment(purchase, {
+      id: 'pay_downgrade', attributes: { amount: 29900, paid_at: paidAtSeconds }
+    });
+    assert.equal(store.subscriptionTier, 'professional');
+    assert.equal(store.subscriptionExpires, currentTermEnd);
+    assert.equal(store.pendingSubscription.tier, 'starter');
+    assert.equal(store.pendingSubscription.paid, true);
+    assert.equal(store.pendingSubscription.effectiveAt.getTime(), currentTermEnd.getTime());
+    assert.equal(store.pendingSubscription.expiresAt.getTime(), currentTermEnd.getTime() + (30 * 24 * 60 * 60 * 1000));
+    assert.equal(purchase.periodStart.getTime(), currentTermEnd.getTime());
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeSubscriptionPaymentService')];
+  }
+});
+
+test('renewing an effective prepaid downgrade extends that prepaid tier instead of the expired configured tier', async () => {
+  const originalLoad = Module._load;
+  const paidAtSeconds = 1794268800;
+  const paidAt = new Date(paidAtSeconds * 1000);
+  const prepaidEnd = new Date(paidAt.getTime() + (10 * 24 * 60 * 60 * 1000));
+  const purchase = {
+    _id: 'subscription-prepaid-renewal', store: 'store-4', requestedBy: 'owner-4', targetTier: 'starter',
+    billingInterval: 'monthly', amountCentavos: 29900,
+    planSnapshot: { name: 'Pawzzle Starter', termDays: 30 }, status: 'pending_payment',
+    paymentDetails: {}, activeKey: 'store:store-4', async save() {}
+  };
+  const store = {
+    subscriptionTier: 'professional', subscriptionExpires: new Date(paidAt.getTime() - 1000),
+    pendingSubscription: {
+      tier: 'starter', effectiveAt: new Date(paidAt.getTime() - 5000), expiresAt: prepaidEnd,
+      billingInterval: 'monthly', paid: true
+    },
+    async save() {}
+  };
+  const query = value => ({ session: async () => value });
+  Module._load = function load(request, parent, isMain) {
+    if (request === 'mongoose') return { connection: { transaction: async work => work('transaction-session') } };
+    if (request === '../models/Store') return { findById: () => query(store) };
+    if (request === '../models/StoreSubscriptionPayment') return {
+      findById: () => query(purchase), findOne: () => query(null)
+    };
+    if (request === '../models/ActivityLog') return { create: async () => {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeSubscriptionPaymentService')];
+    const { finalizeSubscriptionPayment } = require('../services/storeSubscriptionPaymentService');
+    await finalizeSubscriptionPayment(purchase, {
+      id: 'pay_prepaid_renewal', attributes: { amount: 29900, paid_at: paidAtSeconds }
+    });
+    assert.equal(store.subscriptionTier, 'starter');
+    assert.equal(store.subscriptionExpires.getTime(), prepaidEnd.getTime() + (30 * 24 * 60 * 60 * 1000));
+    assert.equal(store.pendingSubscription, undefined);
+    assert.equal(purchase.periodStart.getTime(), prepaidEnd.getTime());
   } finally {
     Module._load = originalLoad;
     delete require.cache[require.resolve('../services/storeSubscriptionPaymentService')];

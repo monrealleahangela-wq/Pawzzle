@@ -414,6 +414,52 @@ const storeSchema = new mongoose.Schema({
     default: 'free'
   },
   subscriptionExpires: Date,
+  subscriptionBillingInterval: {
+    type: String,
+    enum: ['monthly', 'annual', 'trial'],
+    default: 'monthly'
+  },
+  subscriptionTrialUsedAt: Date,
+  pendingSubscription: {
+    tier: { type: String, enum: ['free', 'starter', 'growth'] },
+    effectiveAt: Date,
+    expiresAt: Date,
+    billingInterval: { type: String, enum: ['monthly', 'annual'] },
+    paid: { type: Boolean, default: false },
+    payment: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreSubscriptionPayment' },
+    requestedAt: Date,
+    requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
+  operatingLocations: [{
+    name: { type: String, required: true, trim: true, maxlength: 120 },
+    code: { type: String, required: true, trim: true, uppercase: true, maxlength: 20 },
+    phone: { type: String, trim: true, maxlength: 40 },
+    address: {
+      unitBuilding: String,
+      street: { type: String, required: true },
+      barangay: { type: String, required: true },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      zipCode: String,
+      country: { type: String, default: 'Philippines' },
+      coordinates: { lat: Number, lng: Number }
+    },
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  storefrontCustomization: {
+    announcement: { type: String, trim: true, maxlength: 180 },
+    welcomeMessage: { type: String, trim: true, maxlength: 500 },
+    accentStyle: { type: String, enum: ['classic', 'warm', 'minimal'], default: 'classic' },
+    showFeaturedFirst: { type: Boolean, default: true }
+  },
+  reportSchedule: {
+    enabled: { type: Boolean, default: false },
+    frequency: { type: String, enum: ['weekly', 'monthly'], default: 'monthly' },
+    recipientEmail: { type: String, trim: true, lowercase: true },
+    nextRunAt: Date,
+    lastRunAt: Date
+  },
   stats: {
     totalPets: { type: Number, default: 0 },
     totalProducts: { type: Number, default: 0 },

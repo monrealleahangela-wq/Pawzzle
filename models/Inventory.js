@@ -16,6 +16,12 @@ const inventorySchema = new mongoose.Schema({
     ref: 'ProductVariant',
     default: undefined
   },
+  // Optional embedded Store.operatingLocations identity. The primary location
+  // intentionally remains undefined so legacy inventory balances are unchanged.
+  operatingLocation: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: undefined
+  },
   quantity: {
     type: Number,
     required: true,
@@ -105,6 +111,7 @@ inventorySchema.index(
   }
 );
 inventorySchema.index({ store: 1, quantity: 1 });
+inventorySchema.index({ store: 1, operatingLocation: 1 });
 inventorySchema.index({ store: 1, 'quantity': 1, 'reorderLevel': 1 });
 
 // Virtual for stock status

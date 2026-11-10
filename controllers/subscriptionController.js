@@ -1,7 +1,8 @@
 const Store = require('../models/Store');
 const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
+const ActivityLog = require('../models/ActivityLog');
 const PayMongo = require('../services/paymongoService');
-const { SUBSCRIPTION_PLANS, normalizeSubscriptionTier } = require('../config/subscriptionPlans');
+const { SUBSCRIPTION_PLANS, normalizeSubscriptionTier, getPlanPrice } = require('../config/subscriptionPlans');
 const {
   buildPlanSnapshot,
   finalizeSubscriptionPayment
@@ -18,6 +19,7 @@ const getOwnedStore = userId => Store.findOne({ owner: userId, isDeleted: { $ne:
 const serializePayment = payment => ({
   id: payment._id,
   targetTier: payment.targetTier,
+  billingInterval: payment.billingInterval,
   plan: payment.planSnapshot,
   amount: payment.amount,
   currency: payment.currency,
@@ -34,8 +36,12 @@ const createSubscriptionCheckout = async (req, res) => {
   let purchase;
   try {
     const requestedTier = String(req.body?.tier || '').trim().toLowerCase();
+    const billingInterval = String(req.body?.billingInterval || 'monthly').trim().toLowerCase();
     if (!['starter', 'growth', 'professional'].includes(requestedTier)) {
       return res.status(400).json({ message: 'Select Starter, Growth, or Professional.' });
+    }
+    if (!['monthly', 'annual'].includes(billingInterval)) {
+      return res.status(400).json({ message: 'Choose monthly or annual billing.' });
     }
     const store = await getOwnedStore(req.user._id);
     if (!store) return res.status(404).json({ message: 'Store not found.' });
@@ -44,11 +50,12 @@ const createSubscriptionCheckout = async (req, res) => {
     }
 
     const plan = SUBSCRIPTION_PLANS[requestedTier];
+    const authoritativePrice = getPlanPrice(requestedTier, billingInterval);
     const activeKey = `store:${store._id}`;
     await StoreSubscriptionPayment.init();
     const existing = await StoreSubscriptionPayment.findOne({ activeKey });
     if (existing) {
-      if (existing.targetTier === requestedTier && existing.paymentDetails?.checkoutUrl) {
+      if (existing.targetTier === requestedTier && existing.billingInterval === billingInterval && existing.paymentDetails?.checkoutUrl) {
         return res.json({ payment: serializePayment(existing), checkoutUrl: existing.paymentDetails.checkoutUrl, reused: true });
       }
       return res.status(409).json({
@@ -63,16 +70,17 @@ const createSubscriptionCheckout = async (req, res) => {
         requestedBy: req.user._id,
         previousTier: normalizeSubscriptionTier(store.subscriptionTier),
         targetTier: requestedTier,
-        planSnapshot: buildPlanSnapshot(requestedTier),
-        amount: plan.monthlyPrice,
-        amountCentavos: Math.round(plan.monthlyPrice * 100),
+        billingInterval,
+        planSnapshot: buildPlanSnapshot(requestedTier, billingInterval),
+        amount: authoritativePrice,
+        amountCentavos: Math.round(authoritativePrice * 100),
         status: 'pending_payment',
         activeKey
       });
     } catch (error) {
       if (error.code !== 11000) throw error;
       const raced = await StoreSubscriptionPayment.findOne({ activeKey });
-      if (raced?.targetTier === requestedTier && raced.paymentDetails?.checkoutUrl) {
+      if (raced?.targetTier === requestedTier && raced.billingInterval === billingInterval && raced.paymentDetails?.checkoutUrl) {
         return res.json({ payment: serializePayment(raced), checkoutUrl: raced.paymentDetails.checkoutUrl, reused: true });
       }
       return res.status(409).json({ message: 'Another plan checkout is already being prepared. Refresh this page to continue it.' });
@@ -82,11 +90,11 @@ const createSubscriptionCheckout = async (req, res) => {
       send_email_receipt: true,
       show_description: true,
       show_line_items: true,
-      description: `${plan.name} Store Plan - 30 days`,
+      description: `${plan.name} Store Plan - ${billingInterval === 'annual' ? '1 year' : '30 days'}`,
       line_items: [{
         amount: purchase.amountCentavos,
         currency: 'PHP',
-        name: `${plan.name} Store Plan (30 days)`,
+        name: `${plan.name} Store Plan (${billingInterval === 'annual' ? '1 year' : '30 days'})`,
         quantity: 1
       }],
       payment_method_types: ['card', 'gcash', 'paymaya', 'dob', 'dob_ubp'],
@@ -209,9 +217,101 @@ const cancelSubscriptionPayment = async (req, res) => {
   }
 };
 
+const startGrowthTrial = async (req, res) => {
+  try {
+    const store = await getOwnedStore(req.user._id);
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    if (!store.isActive || store.verificationStatus !== 'verified') {
+      return res.status(409).json({ message: 'Only an active, verified store can start the Growth trial.' });
+    }
+    const now = new Date();
+    if (store.subscriptionTrialUsedAt) return res.status(409).json({ message: 'This store already used its Growth trial.' });
+    if (store.subscriptionExpires && new Date(store.subscriptionExpires) > now && normalizeSubscriptionTier(store.subscriptionTier) !== 'free') {
+      return res.status(409).json({ message: 'The Growth trial is available only when no paid plan is active.' });
+    }
+    const priorPaidPlan = await StoreSubscriptionPayment.exists({ store: store._id, status: 'paid' });
+    if (priorPaidPlan) return res.status(409).json({ message: 'The Growth trial is for stores that have not previously activated a paid plan.' });
+    const trialEnd = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const updated = await Store.findOneAndUpdate({
+      _id: store._id,
+      $or: [{ subscriptionTrialUsedAt: { $exists: false } }, { subscriptionTrialUsedAt: null }]
+    }, {
+      $set: {
+        subscriptionTier: 'growth', subscriptionExpires: trialEnd,
+        subscriptionBillingInterval: 'trial', subscriptionTrialUsedAt: now
+      },
+      $unset: { pendingSubscription: 1 }
+    }, { new: true, runValidators: true });
+    if (!updated) return res.status(409).json({ message: 'The Growth trial was already claimed. Refresh to see the current plan.' });
+    await ActivityLog.create({ user: req.user._id, store: store._id, action: 'Growth Trial Started', details: `Growth trial activated through ${trialEnd.toISOString()}.` }).catch(() => {});
+    return res.json({ message: 'Your 14-day Growth trial is active.', endsAt: trialEnd });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ message: error.message || 'Unable to start the Growth trial.' });
+  }
+};
+
+const scheduleSubscriptionDowngrade = async (req, res) => {
+  try {
+    const targetTier = normalizeSubscriptionTier(req.body?.tier);
+    if (String(req.body?.tier || '').toLowerCase() !== 'free') {
+      return res.status(400).json({ message: 'Paid plan changes require PayMongo confirmation. Only a change to Free can be scheduled without payment.' });
+    }
+    const store = await getOwnedStore(req.user._id);
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    const currentTier = normalizeSubscriptionTier(store.subscriptionTier);
+    if (targetTier === currentTier || currentTier === 'free') {
+      return res.status(400).json({ message: 'This store is already on the Free plan.' });
+    }
+    if (store.pendingSubscription?.paid) {
+      return res.status(409).json({ message: 'A paid plan is already queued for the next term. Contact support if the payment needs review.' });
+    }
+    const now = new Date();
+    const effectiveAt = store.subscriptionExpires && new Date(store.subscriptionExpires) > now
+      ? new Date(store.subscriptionExpires) : now;
+    if (effectiveAt <= now) {
+      store.subscriptionTier = targetTier;
+      store.subscriptionExpires = null;
+      store.subscriptionBillingInterval = 'monthly';
+      store.pendingSubscription = undefined;
+    } else {
+      store.pendingSubscription = { tier: targetTier, effectiveAt, paid: false, requestedAt: now, requestedBy: req.user._id };
+    }
+    await store.save();
+    await ActivityLog.create({ user: req.user._id, store: store._id, action: 'Store Subscription Downgrade Scheduled', details: `${SUBSCRIPTION_PLANS[targetTier].name} takes effect ${effectiveAt.toISOString()}; no listings or records will be deleted.` }).catch(() => {});
+    return res.json({
+      message: effectiveAt > now ? 'Downgrade scheduled for the end of the current term.' : 'Plan changed.',
+      pendingSubscription: store.pendingSubscription || null,
+      effectiveAt
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ message: error.message || 'Unable to schedule the downgrade.' });
+  }
+};
+
+const cancelSubscriptionDowngrade = async (req, res) => {
+  try {
+    const existing = await getOwnedStore(req.user._id);
+    if (!existing) return res.status(404).json({ message: 'Store not found.' });
+    if (existing.pendingSubscription?.paid) {
+      return res.status(409).json({ message: 'A prepaid next-term plan cannot be cancelled from this page. Contact support for payment review.' });
+    }
+    const store = await Store.findOneAndUpdate({
+      _id: existing._id,
+      'pendingSubscription.paid': { $ne: true }
+    }, { $unset: { pendingSubscription: 1 } }, { new: true });
+    if (!store) return res.status(404).json({ message: 'Store not found.' });
+    return res.json({ message: 'Scheduled downgrade cancelled.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Unable to cancel the scheduled downgrade.' });
+  }
+};
+
 module.exports = {
   createSubscriptionCheckout,
   getSubscriptionPayments,
   verifySubscriptionPayment,
-  cancelSubscriptionPayment
+  cancelSubscriptionPayment,
+  startGrowthTrial,
+  scheduleSubscriptionDowngrade,
+  cancelSubscriptionDowngrade
 };

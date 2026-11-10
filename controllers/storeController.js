@@ -68,12 +68,21 @@ const getAllStores = async (req, res) => {
     }
 
     const skip = (page - 1) * limit;
-    const stores = await Store.find(filter)
+    const prioritized = await Store.aggregate([
+      { $match: filter },
+      { $addFields: { _subscriptionPriority: { $cond: [{ $and: [
+        { $eq: ['$subscriptionTier', 'professional'] },
+        { $or: [{ $eq: ['$subscriptionExpires', null] }, { $gt: ['$subscriptionExpires', new Date()] }] }
+      ] }, 1, 0] } } },
+      { $sort: { featured: -1, _subscriptionPriority: -1, 'ratings.average': -1, createdAt: -1 } },
+      { $skip: skip }, { $limit: parseInt(limit) }, { $project: { _id: 1 } }
+    ]);
+    const orderedIds = prioritized.map(row => row._id);
+    const found = await Store.find({ _id: { $in: orderedIds } })
       .select(CUSTOMER_VISIBLE_STORE_FIELDS)
-      .populate('owner', 'username firstName lastName')
-      .sort({ featured: -1, 'ratings.average': -1, createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+      .populate('owner', 'username firstName lastName');
+    const position = new Map(orderedIds.map((id, index) => [String(id), index]));
+    const stores = found.sort((a, b) => position.get(String(a._id)) - position.get(String(b._id)));
 
     const total = await Store.countDocuments(filter);
 

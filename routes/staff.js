@@ -1,5 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { requireSubscriptionEntitlement } = require('../middleware/subscriptionEntitlement');
+const { ENTITLEMENTS } = require('../config/subscriptionPlans');
+const rolePlan = requireSubscriptionEntitlement(ENTITLEMENTS.ROLE_MANAGEMENT);
+const schedulingPlan = requireSubscriptionEntitlement(ENTITLEMENTS.STAFF_SCHEDULING);
 const { authenticate, adminOrStaff, superAdminOnly, requirePermission } = require('../middleware/auth');
 const {
     getMyStaff,
@@ -43,11 +47,11 @@ router.patch('/:id/credentials/:documentId/verification', authenticate, superAdm
 // Store-scoped staff directory reads support Manager's authoritative
 // staff.view permission. Every mutation remains staff.manage only.
 router.get('/configuration', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getStaffConfiguration);
-router.get('/roles', authenticate, adminOrStaff, requirePermission('staff.manage'), getRolePermissions);
-router.put('/roles/:role', authenticate, adminOrStaff, requirePermission('staff.manage'), updateRolePermissions);
+router.get('/roles', authenticate, adminOrStaff, requirePermission('staff.manage'), rolePlan, getRolePermissions);
+router.put('/roles/:role', authenticate, adminOrStaff, requirePermission('staff.manage'), rolePlan, updateRolePermissions);
 router.get('/:id/profile', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getStaffProfile);
 router.post('/:id/credentials', authenticate, adminOrStaff, requirePermission('staff.manage'), authorizeCredentialManagement, uploadDoc.single('document'), handleUploadError, uploadCredentialDocument);
-router.put('/:id/availability', authenticate, adminOrStaff, requirePermission('staff.manage'), updateStaffAvailability);
+router.put('/:id/availability', authenticate, adminOrStaff, requirePermission('staff.manage'), schedulingPlan, updateStaffAvailability);
 router.get('/', authenticate, adminOrStaff, requirePermission('staff.view', 'staff.manage'), getMyStaff);
 router.post('/riders/:id/payouts', authenticate, adminOrStaff, requirePermission('staff.manage'), createRiderPayout);
 router.patch('/rider-payouts/:payoutId', authenticate, adminOrStaff, requirePermission('staff.manage'), updateRiderPayout);

@@ -267,7 +267,7 @@ const updateInventoryQuantity = async (req, res) => {
 // Add product to inventory
 const addToInventory = async (req, res) => {
   try {
-    const { productId, quantity, reorderLevel, maxStock, location, supplier, costPrice, notes } = req.body;
+    const { productId, quantity, reorderLevel, maxStock, location, operatingLocation, supplier, costPrice, notes } = req.body;
     if (Number(quantity) > 0) {
       return res.status(409).json({
         code: 'AUDITED_ADJUSTMENT_REQUIRED',
@@ -288,6 +288,10 @@ const addToInventory = async (req, res) => {
 
     // Resolve the admin's store (auto-create if needed)
     const storeId = await resolveAdminStore(req.user);
+    if (operatingLocation) {
+      const validLocation = await Store.exists({ _id: storeId, 'operatingLocations._id': operatingLocation, 'operatingLocations.isActive': { $ne: false } });
+      if (!validLocation) return res.status(400).json({ message: 'Choose an active location owned by this store.' });
+    }
 
     // Check if inventory item already exists
     const existingInventory = await Inventory.findOne({
@@ -314,6 +318,7 @@ const addToInventory = async (req, res) => {
       reorderLevel: reorderLevel || 10,
       maxStock: maxStock || 1000,
       location,
+      operatingLocation: operatingLocation || undefined,
       supplier,
       costPrice: costPrice || product.price,
       notes
@@ -565,7 +570,7 @@ const addToAdminInventory = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { productId, quantity, reorderLevel, maxStock, location, supplier, costPrice, notes } = req.body;
+    const { productId, quantity, reorderLevel, maxStock, location, operatingLocation, supplier, costPrice, notes } = req.body;
     if (Number(quantity) > 0) {
       return res.status(409).json({
         code: 'AUDITED_ADJUSTMENT_REQUIRED',
@@ -601,6 +606,10 @@ const addToAdminInventory = async (req, res) => {
     }
 
     const storeId = await resolveAdminStore(req.user);
+    if (operatingLocation) {
+      const validLocation = await Store.exists({ _id: storeId, 'operatingLocations._id': operatingLocation, 'operatingLocations.isActive': { $ne: false } });
+      if (!validLocation) return res.status(400).json({ message: 'Choose an active location owned by this store.' });
+    }
 
     const existingInventory = await Inventory.findOne({ store: storeId, product: productId, productVariant: { $exists: false } });
     if (existingInventory) {
@@ -660,6 +669,7 @@ const addToAdminInventory = async (req, res) => {
       reorderLevel: reorderLevel || 10,
       maxStock: maxStock || 1000,
       location,
+      operatingLocation: operatingLocation || undefined,
       supplier,
       costPrice: costPrice || product.price,
       notes

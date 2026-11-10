@@ -6,7 +6,7 @@ import { purchaseOrderService } from '../../services/apiService';
 import PawzzleDialogHost from '../ui/PawzzleDialogHost';
 
 jest.mock('../../services/apiService', () => ({ purchaseOrderService: {
-  compareOffers: jest.fn(), confirmOfferMatch: jest.fn(), addCartItem: jest.fn(),
+  compareOffers: jest.fn(), compareSupplierOffers: jest.fn(), confirmOfferMatch: jest.fn(), addCartItem: jest.fn(),
   getProcurementStoreProducts: jest.fn()
 } }));
 
@@ -19,6 +19,7 @@ const props = { storeProducts: [{ _id: 'product-1', name: 'Store Food', sku: 'ST
 
 beforeEach(() => {
   jest.clearAllMocks();
+  purchaseOrderService.compareSupplierOffers.mockImplementation((...args) => purchaseOrderService.compareOffers(...args));
   purchaseOrderService.confirmOfferMatch.mockResolvedValue({ data: { matchType: 'equivalent' } });
   purchaseOrderService.addCartItem.mockResolvedValue({ data: { items: [{ supplierProductId: 'offer-2' }] } });
   purchaseOrderService.getProcurementStoreProducts.mockResolvedValue({ data: { products: props.storeProducts, pagination: { page: 1, totalPages: 1 } } });

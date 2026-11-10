@@ -7,18 +7,51 @@ const Module = require('node:module');
 const root = path.join(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
-test('seller plan catalog uses the approved active-listing allowances', () => {
-  const { SUBSCRIPTION_PLANS, normalizeSubscriptionTier } = require('../config/subscriptionPlans');
+test('seller plan catalog uses the approved allowances, prices, annual discount, and trial', () => {
+  const { SUBSCRIPTION_PLANS, ENTITLEMENTS, normalizeSubscriptionTier } = require('../config/subscriptionPlans');
   assert.equal(SUBSCRIPTION_PLANS.free.listingLimit, 10);
   assert.equal(SUBSCRIPTION_PLANS.starter.listingLimit, 30);
   assert.equal(SUBSCRIPTION_PLANS.growth.listingLimit, 70);
   assert.equal(SUBSCRIPTION_PLANS.professional.listingLimit, null);
   assert.equal(SUBSCRIPTION_PLANS.starter.termDays, 30);
   assert.equal(SUBSCRIPTION_PLANS.growth.locationLimit, 1);
-  assert.equal(SUBSCRIPTION_PLANS.professional.locationLimit, 1);
+  assert.equal(SUBSCRIPTION_PLANS.professional.locationLimit, 3);
+  assert.equal(SUBSCRIPTION_PLANS.starter.monthlyPrice, 299);
+  assert.equal(SUBSCRIPTION_PLANS.growth.monthlyPrice, 699);
+  assert.equal(SUBSCRIPTION_PLANS.professional.monthlyPrice, 1499);
+  assert.equal(SUBSCRIPTION_PLANS.starter.annualPrice, 3049);
+  assert.equal(SUBSCRIPTION_PLANS.growth.annualPrice, 7129);
+  assert.equal(SUBSCRIPTION_PLANS.professional.annualPrice, 15289);
+  assert.equal(SUBSCRIPTION_PLANS.growth.trialDays, 14);
+  assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.PRODUCT_VARIANTS));
+  assert.ok(SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY));
   assert.equal(normalizeSubscriptionTier('basic'), 'free');
   assert.equal(normalizeSubscriptionTier('premium'), 'growth');
   assert.equal(normalizeSubscriptionTier('enterprise'), 'professional');
+});
+
+test('effective plan honors prepaid transitions and expires them safely', () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (/^\.\.\/models\/(Product|Pet|Service|Store|User)$/.test(request)) return {};
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+    const { getEffectiveTier } = require('../services/storeSubscriptionService');
+    const now = Date.now();
+    assert.equal(getEffectiveTier({
+      subscriptionTier: 'professional', subscriptionExpires: new Date(now - 1000),
+      pendingSubscription: { tier: 'starter', effectiveAt: new Date(now - 500), expiresAt: new Date(now + 10000) }
+    }), 'starter');
+    assert.equal(getEffectiveTier({
+      subscriptionTier: 'professional', subscriptionExpires: new Date(now - 1000),
+      pendingSubscription: { tier: 'starter', effectiveAt: new Date(now - 5000), expiresAt: new Date(now - 500) }
+    }), 'free');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+  }
 });
 
 test('subscription summary counts all customer-facing listing types and active staff', async () => {
@@ -80,8 +113,10 @@ test('seller settings expose usage and the complete plan comparison', () => {
   const component = read('client/src/components/settings/SubscriptionPlanSettings.js');
   const settings = read('client/src/pages/admin/AdminSettings.js');
   assert.match(component, /Active listings/);
-  assert.match(component, /Renew with PayMongo/);
-  assert.match(component, /does not renew automatically/);
+  assert.match(component, /PayMongo confirmation/);
+  assert.match(component, /Monthly/);
+  assert.match(component, /Annual/);
+  assert.match(component, /14-day Growth trial/);
   assert.match(component, /no marketplace platform fee/i);
   assert.match(settings, /\['plan', 'Subscription'\]/);
   assert.match(settings, /<SubscriptionPlanSettings/);
@@ -92,12 +127,31 @@ test('paid plan checkout is server-authoritative and webhook reconciled', () => 
   const reconciliation = read('services/paymentReconciliationService.js');
   const routes = read('routes/stores.js');
   assert.match(controller, /SUBSCRIPTION_PLANS\[requestedTier\]/);
-  assert.match(controller, /amountCentavos: Math\.round\(plan\.monthlyPrice \* 100\)/);
+  assert.match(controller, /getPlanPrice\(requestedTier, billingInterval\)/);
+  assert.match(controller, /amountCentavos: Math\.round\(authoritativePrice \* 100\)/);
   assert.match(controller, /record_type: 'subscription'/);
   assert.match(controller, /StoreSubscriptionPayment\.init\(\)/);
   assert.match(reconciliation, /finalizeSubscriptionPayment/);
   assert.match(routes, /my-store\/subscription\/checkout/);
   assert.match(routes, /storeOwnerOnly, createSubscriptionCheckout/);
+});
+
+test('proposal entitlements are enforced on their real server routes', () => {
+  const suppliers = read('routes/suppliers.js');
+  const purchasing = read('routes/purchaseOrders.js');
+  const inventory = read('routes/inventory.js');
+  const staff = read('routes/staff.js');
+  const hr = read('routes/hr.js');
+  const stores = read('routes/stores.js');
+  assert.match(suppliers, /supplierCatalogPlan, getSupplierCatalog/);
+  assert.match(purchasing, /supplierComparisonPlan, getComparableSupplierOffers/);
+  assert.match(purchasing, /receivingPlan, confirmDelivery/);
+  assert.match(inventory, /lossApprovalPlan/);
+  assert.match(staff, /schedulingPlan, updateStaffAvailability/);
+  assert.match(hr, /ENTITLEMENTS\.PAYROLL/);
+  assert.match(hr, /ENTITLEMENTS\.COMPENSATION/);
+  assert.match(stores, /performanceSummaryPlan, getStoreDashboard/);
+  assert.match(stores, /consolidated-inventory\/:inventoryId\/location/);
 });
 
 test('new marketplace transactions charge no platform fee', () => {

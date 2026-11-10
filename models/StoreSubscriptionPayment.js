@@ -5,9 +5,12 @@ const storeSubscriptionPaymentSchema = new mongoose.Schema({
   requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   previousTier: { type: String, required: true },
   targetTier: { type: String, enum: ['starter', 'growth', 'professional'], required: true },
+  billingInterval: { type: String, enum: ['monthly', 'annual'], default: 'monthly', required: true },
   planSnapshot: {
     name: { type: String, required: true },
     monthlyPrice: { type: Number, required: true, min: 0 },
+    annualPrice: { type: Number, min: 0 },
+    billingInterval: { type: String, enum: ['monthly', 'annual'], default: 'monthly' },
     listingLimit: { type: Number, default: null },
     staffLimit: { type: Number, required: true, min: 0 },
     termDays: { type: Number, required: true, min: 1 },

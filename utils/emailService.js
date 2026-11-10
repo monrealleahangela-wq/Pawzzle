@@ -219,5 +219,7 @@ const sendStaffInvitation = async (email, password, firstName) => {
 module.exports = {
     sendStaffInvitation,
     sendSupplierInvitation,
-    sendSupplierApplicationUpdate
+    sendSupplierApplicationUpdate,
+    deliverHtmlEmail,
+    wrapInTemplate
 };

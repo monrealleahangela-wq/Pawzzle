@@ -404,7 +404,7 @@ const StoreDetail = () => {
                   )}
                 </div>
                 <p className="mt-2 max-w-2xl text-xs font-medium leading-relaxed text-slate-600 line-clamp-2 break-words sm:text-sm">
-                  {store.description || 'Browse this store’s available products, pet services, and listings.'}
+                  {store.storefrontCustomization?.welcomeMessage || store.description || 'Browse this store’s available products, pet services, and listings.'}
                 </p>
               </div>
 
@@ -434,6 +434,11 @@ const StoreDetail = () => {
                 </button>
               </div>
             </div>
+            {store.storefrontCustomization?.announcement && (
+              <div className="mt-4 rounded-xl border border-primary-100 bg-primary-50 px-4 py-3 text-xs font-bold text-primary-900 sm:text-sm">
+                {store.storefrontCustomization.announcement}
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -34,9 +34,16 @@ const {
   createSubscriptionCheckout,
   getSubscriptionPayments,
   verifySubscriptionPayment,
-  cancelSubscriptionPayment
+  cancelSubscriptionPayment,
+  startGrowthTrial,
+  scheduleSubscriptionDowngrade,
+  cancelSubscriptionDowngrade
 } = require('../controllers/subscriptionController');
 const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly, requirePermission } = require('../middleware/auth');
+const storePlanFeatures = require('../controllers/storePlanFeaturesController');
+const { requireSubscriptionEntitlement } = require('../middleware/subscriptionEntitlement');
+const { ENTITLEMENTS } = require('../config/subscriptionPlans');
+const performanceSummaryPlan = requireSubscriptionEntitlement(ENTITLEMENTS.STORE_PERFORMANCE_SUMMARY);
 
 // Validation rules
 const createStoreValidation = [
@@ -73,6 +80,20 @@ router.get('/subscription-plans', authenticate, getSubscriptionPlans);
 router.get('/my-store/subscription', authenticate, adminOrStaff, getMyStoreSubscription);
 router.get('/my-store/subscription/payments', authenticate, storeOwnerOnly, getSubscriptionPayments);
 router.post('/my-store/subscription/checkout', authenticate, storeOwnerOnly, createSubscriptionCheckout);
+router.post('/my-store/subscription/trial', authenticate, storeOwnerOnly, startGrowthTrial);
+router.post('/my-store/subscription/downgrade', authenticate, storeOwnerOnly, scheduleSubscriptionDowngrade);
+router.delete('/my-store/subscription/downgrade', authenticate, storeOwnerOnly, cancelSubscriptionDowngrade);
+router.get('/my-store/locations', authenticate, storeOwnerOnly, storePlanFeatures.listLocations);
+router.post('/my-store/locations', authenticate, storeOwnerOnly, storePlanFeatures.createLocation);
+router.patch('/my-store/locations/:locationId', authenticate, storeOwnerOnly, storePlanFeatures.updateLocation);
+router.get('/my-store/storefront', authenticate, storeOwnerOnly, storePlanFeatures.getStorefrontCustomization);
+router.put('/my-store/storefront', authenticate, storeOwnerOnly, storePlanFeatures.updateStorefrontCustomization);
+router.put('/my-store/report-schedule', authenticate, storeOwnerOnly, storePlanFeatures.updateReportSchedule);
+router.get('/my-store/consolidated-inventory', authenticate, storeOwnerOnly, storePlanFeatures.getConsolidatedInventory);
+router.patch('/my-store/consolidated-inventory/:inventoryId/location', authenticate, storeOwnerOnly, storePlanFeatures.assignInventoryLocation);
+router.get('/my-store/reports/operations', authenticate, storeOwnerOnly, storePlanFeatures.getOperationalReport);
+router.get('/my-store/reports/operations.csv', authenticate, storeOwnerOnly, storePlanFeatures.exportOperationalReport);
+router.get('/my-store/retention-insights', authenticate, storeOwnerOnly, storePlanFeatures.getRetentionInsights);
 router.get('/my-store/subscription/payments/:id/verify', authenticate, storeOwnerOnly, verifySubscriptionPayment);
 router.post('/my-store/subscription/payments/:id/cancel', authenticate, storeOwnerOnly, cancelSubscriptionPayment);
 router.put('/my-store', authenticate, adminOnly, updateStoreValidation, updateStore);
@@ -85,7 +106,7 @@ router.put('/my-store/refund-policy', authenticate, storeOwnerOnly, updateRefund
 router.get('/my-store/delivery-pricing', authenticate, storeOwnerOnly, getDeliveryPricing);
 router.put('/my-store/delivery-pricing', authenticate, storeOwnerOnly, updateDeliveryPricing);
 router.post('/my-store/delivery-pricing/preview', authenticate, storeOwnerOnly, previewDeliveryPricing);
-router.get('/dashboard/stats', authenticate, adminOrStaff, requirePermission('dashboard.view'), getStoreDashboard);
+router.get('/dashboard/stats', authenticate, adminOrStaff, requirePermission('dashboard.view'), performanceSummaryPlan, getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
 // Public routes with parameter (must come AFTER literal paths)

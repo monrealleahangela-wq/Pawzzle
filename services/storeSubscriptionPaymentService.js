@@ -11,6 +11,7 @@ const finalizeSubscriptionPayment = async (purchase, payment) => {
   let activated;
   let amountMismatch = false;
   let newlyActivated = false;
+  let activationWasScheduled = false;
 
   await mongoose.connection.transaction(async session => {
     const current = await StoreSubscriptionPayment.findById(purchase._id).session(session);
@@ -42,14 +43,49 @@ const finalizeSubscriptionPayment = async (purchase, payment) => {
     const store = await Store.findById(current.store).session(session);
     if (!store) throw Object.assign(new Error('Store not found.'), { statusCode: 404 });
     const paidAt = payment.attributes?.paid_at ? new Date(payment.attributes.paid_at * 1000) : new Date();
-    const sameActiveTier = normalizeSubscriptionTier(store.subscriptionTier) === current.targetTier
-      && store.subscriptionExpires
-      && new Date(store.subscriptionExpires) > paidAt;
-    const periodStart = sameActiveTier ? new Date(store.subscriptionExpires) : paidAt;
+    const configuredTier = normalizeSubscriptionTier(store.subscriptionTier);
+    const pendingEffectiveAt = store.pendingSubscription?.effectiveAt
+      ? new Date(store.pendingSubscription.effectiveAt) : null;
+    const pendingExpiresAt = store.pendingSubscription?.expiresAt
+      ? new Date(store.pendingSubscription.expiresAt) : null;
+    const hasEffectivePendingTerm = Boolean(
+      store.pendingSubscription?.tier
+      && pendingEffectiveAt
+      && pendingEffectiveAt <= paidAt
+      && (!pendingExpiresAt || pendingExpiresAt > paidAt)
+    );
+    const activeTier = hasEffectivePendingTerm
+      ? normalizeSubscriptionTier(store.pendingSubscription.tier)
+      : configuredTier;
+    const currentPlan = getSubscriptionPlan(activeTier);
+    const targetPlan = getSubscriptionPlan(current.targetTier);
+    const currentTermEndsAt = hasEffectivePendingTerm
+      ? pendingExpiresAt
+      : (store.subscriptionExpires ? new Date(store.subscriptionExpires) : null);
+    const hasActivePaidTerm = Boolean(activeTier !== 'free' && currentTermEndsAt && currentTermEndsAt > paidAt);
+    const isPaidDowngrade = hasActivePaidTerm && targetPlan.rank < currentPlan.rank;
+    const sameActiveTier = activeTier === current.targetTier && hasActivePaidTerm;
+    const periodStart = (sameActiveTier || isPaidDowngrade) ? currentTermEndsAt : paidAt;
     const periodEnd = new Date(periodStart.getTime() + (Number(current.planSnapshot.termDays || 30) * 24 * 60 * 60 * 1000));
 
-    store.subscriptionTier = current.targetTier;
-    store.subscriptionExpires = periodEnd;
+    if (isPaidDowngrade) {
+      store.pendingSubscription = {
+        tier: current.targetTier,
+        effectiveAt: periodStart,
+        expiresAt: periodEnd,
+        billingInterval: current.billingInterval || 'monthly',
+        paid: true,
+        payment: current._id,
+        requestedAt: paidAt,
+        requestedBy: current.requestedBy
+      };
+      activationWasScheduled = true;
+    } else {
+      store.subscriptionTier = current.targetTier;
+      store.subscriptionExpires = periodEnd;
+      store.subscriptionBillingInterval = current.billingInterval || 'monthly';
+      store.pendingSubscription = undefined;
+    }
     await store.save({ session });
 
     current.status = 'paid';
@@ -74,7 +110,9 @@ const finalizeSubscriptionPayment = async (purchase, payment) => {
       user: activated.requestedBy,
       store: activated.store,
       action: 'Store Subscription Paid',
-      details: `${activated.planSnapshot.name} was activated through PayMongo until ${new Date(activated.periodEnd).toISOString()}.`
+      details: activationWasScheduled
+        ? `${activated.planSnapshot.name} was prepaid through PayMongo and will run from ${new Date(activated.periodStart).toISOString()} until ${new Date(activated.periodEnd).toISOString()}.`
+        : `${activated.planSnapshot.name} was activated through PayMongo until ${new Date(activated.periodEnd).toISOString()}.`
     }).catch(() => {});
   }
   return activated;
@@ -92,14 +130,16 @@ const markSubscriptionSessionFailed = async purchase => StoreSubscriptionPayment
   $unset: { activeKey: 1 }
 }, { new: true });
 
-const buildPlanSnapshot = tier => {
+const buildPlanSnapshot = (tier, billingInterval = 'monthly') => {
   const plan = getSubscriptionPlan(tier);
   return {
     name: plan.name,
     monthlyPrice: plan.monthlyPrice,
+    annualPrice: plan.annualPrice,
+    billingInterval,
     listingLimit: plan.listingLimit,
     staffLimit: plan.staffLimit,
-    termDays: plan.termDays || 30,
+    termDays: billingInterval === 'annual' ? 365 : (plan.termDays || 30),
     features: [...plan.features]
   };
 };
