@@ -89,6 +89,62 @@ test('supplier management loads independent resources without blanking verified 
   assert.doesNotMatch(page, /const \[ordRes, supRes, prodRes, cartRes\] = await Promise\.all/);
 });
 
+test('subscription gates resolve a store owner by ownership instead of a stale assigned-store reference', async () => {
+  const originalLoad = Module._load;
+  const queries = [];
+  Module._load = function load(request, parent, isMain) {
+    if (request === '../models/Store') {
+      return {
+        findOne: query => ({
+          select: async () => {
+            queries.push(query);
+            return { _id: 'owned-professional-store' };
+          }
+        })
+      };
+    }
+    if (request === '../services/storeSubscriptionService') return { assertStoreEntitlement: async () => {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../middleware/subscriptionEntitlement')];
+    const { resolveStoreId } = require('../middleware/subscriptionEntitlement');
+    const resolved = await resolveStoreId({
+      user: { _id: 'owner-user', role: 'admin', store: 'stale-free-store' }
+    });
+    assert.equal(resolved, 'owned-professional-store');
+    assert.deepEqual(queries, [{ owner: 'owner-user', isDeleted: { $ne: true } }]);
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../middleware/subscriptionEntitlement')];
+  }
+});
+
+test('subscription gates keep operational staff scoped to their assigned store', async () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (request === '../models/Store') return { findOne: () => { throw new Error('owner lookup must not run'); } };
+    if (request === '../services/storeSubscriptionService') return { assertStoreEntitlement: async () => {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../middleware/subscriptionEntitlement')];
+    const { resolveStoreId } = require('../middleware/subscriptionEntitlement');
+    const resolved = await resolveStoreId({
+      user: { _id: 'staff-user', role: 'staff', staffType: 'manager', store: 'assigned-store' }
+    });
+    assert.equal(resolved, 'assigned-store');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../middleware/subscriptionEntitlement')];
+  }
+});
+
+test('dashboard consumes the same subscription-resolved store used by the entitlement gate', () => {
+  const controller = read('controllers/storeController.js');
+  assert.match(controller, /if \(req\.subscriptionStoreId\) \{\s*store = await Store\.findById\(req\.subscriptionStoreId\)/);
+});
+
 test('explicit Free plan choices opt out of the legacy Professional compatibility grant', () => {
   assert.match(read('controllers/subscriptionController.js'), /subscriptionLegacyGrantOptOutAt = now/);
   assert.match(read('controllers/storeController.js'), /subscriptionLegacyGrantOptOutAt: new Date\(\)/);

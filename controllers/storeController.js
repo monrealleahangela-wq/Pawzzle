@@ -379,7 +379,9 @@ const updateStore = async (req, res) => {
 const getStoreDashboard = async (req, res) => {
   try {
     let store;
-    if (isOperationalStaff(req.user) && req.user.store) {
+    if (req.subscriptionStoreId) {
+      store = await Store.findById(req.subscriptionStoreId);
+    } else if (isOperationalStaff(req.user) && req.user.store) {
       store = await Store.findById(req.user.store);
     } else {
       store = await Store.findOne({ owner: req.user.id });
