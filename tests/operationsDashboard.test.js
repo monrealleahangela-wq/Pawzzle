@@ -45,6 +45,13 @@ test('store dashboard keeps financial aggregates limited to store/platform admin
   assert.match(source, /buildStoreOperationsSnapshot\(store, \{ includeFinancials \}\)/);
 });
 
+test('core store dashboard is never blocked by a paid-plan entitlement', () => {
+  const source = read('routes/stores.js');
+  assert.match(source, /dashboard\/stats', authenticate, adminOrStaff, requirePermission\('dashboard\.view'\), getStoreDashboard/);
+  assert.doesNotMatch(source, /performanceSummaryPlan/);
+  assert.doesNotMatch(source, /dashboard\/stats[^\n]*requireSubscriptionEntitlement/);
+});
+
 test('dashboard clients use the existing aggregate endpoint with authenticated live and polling refresh', () => {
   const admin = read('client/src/pages/admin/Dashboard.js');
   const superAdmin = read('client/src/pages/superadmin/Dashboard.js');

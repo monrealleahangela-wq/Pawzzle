@@ -311,7 +311,8 @@ test('proposal entitlements are enforced on their real server routes', () => {
   assert.match(staff, /schedulingPlan, updateStaffAvailability/);
   assert.match(hr, /ENTITLEMENTS\.PAYROLL/);
   assert.match(hr, /ENTITLEMENTS\.COMPENSATION/);
-  assert.match(stores, /performanceSummaryPlan, getStoreDashboard/);
+  assert.match(stores, /requirePermission\('dashboard\.view'\), getStoreDashboard/);
+  assert.doesNotMatch(stores, /performanceSummaryPlan/);
   assert.match(stores, /consolidated-inventory\/:inventoryId\/location/);
 });
 
