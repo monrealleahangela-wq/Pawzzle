@@ -23,6 +23,8 @@ test('seller plan catalog uses the approved allowances, prices, annual discount,
   assert.equal(SUBSCRIPTION_PLANS.growth.annualPrice, 7129);
   assert.equal(SUBSCRIPTION_PLANS.professional.annualPrice, 15289);
   assert.equal(SUBSCRIPTION_PLANS.growth.trialDays, 14);
+  assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.SUPPLIER_CATALOG));
+  assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.MANUAL_RESTOCKING));
   assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.PRODUCT_VARIANTS));
   assert.ok(SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY));
   assert.equal(normalizeSubscriptionTier('basic'), 'free');
@@ -345,14 +347,18 @@ test('paid plan checkout is server-authoritative and webhook reconciled', () => 
   assert.match(routes, /storeOwnerOnly, createSubscriptionCheckout/);
 });
 
-test('proposal entitlements are enforced on their real server routes', () => {
+test('core supplier operations stay available while advanced plan features remain enforced', () => {
   const suppliers = read('routes/suppliers.js');
   const purchasing = read('routes/purchaseOrders.js');
   const inventory = read('routes/inventory.js');
   const staff = read('routes/staff.js');
   const hr = read('routes/hr.js');
   const stores = read('routes/stores.js');
-  assert.match(suppliers, /supplierCatalogPlan, getSupplierCatalog/);
+  assert.match(suppliers, /requirePermission\('suppliers\.manage', 'procurement\.manage'\), getSupplierCatalog/);
+  assert.doesNotMatch(suppliers, /supplierCatalogPlan/);
+  assert.match(purchasing, /requirePermission\('procurement\.manage'\), getProcurementCart/);
+  assert.match(purchasing, /requirePermission\('procurement\.manage'\), submitProcurementCart/);
+  assert.doesNotMatch(purchasing, /restockingPlan/);
   assert.match(purchasing, /supplierComparisonPlan, getComparableSupplierOffers/);
   assert.match(purchasing, /receivingPlan, confirmDelivery/);
   assert.match(inventory, /lossApprovalPlan/);

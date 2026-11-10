@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { requireSubscriptionEntitlement } = require('../middleware/subscriptionEntitlement');
 const { ENTITLEMENTS } = require('../config/subscriptionPlans');
-const restockingPlan = requireSubscriptionEntitlement(ENTITLEMENTS.MANUAL_RESTOCKING);
 const procurementPlan = requireSubscriptionEntitlement(ENTITLEMENTS.SUPPLIER_PROCUREMENT);
 const receivingPlan = requireSubscriptionEntitlement(ENTITLEMENTS.GOODS_RECEIVING);
 const supplierComparisonPlan = requireSubscriptionEntitlement(ENTITLEMENTS.SUPPLIER_COMPARISONS);
@@ -27,19 +26,19 @@ const {
 } = require('../controllers/supplierVariantMappingController');
 
 // ── Seller routes ─────────────────────────────────────────
-router.post('/', authenticate, requirePermission('procurement.manage'), restockingPlan, createPurchaseOrder);
+router.post('/', authenticate, requirePermission('procurement.manage'), createPurchaseOrder);
 router.get('/', authenticate, requirePermission('procurement.view', 'procurement.manage', 'purchase_orders.own'), getSellerOrders);
 router.get('/admin/all', authenticate, superAdminOnly, adminGetAllOrders);
-router.get('/cart/current', authenticate, requirePermission('procurement.manage'), restockingPlan, getProcurementCart);
-router.get('/store-products', authenticate, requirePermission('procurement.manage'), restockingPlan, getProcurementStoreProducts);
-router.get('/offers/:storeProductId', authenticate, requirePermission('procurement.manage'), restockingPlan, getComparableSupplierOffers);
+router.get('/cart/current', authenticate, requirePermission('procurement.manage'), getProcurementCart);
+router.get('/store-products', authenticate, requirePermission('procurement.manage'), getProcurementStoreProducts);
+router.get('/offers/:storeProductId', authenticate, requirePermission('procurement.manage'), getComparableSupplierOffers);
 router.get('/offer-comparisons/:storeProductId', authenticate, requirePermission('procurement.manage'), supplierComparisonPlan, getComparableSupplierOffers);
 router.post('/offers', authenticate, requirePermission('procurement.manage'), procurementPlan, confirmSupplierOfferMatch);
-router.post('/cart/items', authenticate, requirePermission('procurement.manage'), restockingPlan, addProcurementCartItem);
-router.patch('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), restockingPlan, updateProcurementCartItem);
-router.delete('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), restockingPlan, removeProcurementCartItem);
-router.delete('/cart', authenticate, requirePermission('procurement.manage'), restockingPlan, clearProcurementCart);
-router.post('/cart/submit', authenticate, requirePermission('procurement.manage'), restockingPlan, submitProcurementCart);
+router.post('/cart/items', authenticate, requirePermission('procurement.manage'), addProcurementCartItem);
+router.patch('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), updateProcurementCartItem);
+router.delete('/cart/items/:itemId', authenticate, requirePermission('procurement.manage'), removeProcurementCartItem);
+router.delete('/cart', authenticate, requirePermission('procurement.manage'), clearProcurementCart);
+router.post('/cart/submit', authenticate, requirePermission('procurement.manage'), submitProcurementCart);
 router.get('/variant-mappings', authenticate, requirePermission('procurement.view', 'procurement.manage', 'inventory.receive'), procurementPlan, listVariantMappings);
 router.post('/variant-mappings', authenticate, requirePermission('procurement.manage', 'inventory.receive'), procurementPlan, createVariantMapping);
 router.patch('/variant-mappings/:id', authenticate, requirePermission('procurement.manage', 'inventory.receive'), procurementPlan, updateVariantMappingStatus);
