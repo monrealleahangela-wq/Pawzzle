@@ -5,9 +5,9 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const { getSubscriptionPlan, normalizeSubscriptionTier, planHasEntitlement } = require('../config/subscriptionPlans');
 
-// Active, verified stores that already existed when paid subscriptions were
-// introduced were promised Professional access. Keep that promise at runtime
-// so an unexecuted one-time migration cannot hide existing store operations.
+// Active stores that already existed when paid subscriptions were introduced
+// were promised Professional access. Keep that promise at runtime so legacy
+// verification metadata or an unexecuted migration cannot hide operations.
 const LEGACY_PROFESSIONAL_GRANT_CUTOFF = new Date('2026-11-10T07:25:50.000Z');
 
 const getStoreCreatedAt = store => {
@@ -22,7 +22,6 @@ const isLegacyProfessionalStore = store => {
   return Boolean(
     store?.isActive === true
     && store?.isDeleted !== true
-    && store?.verificationStatus === 'verified'
     && !store?.subscriptionLegacyGrantOptOutAt
     && createdAt
     && createdAt.getTime() <= LEGACY_PROFESSIONAL_GRANT_CUTOFF.getTime()

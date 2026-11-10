@@ -10,8 +10,7 @@ const mongoose = require('mongoose');
 const TARGET_TIER = 'professional';
 const ACTIVE_STORE_FILTER = Object.freeze({
   isActive: true,
-  isDeleted: { $ne: true },
-  verificationStatus: 'verified'
+  isDeleted: { $ne: true }
 });
 
 const pendingUpgradeFilter = () => ({
