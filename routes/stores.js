@@ -41,9 +41,6 @@ const {
 } = require('../controllers/subscriptionController');
 const { authenticate, superAdminOnly, adminOnly, adminOrStaff, storeOwnerOnly, requirePermission } = require('../middleware/auth');
 const storePlanFeatures = require('../controllers/storePlanFeaturesController');
-const { requireSubscriptionEntitlement } = require('../middleware/subscriptionEntitlement');
-const { ENTITLEMENTS } = require('../config/subscriptionPlans');
-const performanceSummaryPlan = requireSubscriptionEntitlement(ENTITLEMENTS.STORE_PERFORMANCE_SUMMARY);
 
 // Validation rules
 const createStoreValidation = [
@@ -106,7 +103,11 @@ router.put('/my-store/refund-policy', authenticate, storeOwnerOnly, updateRefund
 router.get('/my-store/delivery-pricing', authenticate, storeOwnerOnly, getDeliveryPricing);
 router.put('/my-store/delivery-pricing', authenticate, storeOwnerOnly, updateDeliveryPricing);
 router.post('/my-store/delivery-pricing/preview', authenticate, storeOwnerOnly, previewDeliveryPricing);
-router.get('/dashboard/stats', authenticate, adminOrStaff, requirePermission('dashboard.view'), performanceSummaryPlan, getStoreDashboard);
+// The operational dashboard is the store's primary workspace and must remain
+// available on every plan. Paid-only analytics, exports, and scheduled reports
+// are protected by their own entitlement checks; gating this aggregate route
+// made a subscription-resolution mismatch hide all operational data.
+router.get('/dashboard/stats', authenticate, adminOrStaff, requirePermission('dashboard.view'), getStoreDashboard);
 router.post('/', authenticate, adminOnly, createStoreValidation, createStore);
 
 // Public routes with parameter (must come AFTER literal paths)
