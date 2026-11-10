@@ -482,7 +482,7 @@ const StoreApplication = () => {
         )}
 
         {currentStep === 1 && (
-          <div data-step="1" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
+          <div data-step="1" tabIndex="-1" className="card space-y-6 p-4 animate-slide-up sm:space-y-8 sm:p-10">
             <div className="store-field-note" role="note">
               <Building className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Tell us how your business should appear on Pawzzle. Fields marked <strong>Required</strong> must be completed; fields marked <strong>Optional</strong> may be skipped.</span>
@@ -660,11 +660,11 @@ const StoreApplication = () => {
               <label className="store-field-label flex items-center gap-2">
                 About your business <span className="store-field-label__status">Required</span> {isFieldBroken('businessDescription') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Please clarify</span>}
               </label>
-               <textarea id="store-application-description" data-field="businessDescription" aria-invalid={Boolean(fieldErrors.businessDescription)} className={`input-premium min-h-[120px] ${fieldErrors.businessDescription || isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Describe what your business offers, your experience, and the customers you serve." required />
+               <textarea id="store-application-description" data-field="businessDescription" aria-invalid={Boolean(fieldErrors.businessDescription)} className={`input-premium min-h-[96px] sm:min-h-[120px] ${fieldErrors.businessDescription || isFieldBroken('businessDescription') ? 'border-rose-500 ring-2 ring-rose-100' : ''}`} value={formData.businessDescription} onChange={(e) => handleChange('businessDescription', e.target.value)} placeholder="Describe what your business offers, your experience, and the customers you serve." required />
                <span className="store-field-help">Write a short, clear introduction that will help reviewers understand your business.</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
               <div className="space-y-1.5">
                 <label htmlFor="store-application-business-type" className="store-field-label flex items-center gap-2">
                   Main business type <span className="store-field-label__status">Required</span> {isFieldBroken('businessType') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse">Choose again</span>}
@@ -1134,14 +1134,14 @@ const StoreApplication = () => {
         )}
 
         {currentStep > 0 && (
-          <div className="flex justify-between items-center bg-white/50 backdrop-blur-md p-2 rounded-full border border-slate-100">
-            <button type="button" onClick={() => setCurrentStep(prev => prev - 1)} className="h-12 px-8 rounded-full text-[9px] font-black uppercase tracking-widest transition-all text-slate-500 hover:bg-slate-50">Back</button>
-            <div className="flex gap-2">
+          <div className="store-application-navigation flex items-center justify-between rounded-2xl border border-slate-100 bg-white/90 p-1.5 shadow-sm backdrop-blur-md sm:rounded-full sm:p-2">
+            <button type="button" onClick={() => setCurrentStep(prev => prev - 1)} className="store-application-navigation__back h-11 rounded-xl px-4 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all hover:bg-slate-50 sm:h-12 sm:rounded-full sm:px-8">Back</button>
+            <div className="store-application-navigation__steps flex gap-1.5 sm:gap-2">
               {[0, 1, 2, 3, 4, 5].map(s => <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${currentStep === s ? 'bg-primary-600 w-6' : 'bg-slate-200'}`} />)}
             </div>
             {currentStep < 5 ? (
-              <button type="button" onClick={() => validateAndShowErrors(currentStep) && setCurrentStep(prev => prev + 1)} className="h-12 px-8 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-2">
-                Next section <ArrowRight className="h-3 w-3" />
+              <button type="button" onClick={() => validateAndShowErrors(currentStep) && setCurrentStep(prev => prev + 1)} className="store-application-navigation__next flex h-11 items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-900 px-4 text-[9px] font-black uppercase tracking-wider text-white shadow-lg transition-all hover:bg-primary-700 active:scale-95 sm:h-12 sm:gap-2 sm:rounded-full sm:px-8 sm:tracking-widest">
+                Next <span className="hidden min-[380px]:inline">section</span> <ArrowRight className="h-3 w-3" />
               </button>
             ) : <div className="w-32" />}
           </div>

@@ -14,14 +14,14 @@ const registrationBenefits = [
 ];
 
 const RegistrationShell = ({ children }) => (
-  <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#fbf7f4] px-3 py-6 sm:px-6 sm:py-10">
+  <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#fbf7f4] px-2.5 py-3 sm:px-6 sm:py-10">
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
       <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary-100/60 blur-3xl" />
       <div className="absolute -bottom-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-secondary-200/50 blur-3xl" />
       <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary-100/60" />
     </div>
 
-    <main className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-[2rem] border border-primary-100/80 bg-white shadow-premium animate-fade-in lg:min-h-[43rem] lg:grid-cols-[0.9fr_1.1fr]">
+    <main className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-primary-100/80 bg-white shadow-premium animate-fade-in sm:rounded-[2rem] lg:min-h-[43rem] lg:grid-cols-[0.9fr_1.1fr]">
       <aside className="relative hidden overflow-hidden bg-primary-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div className="absolute -right-24 -top-20 h-64 w-64 rounded-full border border-white/10" />
@@ -64,10 +64,10 @@ const RegistrationShell = ({ children }) => (
         </div>
       </aside>
 
-      <section className="relative flex items-center justify-center px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
-        <div className="w-full max-w-md">
-          <div className="mb-7 flex items-center gap-3 lg:hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 p-2 ring-1 ring-primary-100">
+      <section className="relative flex min-w-0 items-center justify-center px-4 py-5 sm:px-10 sm:py-10 lg:px-14">
+        <div className="min-w-0 w-full max-w-md">
+          <div className="mb-5 flex items-center gap-3 sm:mb-7 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 p-2 ring-1 ring-primary-100 sm:h-12 sm:w-12 sm:rounded-2xl">
               <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
             </div>
             <div>
@@ -227,18 +227,18 @@ const Register = () => {
   if (step === 2) {
     return (
       <RegistrationShell>
-        <div className="mb-8">
-          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
-            <ShieldCheck className="h-7 w-7" aria-hidden="true" />
+        <div className="mb-5 sm:mb-8">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600 ring-1 ring-primary-100 sm:mb-5 sm:h-14 sm:w-14 sm:rounded-2xl">
+            <ShieldCheck className="h-6 w-6 sm:h-7 sm:w-7" aria-hidden="true" />
           </div>
-          <p className="mb-2 text-xs font-black uppercase tracking-[0.22em] text-primary-600">Email verification</p>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Check your inbox</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Enter the 6-digit code sent to <span className="font-bold text-slate-700">{formData.email}</span>.
+          <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-primary-600 sm:mb-2 sm:text-xs sm:tracking-[0.22em]">Email verification</p>
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-4xl">Check your inbox</h2>
+          <p className="mt-2 text-sm leading-5 text-slate-500 sm:leading-6">
+            Enter the 6-digit code sent to <span className="break-all font-bold text-slate-700">{formData.email}</span>.
           </p>
         </div>
 
-        <div className="mb-7 flex justify-between gap-2" role="group" aria-label="Email verification code">
+        <div className="mb-5 grid min-w-0 grid-cols-6 gap-1.5 sm:mb-7 sm:gap-2" role="group" aria-label="Email verification code">
               {otpDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -248,12 +248,12 @@ const Register = () => {
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   aria-label={`Verification digit ${index + 1}`}
                   autoComplete={index === 0 ? 'one-time-code' : 'off'}
-                  className="h-14 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 text-center text-xl font-black text-slate-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                  className="h-12 w-full min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-0 text-center text-lg font-black text-slate-900 outline-none transition focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10 sm:h-14 sm:rounded-xl sm:text-xl"
                 />
               ))}
         </div>
 
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-center">
+        <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-center sm:mb-6 sm:rounded-2xl sm:px-4 sm:py-3">
           {resendCooldown > 0 ? (
             <p className="text-xs font-bold text-slate-500">You can request a new code in {resendCooldown}s</p>
           ) : (
@@ -263,11 +263,11 @@ const Register = () => {
           )}
         </div>
 
-        <button onClick={handleVerifyOTP} disabled={otpLoading} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60">
+        <button onClick={handleVerifyOTP} disabled={otpLoading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60 sm:h-14 sm:rounded-2xl sm:px-5">
           {otpLoading ? 'Verifying your code...' : 'Verify and continue'}
         </button>
 
-        <button onClick={() => setStep(1)} className="mx-auto mt-6 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 transition hover:text-primary-600">
+        <button onClick={() => setStep(1)} className="mx-auto mt-4 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 transition hover:text-primary-600 sm:mt-6">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Change account details
         </button>
       </RegistrationShell>

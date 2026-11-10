@@ -73,7 +73,10 @@ describe('Register page', () => {
 
     await waitFor(() => expect(authService.sendRegisterOTP).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Email verification code' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Email verification code' })).toHaveClass('grid', 'grid-cols-6', 'min-w-0');
     expect(screen.getAllByLabelText(/verification digit/i)).toHaveLength(6);
+    screen.getAllByLabelText(/verification digit/i).forEach(input => {
+      expect(input).toHaveClass('w-full', 'min-w-0');
+    });
   });
 });
