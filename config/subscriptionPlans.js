@@ -21,9 +21,11 @@ const universalFeatures = Object.freeze([
   'FDA compliance review where required',
   'Secure payments with no Pawzzle platform fee'
 ]);
-const core = [ENTITLEMENTS.CORE_COMMERCE];
-const starter = [...core, ENTITLEMENTS.LOW_STOCK_ALERTS, ENTITLEMENTS.STORE_PERFORMANCE_SUMMARY,
-  ENTITLEMENTS.SUPPLIER_CATALOG, ENTITLEMENTS.MANUAL_RESTOCKING];
+// Supplier discovery and ordinary replenishment are essential store operations.
+// Advanced procurement, comparisons and receiving remain paid entitlements.
+const core = [ENTITLEMENTS.CORE_COMMERCE, ENTITLEMENTS.SUPPLIER_CATALOG,
+  ENTITLEMENTS.MANUAL_RESTOCKING];
+const starter = [...core, ENTITLEMENTS.LOW_STOCK_ALERTS, ENTITLEMENTS.STORE_PERFORMANCE_SUMMARY];
 const growth = [...starter, ENTITLEMENTS.PRODUCT_VARIANTS, ENTITLEMENTS.SUPPLIER_PROCUREMENT,
   ENTITLEMENTS.GOODS_RECEIVING, ENTITLEMENTS.INVENTORY_HISTORY, ENTITLEMENTS.STOCK_LOSS_APPROVALS,
   ENTITLEMENTS.STAFF_ATTENDANCE, ENTITLEMENTS.STAFF_SCHEDULING, ENTITLEMENTS.ROLE_MANAGEMENT,
@@ -39,13 +41,14 @@ const SUBSCRIPTION_PLANS = Object.freeze({
     listingLimit: 10, staffLimit: 0, locationLimit: 1, termDays: null, supportLevel: 'community',
     description: 'For a new store building its first catalog.', entitlements: Object.freeze(core),
     features: Object.freeze(['10 active product, pet, and service listings', '1 store location and owner-managed access',
-      'Customer chat and inquiries', 'Customer orders and service bookings', 'Basic inventory and payouts']) }),
+      'Customer chat and inquiries', 'Customer orders and service bookings', 'Basic inventory and payouts',
+      'Supplier catalog and manual restocking orders']) }),
   starter: Object.freeze({ id: 'starter', rank: 1, name: 'Pawzzle Starter', monthlyPrice: 299, annualPrice: 3049,
     listingLimit: 30, staffLimit: 2, locationLimit: 1, termDays: 30, supportLevel: 'standard',
     description: 'Start selling and managing your pet business online.', entitlements: Object.freeze(starter),
     features: Object.freeze(['30 active product, pet, and service listings', '1 store location and up to 2 staff accounts',
       'Customer chat, inquiries, orders, and bookings', 'Product inventory and low-stock alerts',
-      'Basic store profile and performance summary', 'Supplier catalog and manual restocking orders', 'Standard email support']) }),
+      'Basic store profile and performance summary', 'Standard email support']) }),
   growth: Object.freeze({ id: 'growth', rank: 2, name: 'Pawzzle Growth', monthlyPrice: 699, annualPrice: 7129,
     listingLimit: 70, staffLimit: 8, locationLimit: 1, termDays: 30, trialDays: 14, supportLevel: 'faster',
     description: 'Grow your store with better inventory, staffing, and sales tools.', entitlements: Object.freeze(growth),

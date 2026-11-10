@@ -2,9 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, superAdminOnly, requirePermission, requirePasswordChangeCompleted } = require('../middleware/auth');
 const { uploadDoc, handleUploadError } = require('../middleware/upload');
-const { requireSubscriptionEntitlement } = require('../middleware/subscriptionEntitlement');
-const { ENTITLEMENTS } = require('../config/subscriptionPlans');
-const supplierCatalogPlan = requireSubscriptionEntitlement(ENTITLEMENTS.SUPPLIER_CATALOG);
 
 const {
   registerSupplier, resubmitSupplierApplication,
@@ -60,14 +57,14 @@ router.post('/orders/:id/resolutions/:resolutionId/delivered', authenticate, req
 
 // Store-scoped supplier invitations and lifecycle. The server resolves the
 // caller's store; no client-provided store or owner id is trusted.
-router.get('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), supplierCatalogPlan, getStoreManagedSuppliers);
-router.post('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), supplierCatalogPlan, createStoreSupplier);
-router.post('/store-managed/:id/resend-invitation', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), supplierCatalogPlan, resendStoreSupplierInvitation);
-router.patch('/store-managed/:id/status', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), supplierCatalogPlan, updateStoreSupplierAssociation);
+router.get('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), getStoreManagedSuppliers);
+router.post('/store-managed', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), createStoreSupplier);
+router.post('/store-managed/:id/resend-invitation', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), resendStoreSupplierInvitation);
+router.patch('/store-managed/:id/status', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), updateStoreSupplierAssociation);
 
-// ── Public: Browse verified suppliers (for sellers) ───────
-router.get('/browse', authenticate, supplierCatalogPlan, browseSuppliers);
-router.get('/catalog/:supplierId', authenticate, supplierCatalogPlan, getSupplierCatalog);
+// ── Store operations: Browse verified suppliers ───────────
+router.get('/browse', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), browseSuppliers);
+router.get('/catalog/:supplierId', authenticate, requirePermission('suppliers.manage', 'procurement.manage'), getSupplierCatalog);
 
 // ── Admin: Supplier verification & management ─────────────
 router.get('/admin/all', authenticate, superAdminOnly, adminGetAllSuppliers);
