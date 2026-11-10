@@ -7,9 +7,13 @@ const idString = value => String(value?._id || value || '');
 
 const compareOwnedStores = (left, right, preferredStoreId) => {
   const score = store => [
+    // A paid subscription is the strongest owner-store identity signal. Old
+    // application rows can remain active/verified after a replacement store
+    // receives the paid plan, so status metadata must not make the Free row
+    // authoritative for subscription-gated operations.
+    SUBSCRIPTION_PLANS[getEffectiveTier(store)]?.rank || 0,
     store?.isActive === true ? 1 : 0,
     store?.verificationStatus === 'verified' ? 1 : 0,
-    SUBSCRIPTION_PLANS[getEffectiveTier(store)]?.rank || 0,
     idString(store) === idString(preferredStoreId) ? 1 : 0,
     new Date(store?.updatedAt || store?.createdAt || 0).getTime() || 0
   ];
