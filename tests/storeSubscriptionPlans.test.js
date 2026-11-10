@@ -110,6 +110,27 @@ test('canonical owner store prefers an active verified Professional store over a
   }
 });
 
+test('paid plan remains authoritative when a legacy Free row has newer verification metadata', () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (request === '../models/Store') return {};
+    if (request === './storeSubscriptionService') return { getEffectiveTier: store => store.subscriptionTier || 'free' };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeAccessService')];
+    const { selectCanonicalOwnedStore } = require('../services/storeAccessService');
+    const selected = selectCanonicalOwnedStore([
+      { _id: 'legacy-free-store', isActive: true, verificationStatus: 'verified', subscriptionTier: 'free' },
+      { _id: 'paid-store', isActive: true, verificationStatus: 'pending', subscriptionTier: 'professional' }
+    ], 'legacy-free-store');
+    assert.equal(selected._id, 'paid-store');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeAccessService')];
+  }
+});
+
 test('subscription gates use the shared operational store resolver', async () => {
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
