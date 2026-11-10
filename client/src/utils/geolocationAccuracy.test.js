@@ -48,7 +48,11 @@ test('rejects a coarse reading instead of presenting it as precise', async () =>
 
   const result = getAccurateCurrentPosition({ geolocation, timeout: 100 });
   jest.advanceTimersByTime(100);
-  await expect(result).rejects.toMatchObject({ code: 'LOW_ACCURACY', accuracy: 420 });
+  await expect(result).rejects.toMatchObject({
+    code: 'LOW_ACCURACY',
+    accuracy: 420,
+    bestPosition: expect.objectContaining({ lat: 14.4, lng: 120.9, accuracy: 420 })
+  });
   expect(getLocationErrorMessage({ code: 'LOW_ACCURACY', accuracy: 420 })).toMatch(/place the pin manually/i);
   jest.useRealTimers();
 });

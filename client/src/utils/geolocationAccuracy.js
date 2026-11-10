@@ -76,7 +76,11 @@ export const getAccurateCurrentPosition = ({
     reject(locationError(
       'LOW_ACCURACY',
       'The available location reading is not accurate enough.',
-      { accuracy: best?.accuracy }
+      {
+        accuracy: best?.accuracy,
+        // This is only a map-centering hint. The customer must still confirm it.
+        bestPosition: best
+      }
     ));
   };
 
