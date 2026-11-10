@@ -10,6 +10,7 @@ import ReceivingInspectionModal from '../../components/procurement/ReceivingInsp
 import SupplierOfferComparison from '../../components/procurement/SupplierOfferComparison';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
+import { getProcurementItemImage } from '../../utils/procurementItemImage';
 
 const PurchaseOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -618,11 +619,21 @@ const PurchaseOrders = () => {
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black text-slate-600">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
                   </div>
                   <div className="space-y-2">
-                    {group.items.map(item => (
-                      <div key={item.lineIdentity || item.cartItemId || item.supplierProductId} className={`rounded-xl border p-2.5 sm:p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
+                    {group.items.map(item => {
+                      const itemImage = getProcurementItemImage(item);
+                      const itemName = item.product?.name || 'Unavailable supply';
+                      return (
+                        <div key={item.lineIdentity || item.cartItemId || item.supplierProductId} className={`rounded-xl border p-2.5 sm:p-3 ${item.available ? 'border-slate-100 bg-slate-50' : 'border-rose-200 bg-rose-50'}`}>
                         <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{item.product?.name || 'Unavailable supply'}{item.variant ? ` — ${item.variant.attributes?.map(attribute => attribute.valueLabel).join(' · ')}` : ''}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.variant?.wholesalePrice ?? item.product?.wholesalePrice ?? 0)} · ${item.variant?.unitOfMeasure || item.product?.unitOfMeasure}`}</p>{item.variant && <p className="mt-1 text-[9px] font-bold text-indigo-700">Exact mapped variant · SKU {item.variant.sku}</p>}{item.serviceSupply && <p className="mt-1 text-[9px] font-bold text-indigo-700">Service supply: {item.serviceSupply.name} · {item.selectionMatchType} match</p>}{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
-                          <div className="text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                              {itemImage
+                                ? <img src={getImageUrl(itemImage)} alt={itemName} className="h-full w-full object-cover" />
+                                : <Package className="h-5 w-5 text-slate-300" aria-hidden="true" />}
+                            </div>
+                            <div className="min-w-0"><p className="truncate text-xs font-black text-slate-900">{itemName}{item.variant ? ` — ${item.variant.attributes?.map(attribute => attribute.valueLabel).join(' · ')}` : ''}</p><p className="mt-1 text-[9px] text-slate-500">{item.itemType === 'live_pet' ? 'Specific live pet · quantity fixed at 1' : `${item.quantity} × ${formatPeso(item.variant?.wholesalePrice ?? item.product?.wholesalePrice ?? 0)} · ${item.variant?.unitOfMeasure || item.product?.unitOfMeasure}`}</p>{item.variant && <p className="mt-1 text-[9px] font-bold text-indigo-700">Exact mapped variant · SKU {item.variant.sku}</p>}{item.serviceSupply && <p className="mt-1 text-[9px] font-bold text-indigo-700">Service supply: {item.serviceSupply.name} · {item.selectionMatchType} match</p>}{item.pet && <p className="mt-1 text-[9px] text-slate-500">{item.pet.species} · {item.pet.breed} · {item.pet.age} {item.pet.ageUnit}</p>}{item.priceChanged && <p className="mt-1 text-[9px] font-bold text-amber-700">Price changed from {formatPeso(item.addedUnitPrice)}.</p>}{!item.available && <p className="mt-1 text-[9px] font-bold text-rose-700">This item or supplier is no longer available.</p>}</div>
+                          </div>
+                          <div className="shrink-0 text-right"><p className="text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</p><button onClick={() => removeCartItem(item)} className="mt-1 text-[8px] font-black uppercase text-rose-600">Remove</button></div>
                         </div>
                         {item.product && item.itemType !== 'live_pet' && <div className="mt-2 flex flex-wrap items-center gap-1.5"><button type="button" aria-label={`Decrease ${item.product?.name || 'item'} quantity`} onClick={() => updateCartQty(item, -1)} className="grid h-8 w-8 place-items-center rounded-lg border bg-white"><Minus className="h-3 w-3" /></button><span className="min-w-7 text-center text-xs font-black">{item.quantity}</span><button type="button" aria-label={`Increase ${item.product?.name || 'item'} quantity`} onClick={() => updateCartQty(item, 1)} disabled={item.quantity >= (item.variant?.availableStock ?? item.product.availableStock)} className="grid h-8 w-8 place-items-center rounded-lg border bg-white disabled:opacity-30"><Plus className="h-3 w-3" /></button><span className="ml-1 text-[9px] text-slate-400">{item.variant?.availableStock ?? item.product.availableStock} available</span></div>}
                         {item.itemType !== 'live_pet' && !item.serviceSupply && !item.variant && <div className="mt-2 space-y-1">
@@ -632,8 +643,9 @@ const PurchaseOrders = () => {
                             {storeProducts.map(sp => <option key={sp._id} value={sp._id}>{sp.name} (SKU: {sp.sku}) — Stock: {sp.stockQuantity}</option>)}
                           </select>
                         </div>}
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               ))}
