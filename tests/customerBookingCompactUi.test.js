@@ -22,3 +22,10 @@ test('booking filters and cards use the compact responsive presentation', () => 
   assert.match(source, /flex h-10 flex-1 items-center justify-center[\s\S]{0,400}Rate Staff/);
   assert.match(source, /aria-label="Cancel booking"/);
 });
+
+test('pet size control keeps its label and selected value readable on mobile Safari', () => {
+  assert.match(source, /aria-label="Pet size"/);
+  assert.match(source, /className="h-14 w-full appearance-none/);
+  assert.match(source, /pl-11 pr-11 py-0/);
+  assert.match(source, /leading-normal text-slate-900/);
+});

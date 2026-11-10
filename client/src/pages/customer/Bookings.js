@@ -1353,9 +1353,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                         <Activity className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
                         <select 
                           name="pet.size" 
+                          aria-label="Pet size"
                           value={bookingForm.pet.size} 
                           onChange={handleFormChange}
-                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer appearance-none"
+                          className="h-14 w-full appearance-none rounded-[1.25rem] border border-slate-200 bg-white pl-11 pr-11 py-0 text-[13px] font-black leading-normal text-slate-900 shadow-sm outline-none transition-all focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                         >
                           <option value="Small">Small (Standard)</option>
                           <option value="Medium">Medium (+₱50)</option>

@@ -19,5 +19,7 @@ test('Full Groom displays the selected package once and keeps safety questions r
   expect(screen.getByText('Ear cleaning preference (optional)')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Nail trimming preference: Package standard' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('button', { name: 'Ear cleaning preference: Package standard' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Nail trimming preference: Package standard' })).toHaveClass('col-span-2');
+  expect(screen.getByRole('button', { name: 'Nail trimming preference: Yes' })).not.toHaveClass('col-span-2');
   expect(screen.getByText('Can your pet become aggressive or anxious?')).toBeInTheDocument();
 });

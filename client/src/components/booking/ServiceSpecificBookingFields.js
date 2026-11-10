@@ -14,9 +14,9 @@ const Field = ({ label, required, error, children, className = '' }) => (
 
 const Choice = ({ label, value, onChange, error, required = true, allowPackageDefault = false }) => (
   <Field label={`${label}${required ? '' : ' (optional)'}`} required={required} error={error}>
-    <div className={`mt-1.5 grid gap-2 ${allowPackageDefault ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
-      {(allowPackageDefault ? [['', 'Package standard'], ['yes', 'Yes'], ['no', 'No']] : [['yes', 'Yes'], ['no', 'No']]).map(([option, text]) => (
-        <button key={option} type="button" aria-label={`${label}: ${text}`} aria-pressed={value === option} onClick={() => onChange(option)} className={`h-10 rounded-xl border text-[10px] font-black transition ${value === option ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-200' : 'border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
+    <div className="mt-1.5 grid grid-cols-2 gap-2">
+      {(allowPackageDefault ? [['', 'Package standard'], ['yes', 'Yes'], ['no', 'No']] : [['yes', 'Yes'], ['no', 'No']]).map(([option, text], index) => (
+        <button key={option} type="button" aria-label={`${label}: ${text}`} aria-pressed={value === option} onClick={() => onChange(option)} className={`min-h-10 rounded-xl border px-2 py-2 text-[10px] font-black leading-tight transition ${allowPackageDefault && index === 0 ? 'col-span-2' : ''} ${value === option ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-200' : 'border-slate-200 bg-white text-slate-500 hover:border-primary-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>
           {value === option && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}{text}
         </button>
       ))}
