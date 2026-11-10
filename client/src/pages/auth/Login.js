@@ -171,16 +171,16 @@ const Login = () => {
                 <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
               </div>
               <div>
-                <p className="text-lg font-black tracking-tight">PAWZZLE</p>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary-200">Pet community</p>
+                <p className="text-lg font-black tracking-tight !text-white">PAWZZLE</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] !text-[#e7c6aa]">Pet community</p>
               </div>
             </div>
 
-            <p className="mb-4 text-xs font-black uppercase tracking-[0.28em] text-primary-300">Welcome home</p>
-            <h1 className="max-w-sm text-4xl font-black leading-[1.08] tracking-tight">
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.28em] !text-[#f0b47f]">Welcome home</p>
+            <h1 className="max-w-sm text-4xl font-black leading-[1.08] tracking-tight !text-white">
               Everything your pet needs, in one trusted place.
             </h1>
-            <p className="mt-5 max-w-sm text-sm leading-6 text-primary-100/80">
+            <p className="mt-5 max-w-sm text-sm leading-6 !text-[#d8c6ba]">
               Sign in to shop, book trusted pet care, and stay connected with verified stores in your community.
             </p>
           </div>
@@ -196,8 +196,8 @@ const Login = () => {
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold">{title}</p>
-                  <p className="mt-0.5 text-xs text-primary-100/65">{text}</p>
+                  <p className="text-sm font-bold !text-white">{title}</p>
+                  <p className="mt-0.5 text-xs !text-[#cdb8aa]">{text}</p>
                 </div>
               </div>
             ))}

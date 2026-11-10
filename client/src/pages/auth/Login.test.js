@@ -49,4 +49,17 @@ describe('Login form controls', () => {
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute('href', '/register');
   });
+
+  test('keeps dark-panel copy explicitly readable over the branded background', () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole('heading', { name: 'Everything your pet needs, in one trusted place.' }))
+      .toHaveClass('!text-white');
+    expect(screen.getByText('Verified community')).toHaveClass('!text-white');
+    expect(screen.getByText('Trusted accounts and reviewed stores')).toHaveClass('!text-[#cdb8aa]');
+  });
 });
