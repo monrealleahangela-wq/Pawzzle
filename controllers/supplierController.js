@@ -26,6 +26,7 @@ const {
 } = require('../services/supplierVariantReadinessService');
 const { getVariantProcurementReadiness } = require('../services/variantProcurementReadinessService');
 const { isVariantRegulatorilyEligible } = require('../services/supplierVariantMappingService');
+const { resolveOperationalStore } = require('../services/storeAccessService');
 const {
   FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
@@ -184,12 +185,7 @@ const parseJsonField = (value, fallback) => {
   try { return JSON.parse(value); } catch (_error) { return fallback; }
 };
 
-const resolveAuthorizedStore = async user => {
-  if (user.store) {
-    return Store.findOne({ _id: user.store._id || user.store, isDeleted: { $ne: true } });
-  }
-  return Store.findOne({ owner: user._id, isDeleted: { $ne: true } });
-};
+const resolveAuthorizedStore = resolveOperationalStore;
 
 const uploadedApplicationDocuments = files => {
   const definitions = [

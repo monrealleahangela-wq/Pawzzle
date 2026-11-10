@@ -8,6 +8,7 @@ const {
   finalizeSubscriptionPayment
 } = require('../services/storeSubscriptionPaymentService');
 const { getEffectiveTier } = require('../services/storeSubscriptionService');
+const { findCanonicalOwnedStore } = require('../services/storeAccessService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let FRONTEND_URL = process.env.FRONTEND_URL;
@@ -15,7 +16,7 @@ if (!FRONTEND_URL || FRONTEND_URL.includes('localhost')) {
   FRONTEND_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
-const getOwnedStore = userId => Store.findOne({ owner: userId, isDeleted: { $ne: true } });
+const getOwnedStore = userId => findCanonicalOwnedStore(userId);
 
 const serializePayment = payment => ({
   id: payment._id,

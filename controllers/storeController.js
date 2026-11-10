@@ -30,6 +30,7 @@ const {
 const { buildPublicPetFilter } = require('../utils/catalogListing');
 const { getPublicPlanCatalog, normalizeSubscriptionTier, SUBSCRIPTION_PLANS } = require('../config/subscriptionPlans');
 const { getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
+const { findCanonicalOwnedStore, resolveOperationalStore } = require('../services/storeAccessService');
 
 const findCustomerVisibleStore = async id => {
   const ownerIds = await getCustomerVisibleOwnerIds();
@@ -384,7 +385,7 @@ const getStoreDashboard = async (req, res) => {
     } else if (isOperationalStaff(req.user) && req.user.store) {
       store = await Store.findById(req.user.store);
     } else {
-      store = await Store.findOne({ owner: req.user.id });
+      store = await resolveOperationalStore(req.user);
     }
 
     if (!store) {
@@ -857,7 +858,7 @@ const getMyStoreSubscription = async (req, res) => {
   try {
     const store = isOperationalStaff(req.user) && req.user.store
       ? await Store.findById(req.user.store)
-      : await Store.findOne({ owner: req.user._id, isDeleted: { $ne: true } });
+      : await findCanonicalOwnedStore(req.user._id, req.user.store);
     if (!store) return res.status(404).json({ message: 'Store not found.' });
     const subscription = await getStoreSubscriptionSummary(store);
     res.json({ subscription, plans: getPublicPlanCatalog() });

@@ -5,8 +5,9 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { ENTITLEMENTS } = require('../config/subscriptionPlans');
 const { assertCanAddLocation, assertStoreEntitlement, getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
+const { findCanonicalOwnedStore } = require('../services/storeAccessService');
 
-const ownedStore = userId => Store.findOne({ owner: userId, isDeleted: { $ne: true } });
+const ownedStore = userId => findCanonicalOwnedStore(userId);
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const sendError = (res, error) => res.status(error.statusCode || 500).json({ message: error.message || 'Unable to update plan features.', code: error.code, details: error.details });
 const clean = (value, max) => String(value || '').trim().slice(0, max);
