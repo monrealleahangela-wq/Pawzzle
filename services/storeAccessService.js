@@ -33,6 +33,27 @@ const findCanonicalOwnedStore = async (userId, preferredStoreId) => {
   return selectCanonicalOwnedStore(stores, preferredStoreId);
 };
 
+// Older owner accounts can have an explicitly assigned store that predates (or
+// no longer matches) the Store.owner relationship. That assignment is still a
+// server-managed authorization boundary and is used throughout the admin
+// application. Include it when resolving an owner account so subscription,
+// dashboard, supplier, and reporting routes cannot select different stores.
+const findCanonicalStoreForAdmin = async user => {
+  const userId = user?._id || user?.id;
+  const preferredStoreId = user?.store?._id || user?.store;
+  const [ownedStores, assignedStore] = await Promise.all([
+    userId ? Store.find({ owner: userId, isDeleted: { $ne: true } }) : [],
+    preferredStoreId
+      ? Store.findOne({ _id: preferredStoreId, isDeleted: { $ne: true } })
+      : null
+  ]);
+
+  const candidates = new Map();
+  for (const store of ownedStores || []) candidates.set(idString(store), store);
+  if (assignedStore) candidates.set(idString(assignedStore), assignedStore);
+  return selectCanonicalOwnedStore([...candidates.values()], preferredStoreId);
+};
+
 const resolveOperationalStore = async user => {
   if (!user) return null;
   if (isOperationalStaff(user) && !isStoreAdmin(user)) {
@@ -40,7 +61,7 @@ const resolveOperationalStore = async user => {
       ? Store.findOne({ _id: user.store._id || user.store, isDeleted: { $ne: true } })
       : null;
   }
-  if (isStoreAdmin(user)) return findCanonicalOwnedStore(user._id || user.id, user.store);
+  if (isStoreAdmin(user)) return findCanonicalStoreForAdmin(user);
   return user.store
     ? Store.findOne({ _id: user.store._id || user.store, isDeleted: { $ne: true } })
     : null;
@@ -49,5 +70,6 @@ const resolveOperationalStore = async user => {
 module.exports = {
   selectCanonicalOwnedStore,
   findCanonicalOwnedStore,
+  findCanonicalStoreForAdmin,
   resolveOperationalStore
 };

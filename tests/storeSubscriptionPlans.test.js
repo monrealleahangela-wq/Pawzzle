@@ -131,6 +131,51 @@ test('paid plan remains authoritative when a legacy Free row has newer verificat
   }
 });
 
+test('store admin resolution includes the assigned paid store when legacy ownership is inconsistent', async () => {
+  const originalLoad = Module._load;
+  const ownedFreeStore = {
+    _id: 'owned-free-store',
+    owner: 'owner-user',
+    isActive: true,
+    verificationStatus: 'verified',
+    subscriptionTier: 'free'
+  };
+  const assignedProfessionalStore = {
+    _id: 'assigned-professional-store',
+    owner: 'legacy-owner-reference',
+    isActive: true,
+    verificationStatus: 'verified',
+    subscriptionTier: 'professional'
+  };
+  Module._load = function load(request, parent, isMain) {
+    if (request === '../models/Store') return {
+      find: async query => {
+        assert.equal(query.owner, 'owner-user');
+        return [ownedFreeStore];
+      },
+      findOne: async query => {
+        assert.equal(query._id, 'assigned-professional-store');
+        return assignedProfessionalStore;
+      }
+    };
+    if (request === './storeSubscriptionService') return { getEffectiveTier: store => store.subscriptionTier || 'free' };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeAccessService')];
+    const { resolveOperationalStore } = require('../services/storeAccessService');
+    const selected = await resolveOperationalStore({
+      _id: 'owner-user',
+      role: 'admin',
+      store: 'assigned-professional-store'
+    });
+    assert.equal(selected._id, 'assigned-professional-store');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeAccessService')];
+  }
+});
+
 test('subscription gates use the shared operational store resolver', async () => {
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
@@ -160,7 +205,7 @@ test('subscription gates use the shared operational store resolver', async () =>
 test('dashboard consumes the same subscription-resolved store used by the entitlement gate', () => {
   const controller = read('controllers/storeController.js');
   assert.match(controller, /if \(req\.subscriptionStoreId\) \{\s*store = await Store\.findById\(req\.subscriptionStoreId\)/);
-  assert.match(controller, /findCanonicalOwnedStore\(req\.user\._id, req\.user\.store\)/);
+  assert.match(controller, /const getMyStoreSubscription[\s\S]*?const store = await resolveOperationalStore\(req\.user\)/);
   assert.match(read('controllers/supplierController.js'), /const resolveAuthorizedStore = resolveOperationalStore/);
 });
 
