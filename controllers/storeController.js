@@ -874,7 +874,14 @@ const updateStoreSubscription = async (req, res) => {
     if (expiresAt && Number.isNaN(expiresAt.getTime())) return res.status(400).json({ message: 'Enter a valid subscription expiry date.' });
     const store = await Store.findByIdAndUpdate(
       req.params.id,
-      { $set: { subscriptionTier: tier, subscriptionExpires: tier === 'free' ? null : expiresAt } },
+      {
+        $set: {
+          subscriptionTier: tier,
+          subscriptionExpires: tier === 'free' ? null : expiresAt,
+          ...(tier === 'free' ? { subscriptionLegacyGrantOptOutAt: new Date() } : {})
+        },
+        ...(tier !== 'free' ? { $unset: { subscriptionLegacyGrantOptOutAt: 1 } } : {})
+      },
       { new: true, runValidators: true }
     );
     if (!store) return res.status(404).json({ message: 'Store not found.' });

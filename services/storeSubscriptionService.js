@@ -5,6 +5,30 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const { getSubscriptionPlan, normalizeSubscriptionTier, planHasEntitlement } = require('../config/subscriptionPlans');
 
+// Active, verified stores that already existed when paid subscriptions were
+// introduced were promised Professional access. Keep that promise at runtime
+// so an unexecuted one-time migration cannot hide existing store operations.
+const LEGACY_PROFESSIONAL_GRANT_CUTOFF = new Date('2026-11-10T07:25:50.000Z');
+
+const getStoreCreatedAt = store => {
+  const explicit = store?.createdAt ? new Date(store.createdAt) : null;
+  if (explicit && !Number.isNaN(explicit.getTime())) return explicit;
+  if (typeof store?._id?.getTimestamp === 'function') return store._id.getTimestamp();
+  return null;
+};
+
+const isLegacyProfessionalStore = store => {
+  const createdAt = getStoreCreatedAt(store);
+  return Boolean(
+    store?.isActive === true
+    && store?.isDeleted !== true
+    && store?.verificationStatus === 'verified'
+    && !store?.subscriptionLegacyGrantOptOutAt
+    && createdAt
+    && createdAt.getTime() <= LEGACY_PROFESSIONAL_GRANT_CUTOFF.getTime()
+  );
+};
+
 const activeListingQueries = storeId => [
   Product.countDocuments({ store: storeId, visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true } }),
   Pet.countDocuments({ store: storeId, status: 'available', isAvailable: true, isDeleted: { $ne: true } }),
@@ -19,7 +43,7 @@ const getEffectiveTier = store => {
     return normalizeSubscriptionTier(store.pendingSubscription.tier);
   }
   const configuredTier = normalizeSubscriptionTier(store?.subscriptionTier);
-  if (configuredTier === 'free') return 'free';
+  if (configuredTier === 'free') return isLegacyProfessionalStore(store) ? 'professional' : 'free';
   if (store?.subscriptionExpires && new Date(store.subscriptionExpires).getTime() <= Date.now()) return 'free';
   return configuredTier;
 };
@@ -27,7 +51,7 @@ const getEffectiveTier = store => {
 const getStoreSubscriptionSummary = async storeOrId => {
   const store = typeof storeOrId === 'object' && storeOrId?._id
     ? storeOrId
-    : await Store.findById(storeOrId).select('name subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt pendingSubscription operatingLocations');
+    : await Store.findById(storeOrId).select('name createdAt isActive isDeleted verificationStatus subscriptionLegacyGrantOptOutAt subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt pendingSubscription operatingLocations');
   if (!store) throw Object.assign(new Error('Store not found.'), { statusCode: 404 });
 
   const [products, pets, services, staff] = await Promise.all([
@@ -142,6 +166,8 @@ const assertCanAddLocation = async storeId => {
 };
 
 module.exports = {
+  LEGACY_PROFESSIONAL_GRANT_CUTOFF,
+  isLegacyProfessionalStore,
   getEffectiveTier,
   getStoreSubscriptionSummary,
   assertCanActivateListing,

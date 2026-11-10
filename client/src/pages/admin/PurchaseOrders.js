@@ -11,6 +11,7 @@ import SupplierOfferComparison from '../../components/procurement/SupplierOfferC
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 import { getProcurementItemImage } from '../../utils/procurementItemImage';
+import { getUserFacingError } from '../../utils/userFacingError';
 
 const PurchaseOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,6 +20,7 @@ const PurchaseOrders = () => {
   const [activeTab, setActiveTab] = useState(requestedTab);
   const [orders, setOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [supplierLoadError, setSupplierLoadError] = useState('');
   const [catalog, setCatalog] = useState(null);
   const [procurementCart, setProcurementCart] = useState({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
   const [loading, setLoading] = useState(true);
@@ -92,18 +94,34 @@ const PurchaseOrders = () => {
   };
 
   const fetchData = async () => {
+    setLoading(true);
+    setSupplierLoadError('');
     try {
-      const [ordRes, supRes, prodRes, cartRes] = await Promise.all([
+      const [ordersResult, suppliersResult, productsResult, cartResult] = await Promise.allSettled([
         purchaseOrderService.getAll(),
         supplierService.getStoreManagedSuppliers(),
         adminProductService.getAllProducts(),
         purchaseOrderService.getCart()
       ]);
-      setOrders(ordRes.data.orders || []);
-      setSuppliers(supRes.data.suppliers || []);
-      setStoreProducts(prodRes.data?.products || prodRes.data || []);
-      setProcurementCart(cartRes.data);
-      setProductMapping(Object.fromEntries((cartRes.data.items || []).map(item => [item.lineIdentity || item.supplierProductId, item.storeProduct?._id || ''])));
+      if (ordersResult.status === 'fulfilled') setOrders(ordersResult.value.data.orders || []);
+      else console.error('Purchase order load error:', ordersResult.reason);
+
+      if (suppliersResult.status === 'fulfilled') {
+        setSuppliers(suppliersResult.value.data.suppliers || []);
+      } else {
+        console.error('Supplier load error:', suppliersResult.reason);
+        setSupplierLoadError(getUserFacingError(suppliersResult.reason, 'Unable to load suppliers. Please try again.'));
+      }
+
+      if (productsResult.status === 'fulfilled') {
+        setStoreProducts(productsResult.value.data?.products || productsResult.value.data || []);
+      } else console.error('Store product load error:', productsResult.reason);
+
+      if (cartResult.status === 'fulfilled') {
+        const cart = cartResult.value.data;
+        setProcurementCart(cart);
+        setProductMapping(Object.fromEntries((cart.items || []).map(item => [item.lineIdentity || item.supplierProductId, item.storeProduct?._id || ''])));
+      } else console.error('Procurement cart load error:', cartResult.reason);
     } catch (e) { console.error('Load error:', e); }
     finally { setLoading(false); }
   };
@@ -438,6 +456,12 @@ const PurchaseOrders = () => {
             <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setComparisonStoreProductId('')} className="rounded-xl border border-indigo-300 px-4 py-3 text-[10px] font-black uppercase text-indigo-700">Compare product or service supply offers</button><button onClick={() => setShowSupplierForm(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-[10px] font-black uppercase text-white hover:bg-primary-700"><Plus className="h-4 w-4" /> Add Supplier</button></div>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {supplierLoadError && (
+            <div className="col-span-full rounded-2xl border border-rose-200 bg-rose-50 p-5 text-center">
+              <p className="text-sm font-bold text-rose-800">{supplierLoadError}</p>
+              <button type="button" onClick={fetchData} className="mt-3 rounded-xl bg-rose-700 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white">Try again</button>
+            </div>
+          )}
           {suppliers.map(s => (
             <div key={s._id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all">
               <div className="flex items-center gap-3 mb-4">
@@ -467,7 +491,7 @@ const PurchaseOrders = () => {
               </div>
             </div>
           ))}
-          {suppliers.length === 0 && (
+          {!supplierLoadError && suppliers.length === 0 && (
             <div className="col-span-full bg-white rounded-2xl p-12 text-center border border-slate-100">
               <Truck className="h-12 w-12 text-slate-300 mx-auto mb-4" />
               <h3 className="text-sm font-black text-slate-800 uppercase">No verified suppliers available yet</h3>

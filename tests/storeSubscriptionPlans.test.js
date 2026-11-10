@@ -54,6 +54,47 @@ test('effective plan honors prepaid transitions and expires them safely', () => 
   }
 });
 
+test('active verified legacy stores retain Professional access unless they explicitly opt out', () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (/^\.\.\/models\/(Product|Pet|Service|Store|User)$/.test(request)) return {};
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+    const { getEffectiveTier, LEGACY_PROFESSIONAL_GRANT_CUTOFF } = require('../services/storeSubscriptionService');
+    const beforeCutoff = new Date(LEGACY_PROFESSIONAL_GRANT_CUTOFF.getTime() - 1000);
+    const afterCutoff = new Date(LEGACY_PROFESSIONAL_GRANT_CUTOFF.getTime() + 1000);
+    const legacy = {
+      subscriptionTier: 'free', createdAt: beforeCutoff,
+      isActive: true, isDeleted: false, verificationStatus: 'verified'
+    };
+
+    assert.equal(getEffectiveTier(legacy), 'professional');
+    assert.equal(getEffectiveTier({ ...legacy, createdAt: afterCutoff }), 'free');
+    assert.equal(getEffectiveTier({ ...legacy, isActive: false }), 'free');
+    assert.equal(getEffectiveTier({ ...legacy, verificationStatus: 'pending' }), 'free');
+    assert.equal(getEffectiveTier({ ...legacy, subscriptionLegacyGrantOptOutAt: new Date() }), 'free');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[require.resolve('../services/storeSubscriptionService')];
+  }
+});
+
+test('supplier management loads independent resources without blanking verified suppliers', () => {
+  const page = read('client/src/pages/admin/PurchaseOrders.js');
+  assert.match(page, /Promise\.allSettled/);
+  assert.match(page, /setSuppliers\(suppliersResult\.value\.data\.suppliers \|\| \[\]\)/);
+  assert.match(page, /supplierLoadError/);
+  assert.doesNotMatch(page, /const \[ordRes, supRes, prodRes, cartRes\] = await Promise\.all/);
+});
+
+test('explicit Free plan choices opt out of the legacy Professional compatibility grant', () => {
+  assert.match(read('controllers/subscriptionController.js'), /subscriptionLegacyGrantOptOutAt = now/);
+  assert.match(read('controllers/storeController.js'), /subscriptionLegacyGrantOptOutAt: new Date\(\)/);
+  assert.match(read('models/Store.js'), /subscriptionLegacyGrantOptOutAt: Date/);
+});
+
 test('subscription summary counts all customer-facing listing types and active staff', async () => {
   const counts = { Product: 4, Pet: 3, Service: 2, User: 1 };
   const originalLoad = Module._load;

@@ -420,6 +420,9 @@ const storeSchema = new mongoose.Schema({
     default: 'monthly'
   },
   subscriptionTrialUsedAt: Date,
+  // Set when an owner or platform administrator deliberately selects Free so
+  // the legacy Professional compatibility grant is not reapplied.
+  subscriptionLegacyGrantOptOutAt: Date,
   pendingSubscription: {
     tier: { type: String, enum: ['free', 'starter', 'growth'] },
     effectiveAt: Date,

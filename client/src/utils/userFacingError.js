@@ -16,6 +16,9 @@ export const getUserFacingError = (error, fallback = 'Something went wrong. Plea
   }
   const status = Number(error.response.status);
   const message = error.response.data?.message;
+  const code = error.response.data?.code;
+  if (typeof code === 'string' && code.startsWith('SUBSCRIPTION_')
+    && typeof message === 'string' && message.trim()) return message;
   if ([403, 404, 429, 500].includes(status)) return FRIENDLY_STATUS_MESSAGES[status];
   if (typeof message === 'string' && message.trim() && !/^\d{3}$/.test(message.trim())) return message;
   return FRIENDLY_STATUS_MESSAGES[status] || fallback;

@@ -7,6 +7,7 @@ const {
   buildPlanSnapshot,
   finalizeSubscriptionPayment
 } = require('../services/storeSubscriptionPaymentService');
+const { getEffectiveTier } = require('../services/storeSubscriptionService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let FRONTEND_URL = process.env.FRONTEND_URL;
@@ -258,7 +259,7 @@ const scheduleSubscriptionDowngrade = async (req, res) => {
     }
     const store = await getOwnedStore(req.user._id);
     if (!store) return res.status(404).json({ message: 'Store not found.' });
-    const currentTier = normalizeSubscriptionTier(store.subscriptionTier);
+    const currentTier = getEffectiveTier(store);
     if (targetTier === currentTier || currentTier === 'free') {
       return res.status(400).json({ message: 'This store is already on the Free plan.' });
     }
@@ -266,6 +267,7 @@ const scheduleSubscriptionDowngrade = async (req, res) => {
       return res.status(409).json({ message: 'A paid plan is already queued for the next term. Contact support if the payment needs review.' });
     }
     const now = new Date();
+    store.subscriptionLegacyGrantOptOutAt = now;
     const effectiveAt = store.subscriptionExpires && new Date(store.subscriptionExpires) > now
       ? new Date(store.subscriptionExpires) : now;
     if (effectiveAt <= now) {
@@ -298,7 +300,7 @@ const cancelSubscriptionDowngrade = async (req, res) => {
     const store = await Store.findOneAndUpdate({
       _id: existing._id,
       'pendingSubscription.paid': { $ne: true }
-    }, { $unset: { pendingSubscription: 1 } }, { new: true });
+    }, { $unset: { pendingSubscription: 1, subscriptionLegacyGrantOptOutAt: 1 } }, { new: true });
     if (!store) return res.status(404).json({ message: 'Store not found.' });
     return res.json({ message: 'Scheduled downgrade cancelled.' });
   } catch (error) {
