@@ -95,6 +95,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'OK', version: 'v3-stable' }));
 
 // Routes
+app.use('/api/internal/jobs', require('./routes/internalJobs'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
