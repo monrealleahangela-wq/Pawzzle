@@ -22,12 +22,28 @@ test('super-admin date filters use the shared unclipped visible-label control', 
   }
 });
 
-test('shared date filter renders an unclipped label above a transparent native select', () => {
+test('shared date filter uses the fixed-height accessible select control', () => {
   const source = read('client/src/components/superadmin/SuperAdminDateRangeFilter.js');
 
   assert.match(source, /label: 'All time'/, 'All Time is missing from the date choices');
-  assert.match(source, /flex items-center whitespace-nowrap text-xs/, 'visible date text is not vertically centered and protected from wrapping');
-  assert.match(source, /font-extrabold uppercase leading-none/, 'visible date text does not use readable styling');
-  assert.match(source, /absolute inset-0 z-10 h-full w-full.*opacity-0/, 'native select is not retained as the interactive layer');
+  assert.match(source, /SuperAdminSelectFilter/, 'date filter does not use the shared select control');
+});
+
+test('shared select control renders complete labels above a transparent native select', () => {
+  const source = read('client/src/components/superadmin/SuperAdminSelectFilter.js');
+
+  assert.match(source, /h-12 min-w-0 overflow-hidden/, 'filter height is not fixed independently of native select rules');
+  assert.match(source, /font-sans text-xs font-extrabold uppercase leading-normal/, 'visible filter text does not use readable typography');
+  assert.match(source, /min-h-0 max-h-none/, 'native select can still inherit conflicting global height limits');
+  assert.match(source, /absolute inset-0 z-10 h-full.*opacity-0/, 'native select is not retained as the interactive layer');
   assert.match(source, /aria-label=\{ariaLabel\}/, 'native select is missing its accessible label');
+});
+
+test('transaction status filter uses the same unclipped visible-label control', () => {
+  const source = read('client/src/pages/superadmin/TransactionHistory.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'transaction history does not import the shared select control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the status choices');
+  assert.match(source, /ariaLabel="Filter transactions by status"/, 'status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped status select is still present');
 });
