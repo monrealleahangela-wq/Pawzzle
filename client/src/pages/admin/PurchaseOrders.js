@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, CreditCard, Search } from 'lucide-react';
-import { supplierService, purchaseOrderService, paymentService, getImageUrl, adminProductService } from '../../services/apiService';
+import { supplierService, purchaseOrderService, paymentService, getImageUrl } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
@@ -27,6 +27,9 @@ const PurchaseOrders = () => {
   const [loading, setLoading] = useState(true);
   const [showCatalog, setShowCatalog] = useState(false);
   const [catalogFilters, setCatalogFilters] = useState({ search: '', category: 'all', availability: 'all' });
+  const [variantToLink, setVariantToLink] = useState(null);
+  const [selectedSellerVariantId, setSelectedSellerVariantId] = useState('');
+  const [savingVariantMapping, setSavingVariantMapping] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [submittingCart, setSubmittingCart] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -102,7 +105,7 @@ const PurchaseOrders = () => {
       const [ordersResult, suppliersResult, productsResult, cartResult] = await Promise.allSettled([
         purchaseOrderService.getAll(),
         supplierService.getStoreManagedSuppliers(),
-        adminProductService.getAllProducts(),
+        purchaseOrderService.getProcurementStoreProducts({ limit: 100 }),
         purchaseOrderService.getCart()
       ]);
       if (ordersResult.status === 'fulfilled') setOrders(ordersResult.value.data.orders || []);
@@ -175,6 +178,44 @@ const PurchaseOrders = () => {
       setProcurementCart(response.data);
       toast.success(`${product.name}${variant ? ` (${variant.attributes.map(item => item.valueLabel).join(' · ')})` : ''} added to procurement cart`);
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to add this supply.'); }
+  };
+
+  const refreshOpenCatalog = async () => {
+    if (!catalog?.supplier?._id) return;
+    const response = await supplierService.getCatalog(catalog.supplier._id);
+    setCatalog(response.data);
+  };
+
+  const openVariantMapping = (product, variant) => {
+    setVariantToLink({ product, variant });
+    setSelectedSellerVariantId('');
+  };
+
+  const closeVariantMapping = () => {
+    if (savingVariantMapping) return;
+    setVariantToLink(null);
+    setSelectedSellerVariantId('');
+  };
+
+  const saveVariantMapping = async event => {
+    event.preventDefault();
+    if (!variantToLink || !selectedSellerVariantId || savingVariantMapping) return;
+    setSavingVariantMapping(true);
+    try {
+      await purchaseOrderService.createVariantMapping({
+        supplierVariantId: variantToLink.variant._id,
+        sellerVariantId: selectedSellerVariantId,
+        confirm: true
+      });
+      await refreshOpenCatalog();
+      toast.success('Supplier variant linked to your inventory variant.');
+      setVariantToLink(null);
+      setSelectedSellerVariantId('');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to link this supplier variant.');
+    } finally {
+      setSavingVariantMapping(false);
+    }
   };
 
   const updateCartQty = async (item, delta) => {
@@ -344,6 +385,10 @@ const PurchaseOrders = () => {
   const catalogCategories = [...new Set(catalogProducts.map(supplierCatalogCategory))].sort();
   const filteredCatalogProducts = filterSupplierCatalogProducts(catalogProducts, catalogFilters);
   const hasCatalogFilters = Boolean(catalogFilters.search || catalogFilters.category !== 'all' || catalogFilters.availability !== 'all');
+  const sellerVariantOptions = storeProducts.flatMap(product => (product.variants || []).map(variant => ({
+    ...variant,
+    parentProduct: product
+  })));
   const groupedCart = cart.reduce((groups, item) => {
     const key = String(item.supplierId);
     if (!groups[key]) groups[key] = { supplier: item.supplier, items: [] };
@@ -615,7 +660,15 @@ const PurchaseOrders = () => {
                                 <p className="text-[10px] font-black text-slate-800">{label}</p>
                                 <p className="mt-0.5 text-[8px] text-slate-500">SKU {variant.sku} · ₱{Number(variant.wholesalePrice || 0).toLocaleString()} · {variant.availableStock} {variant.unitOfMeasure}</p>
                                 {variantInCart ? <div className="mt-2 flex items-center justify-center gap-3 rounded-lg bg-emerald-50 py-1.5"><button onClick={() => updateCartQty(variantInCart, -1)} className="rounded bg-white p-1"><Minus className="h-3 w-3" /></button><span className="text-xs font-black text-emerald-700">{variantInCart.quantity}</span><button onClick={() => updateCartQty(variantInCart, 1)} disabled={variantInCart.quantity >= variant.availableStock} className="rounded bg-white p-1 disabled:opacity-30"><Plus className="h-3 w-3" /></button></div>
-                                  : <button onClick={() => addToCart(p, variant)} disabled={variant.availableStock < variant.minimumOrderQuantity} className="mt-2 w-full rounded-lg bg-slate-900 py-2 text-[8px] font-black uppercase text-white disabled:opacity-30">{variant.availableStock < variant.minimumOrderQuantity ? 'Unavailable' : 'Add Variant'}</button>}
+                                  : variant.procurementReady ? (
+                                    <button onClick={() => addToCart(p, variant)} disabled={variant.availableStock < variant.minimumOrderQuantity} className="mt-2 w-full rounded-lg bg-slate-900 py-2 text-[8px] font-black uppercase text-white disabled:opacity-30">{variant.availableStock < variant.minimumOrderQuantity ? 'Unavailable' : 'Add Variant'}</button>
+                                  ) : variant.mappingRequired && catalog.variantProcurement?.mappingWritesEnabled ? (
+                                    <button type="button" onClick={() => openVariantMapping(p, variant)} className="mt-2 w-full rounded-lg border border-primary-300 bg-white py-2 text-[8px] font-black uppercase text-primary-700 transition hover:bg-primary-50">Link inventory variant</button>
+                                  ) : (
+                                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-center text-[8px] font-bold text-amber-800">
+                                      {variant.mappingRequired ? 'Inventory link required before ordering' : 'Variant ordering is not enabled yet'}
+                                    </div>
+                                  )}
                               </div>;
                             })}
                           </div>
@@ -647,6 +700,53 @@ const PurchaseOrders = () => {
               )}
             </div>
           </div>
+        </div>
+      ), document.body)}
+
+      {variantToLink && createPortal((
+        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm">
+          <form onSubmit={saveVariantMapping} role="dialog" aria-modal="true" aria-labelledby="variant-mapping-title" className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-primary-700">Exact inventory destination</p>
+                <h3 id="variant-mapping-title" className="mt-1 text-lg font-black text-slate-900">Link inventory variant</h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">Choose which exact store variant should receive this supplier variant when an approved delivery is accepted.</p>
+              </div>
+              <button type="button" aria-label="Close variant link" onClick={closeVariantMapping} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-50 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-black text-slate-900">{variantToLink.product.name}</p>
+              <p className="mt-1 text-[10px] font-bold text-primary-700">{variantToLink.variant.attributes?.map(attribute => attribute.valueLabel).join(' · ') || variantToLink.variant.sku}</p>
+              <p className="mt-1 text-[9px] text-slate-500">Supplier SKU {variantToLink.variant.sku} · ₱{Number(variantToLink.variant.wholesalePrice || 0).toLocaleString()}</p>
+            </div>
+
+            {sellerVariantOptions.length ? (
+              <label className="mt-4 block text-xs font-bold text-slate-700">
+                Store inventory variant
+                <select required value={selectedSellerVariantId} onChange={event => setSelectedSellerVariantId(event.target.value)} className="mt-1.5 h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100">
+                  <option value="">Select the matching store variant</option>
+                  {sellerVariantOptions.map(variant => (
+                    <option key={variant._id} value={variant._id}>
+                      {variant.parentProduct.name} — {variant.attributes?.map(attribute => attribute.valueLabel).join(' · ') || variant.sku} (SKU {variant.sku})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                Create the matching <strong>Product With Variants</strong> in Product Inventory first. Pawzzle will not send variant stock into a parent or different inventory balance.
+                <Link to="/admin/products" className="mt-2 block font-black text-primary-700 underline">Open Product Inventory</Link>
+              </div>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={closeVariantMapping} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500">Cancel</button>
+              <button type="submit" disabled={!selectedSellerVariantId || savingVariantMapping} className="rounded-xl bg-primary-700 px-5 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-40">
+                {savingVariantMapping ? 'Saving link...' : 'Save inventory link'}
+              </button>
+            </div>
+          </form>
         </div>
       ), document.body)}
 

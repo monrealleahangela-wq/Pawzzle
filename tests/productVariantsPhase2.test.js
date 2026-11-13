@@ -61,7 +61,7 @@ test('variant mapping APIs are authenticated, store-scoped, and never trust clie
   const routes = read('routes/purchaseOrders.js');
   const controller = read('controllers/supplierVariantMappingController.js');
   const service = read('services/supplierVariantMappingService.js');
-  assert.match(routes, /router\.post\('\/variant-mappings', authenticate, requirePermission\('procurement\.manage', 'inventory\.receive'\), createVariantMapping\)/);
+  assert.match(routes, /router\.post\('\/variant-mappings', authenticate, requirePermission\('procurement\.manage', 'inventory\.receive'\), procurementPlan, createVariantMapping\)/);
   assert.match(controller, /resolveUserStore\(req\.user\)/);
   assert.match(controller, /validateMappingReferences\(\{[\s\S]*storeId: store,[\s\S]*sellerVariantId: req\.body\.sellerVariantId,[\s\S]*supplierVariantId: req\.body\.supplierVariantId/);
   assert.doesNotMatch(controller, /req\.body\.(store|supplier|supplierProduct|sellerProduct)\b/);
