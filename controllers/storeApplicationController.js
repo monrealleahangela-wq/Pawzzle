@@ -51,6 +51,21 @@ const resetApplicationReviewState = application => {
   application.reviewedAt = undefined;
 };
 
+// Original store applications predate the applicationType discriminator. A
+// few production-era rows contain an explicit null/empty value rather than a
+// missing field, so they must be treated as the same original application.
+// Expansion requests are deliberately excluded.
+const buildOriginalApplicationSelector = applicantId => ({
+  applicant: applicantId,
+  $or: [
+    { applicationType: 'new_store' },
+    { applicationType: { $exists: false } },
+    { applicationType: null },
+    { applicationType: '' }
+  ],
+  isDeleted: { $ne: true }
+});
+
 const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
 
 const applicationValidationErrors = (data, files = {}) => {
@@ -398,11 +413,9 @@ const submitApplication = async (req, res) => {
 
     const applicationData = buildApplicationData(req.body, req.user.id);
 
-    const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne({
-      applicant: req.user.id,
-      $or: [{ applicationType: 'new_store' }, { applicationType: { $exists: false } }],
-      isDeleted: { $ne: true }
-    }).sort({ createdAt: -1 }));
+    const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne(
+      buildOriginalApplicationSelector(req.user.id)
+    ).sort({ createdAt: -1 }));
     // Never trust document URLs posted by the browser. Reuse the already-owned
     // secure upload unless the applicant supplied a replacement file.
     applicationData.businessRegistration.documentUrl = req.files?.businessRegistration
@@ -508,7 +521,7 @@ const submitApplication = async (req, res) => {
     }
 
     const isResubmission = Boolean(existingApplication && ['requires_more_info', 'rejected', 'draft'].includes(existingApplication.status));
-    const application = isResubmission ? existingApplication : new StoreApplication();
+    let application = isResubmission ? existingApplication : new StoreApplication();
     application.set(applicationData);
     if (isResubmission) {
       resetApplicationReviewState(application);
@@ -524,30 +537,96 @@ const submitApplication = async (req, res) => {
     application.reviewNotes = application.verificationScore >= 60 
       ? 'Application submitted and awaiting manual review'
       : 'Application submitted but may require additional documentation due to low verification score';
-    appendApplicationReviewEvent(application, {
+    const reviewEvent = {
       action: isResubmission ? 'resubmitted' : 'submitted',
       actor: req.user.id,
       notes: isResubmission ? 'Applicant resubmitted requested corrections.' : 'Application submitted for Platform Admin review.'
-    });
+    };
 
-    await application.save();
+    if (isResubmission) {
+      // Do not call document.save() for a correction submission. Older
+      // applications can contain obsolete values in untouched fields; full
+      // document validation would reject the otherwise valid corrected form
+      // and surface only a generic 500. Update the allow-listed form fields
+      // atomically, validate those modified paths, and preserve the historical
+      // record and audit trail.
+      await StoreApplication.updateOne(
+        { _id: existingApplication._id, reviewHistory: null },
+        { $set: { reviewHistory: [] } }
+      );
+
+      const castApplication = application.toObject({ depopulate: true, virtuals: false });
+      const resubmissionFields = Object.keys(applicationData).reduce((fields, key) => {
+        fields[key] = castApplication[key];
+        return fields;
+      }, {});
+
+      application = await applicationQueryWithPrivateFields(StoreApplication.findOneAndUpdate(
+        {
+          _id: existingApplication._id,
+          applicant: req.user.id,
+          status: existingApplication.status,
+          isDeleted: { $ne: true }
+        },
+        {
+          $set: {
+            ...resubmissionFields,
+            applicationType: 'new_store',
+            status: application.status,
+            reviewNotes: application.reviewNotes,
+            verificationScore: application.verificationScore,
+            requiredCorrections: [],
+            updatedAt: new Date()
+          },
+          $unset: {
+            rejectionReason: 1,
+            reviewedBy: 1,
+            reviewedAt: 1
+          },
+          $push: { reviewHistory: reviewEvent }
+        },
+        { new: true, runValidators: true, context: 'query' }
+      ));
+
+      if (!application) {
+        return res.status(409).json({
+          message: 'This application changed while it was being submitted. Refresh the page and try again.'
+        });
+      }
+    } else {
+      appendApplicationReviewEvent(application, reviewEvent);
+      await application.save();
+    }
 
     res.status(isResubmission ? 200 : 201).json({
       message: 'Application submitted successfully',
       application: toApplicationResponse(application, { includeSensitiveFields: true })
     });
 
-    // Notify applicant
-    await createNotification({
-      recipient: req.user.id,
-      type: 'store_application',
-      title: 'Store Application Received',
-      message: `Your application status: ${application.status.replace(/_/g, ' ')}. ${application.reviewNotes}`,
-      relatedId: application._id,
-      relatedModel: 'StoreApplication'
-    });
+    // Notification delivery is secondary to persistence. A notification
+    // outage must never turn a successfully stored application into a visible
+    // submission failure (or attempt a second response after headers are sent).
+    try {
+      await createNotification({
+        recipient: req.user.id,
+        type: 'store_application',
+        title: 'Store Application Received',
+        message: `Your application status: ${application.status.replace(/_/g, ' ')}. ${application.reviewNotes}`,
+        relatedId: application._id,
+        relatedModel: 'StoreApplication'
+      });
+    } catch (notificationError) {
+      console.error('Store application notification error:', notificationError);
+    }
   } catch (error) {
     console.error('Submit application error:', error);
+    if (res.headersSent) return;
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Please review the application details and submit again.',
+        errors: Object.entries(error.errors || {}).map(([field, detail]) => ({ field, msg: detail.message }))
+      });
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -1100,11 +1179,9 @@ const getApplicationDocument = async (req, res) => {
 // Get user's application status
 const getUserApplication = async (req, res) => {
   try {
-    const application = await applicationQueryWithPrivateFields(StoreApplication.findOne({
-      applicant: req.user.id,
-      $or: [{ applicationType: 'new_store' }, { applicationType: { $exists: false } }],
-      isDeleted: { $ne: true }
-    }))
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findOne(
+      buildOriginalApplicationSelector(req.user.id)
+    ))
       .sort({ updatedAt: -1, createdAt: -1 })
       .populate('reviewedBy', 'username firstName lastName');
 
@@ -1250,5 +1327,6 @@ module.exports = {
   applyAuthoritativeTaxFilters,
   appendApplicationReviewEvent,
   resetApplicationReviewState,
+  buildOriginalApplicationSelector,
   upload
 };
