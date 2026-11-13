@@ -77,6 +77,7 @@ test('Store Application submit, edit, reopen, and original-record selection pers
     {
       $set: {
         status: 'requires_more_info',
+        applicationType: null,
         reviewHistory: null,
         requiredCorrections: ['businessName'],
         rejectionReason: 'Correct the submitted business name.',
@@ -94,6 +95,7 @@ test('Store Application submit, edit, reopen, and original-record selection pers
 
   const reopened = await StoreApplication.findById(original._id).select('+businessRegistration.documentUrl').lean();
   assert.equal(reopened.businessName, 'Corrected Store');
+  assert.equal(reopened.applicationType, 'new_store');
   assert.equal(reopened.businessRegistration.documentUrl, 'secure://registration/original');
   assert.deepEqual(reopened.requiredCorrections, []);
   assert.equal(reopened.rejectionReason, undefined);

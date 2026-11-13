@@ -7,6 +7,7 @@ const {
   applicationValidationErrors,
   appendApplicationReviewEvent,
   buildApplicationData,
+  buildOriginalApplicationSelector,
   resetApplicationReviewState,
   toApplicationResponse
 } = require('../controllers/storeApplicationController');
@@ -92,10 +93,23 @@ test('resubmission preserves existing upload-backed metadata unless a replacemen
 });
 
 test('legacy original applications remain discoverable without matching expansion requests', () => {
+  const applicant = '64b000000000000000000001';
+  const selector = buildOriginalApplicationSelector(applicant);
+  assert.equal(selector.applicant, applicant);
+  assert.ok(selector.$or.some(condition => condition.applicationType === 'new_store'));
+  assert.ok(selector.$or.some(condition => condition.applicationType === null));
+  assert.ok(selector.$or.some(condition => condition.applicationType === ''));
+  assert.ok(selector.$or.some(condition => condition.applicationType?.$exists === false));
+  assert.ok(!selector.$or.some(condition => condition.applicationType === 'expansion'));
   const controller = read('controllers/storeApplicationController.js');
-  const legacySelector = /\$or: \[\{ applicationType: 'new_store' \}, \{ applicationType: \{ \$exists: false \} \}\]/g;
-  assert.ok((controller.match(legacySelector) || []).length >= 2);
-  assert.match(controller, /isResubmission \? existingApplication : new StoreApplication/);
+  assert.match(controller, /StoreApplication\.findOneAndUpdate\([\s\S]*\$push: \{ reviewHistory: reviewEvent \}/);
+  assert.match(controller, /\{ _id: existingApplication\._id, reviewHistory: null \}/);
+});
+
+test('notification failures cannot change a successfully persisted application response', () => {
+  const controller = read('controllers/storeApplicationController.js');
+  assert.match(controller, /res\.status\(isResubmission \? 200 : 201\)\.json\([\s\S]*try \{[\s\S]*await createNotification/);
+  assert.match(controller, /if \(res\.headersSent\) return/);
 });
 
 test('legacy applications with null audit history can be resubmitted safely', () => {
