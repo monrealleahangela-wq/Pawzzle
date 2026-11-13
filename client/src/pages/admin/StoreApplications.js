@@ -202,11 +202,12 @@ const StoreApplications = () => {
                 <Activity className="h-4 w-4 text-primary-500" />
              </div>
              <select
+                aria-label="Filter applications by status"
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
+                className="w-full h-12 !min-h-12 !max-h-12 bg-slate-800 border-none text-white text-[10px] font-black uppercase leading-normal tracking-widest rounded-2xl pl-14 pr-10 py-0 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer"
              >
-                <option value="" className="bg-slate-900 text-white font-black uppercase tracking-widest italic">ALL STATUSES</option>
+                <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                  <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
                  <option value="under_review" className="bg-slate-900 text-white font-black">UNDER REVIEW</option>
                  <option value="requires_more_info" className="bg-slate-900 text-white font-black">NEED INFO</option>
