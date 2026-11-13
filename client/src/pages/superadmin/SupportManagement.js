@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, Clock, Filter, Search, User, ChevronLeft, ChevronRight, HelpCircle, Mail, Calendar } from 'lucide-react';
+import { CheckCircle, Clock, Filter, Search, User, ChevronLeft, ChevronRight, HelpCircle, Mail } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { supportService, userService, getImageUrl } from '../../services/apiService';
 import { Zap } from 'lucide-react';
 import { pawzzlePrompt } from '../../utils/pawzzleDialog';
+import SuperAdminDateRangeFilter from '../../components/superadmin/SuperAdminDateRangeFilter';
 
 const SupportManagement = () => {
     const [messages, setMessages] = useState([]);
@@ -170,21 +171,13 @@ const SupportManagement = () => {
                             <option value="closed" className="bg-slate-900 text-white font-black">CLOSED</option>
                         </select>
                     </div>
-                    <div className="md:col-span-3 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
-                            <Calendar className="h-3.5 w-3.5 text-emerald-500" />
-                        </div>
-                        <select
-                            aria-label="Filter support tickets by date"
-                            value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                            className="w-full h-12 !min-h-12 !max-h-12 bg-slate-800 border-none text-white text-[10px] font-black uppercase leading-normal tracking-widest rounded-2xl pl-14 pr-10 py-0 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
-                            <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
-                            <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
-                            <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
-                        </select>
-                    </div>
+                    <SuperAdminDateRangeFilter
+                        ariaLabel="Filter support tickets by date"
+                        value={filters.dateRange}
+                        onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+                        className="md:col-span-3"
+                        iconClassName="text-emerald-500"
+                    />
                 </div>
             </div>
 

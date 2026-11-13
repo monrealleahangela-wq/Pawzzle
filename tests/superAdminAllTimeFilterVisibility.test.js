@@ -14,18 +14,20 @@ const dateFilters = [
   ['client/src/pages/superadmin/ActivityHistory.js', 'Filter activity by date']
 ];
 
-test('super-admin All Time filters keep an explicit readable control height', () => {
+test('super-admin date filters use the shared unclipped visible-label control', () => {
   for (const [relativePath, label] of dateFilters) {
     const source = read(relativePath);
-    const selectStart = source.lastIndexOf('<select', source.indexOf(`aria-label="${label}"`));
-    const selectEnd = source.indexOf('</select>', selectStart);
-    const select = source.slice(selectStart, selectEnd);
-
-    assert.ok(select.includes(`aria-label="${label}"`), `${relativePath} is missing its accessible date label`);
-    assert.match(select, /h-12 !min-h-12 !max-h-12/, `${relativePath} can be compressed by global select styles`);
-    assert.match(select, /uppercase leading-normal/, `${relativePath} does not provide readable label line height`);
-    assert.match(select, /pr-10 py-0/, `${relativePath} still applies vertical padding that clips native select text`);
-    assert.match(select, />ALL TIME<\/option>/, `${relativePath} no longer provides the All Time choice`);
-    assert.doesNotMatch(select, /\bh-full\b|\bpy-3\.5\b/, `${relativePath} contains the legacy clipped select sizing`);
+    assert.match(source, /import SuperAdminDateRangeFilter/, `${relativePath} does not import the shared date filter`);
+    assert.match(source, new RegExp(`ariaLabel="${label}"`), `${relativePath} is missing its accessible date label`);
   }
+});
+
+test('shared date filter renders an unclipped label above a transparent native select', () => {
+  const source = read('client/src/components/superadmin/SuperAdminDateRangeFilter.js');
+
+  assert.match(source, /label: 'All time'/, 'All Time is missing from the date choices');
+  assert.match(source, /flex items-center whitespace-nowrap text-xs/, 'visible date text is not vertically centered and protected from wrapping');
+  assert.match(source, /font-extrabold uppercase leading-none/, 'visible date text does not use readable styling');
+  assert.match(source, /absolute inset-0 z-10 h-full w-full.*opacity-0/, 'native select is not retained as the interactive layer');
+  assert.match(source, /aria-label=\{ariaLabel\}/, 'native select is missing its accessible label');
 });
