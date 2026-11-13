@@ -12,13 +12,31 @@ const responseRecorder = () => ({
 const loadController = mocks => {
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
-    if (request === '../models/Store') return mocks.Store;
-    if (request === '../models/StoreSubscriptionPayment') return mocks.Payment;
+    if (request === '../models/Store') {
+      return {
+        ...mocks.Store,
+        find: mocks.Store.find || (async query => {
+          const store = await mocks.Store.findOne?.({
+            owner: query?.owner,
+            isDeleted: { $ne: true }
+          });
+          return store ? [store] : [];
+        })
+      };
+    }
+    if (request === '../models/StoreSubscriptionPayment') {
+      return {
+        find: async () => [],
+        ...mocks.Payment
+      };
+    }
     if (request === '../models/ActivityLog') return { create: async () => {} };
     if (request === '../services/paymongoService') return mocks.PayMongo;
     if (request === '../services/storeSubscriptionPaymentService') return mocks.subscriptionService;
     return originalLoad.call(this, request, parent, isMain);
   };
+  delete require.cache[require.resolve('../services/storeAccessService')];
+  delete require.cache[require.resolve('../services/storeSubscriptionService')];
   delete require.cache[require.resolve('../controllers/subscriptionController')];
   const controller = require('../controllers/subscriptionController');
   Module._load = originalLoad;

@@ -1,7 +1,7 @@
 const Store = require('../models/Store');
 const { isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { SUBSCRIPTION_PLANS } = require('../config/subscriptionPlans');
-const { getEffectiveTier } = require('./storeSubscriptionService');
+const { getEffectiveTier, resolveAuthoritativeSubscription } = require('./storeSubscriptionService');
 
 const idString = value => String(value?._id || value || '');
 
@@ -67,9 +67,32 @@ const resolveOperationalStore = async user => {
     : null;
 };
 
+const resolveSubscriptionContext = async user => {
+  const operationalStore = await resolveOperationalStore(user);
+  if (!operationalStore) return null;
+
+  // Store administrators own the subscription account. Staff inherit the plan
+  // of the business that owns their assigned operational Store.
+  const ownerId = isStoreAdmin(user)
+    ? (user?._id || user?.id)
+    : (operationalStore.owner?._id || operationalStore.owner);
+  const authoritativeSubscription = await resolveAuthoritativeSubscription(
+    operationalStore,
+    { ownerId }
+  );
+
+  return {
+    operationalStore,
+    tier: authoritativeSubscription.tier,
+    subscriptionStoreId: authoritativeSubscription.sourceStoreId || operationalStore._id,
+    authoritativeSubscription
+  };
+};
+
 module.exports = {
   selectCanonicalOwnedStore,
   findCanonicalOwnedStore,
   findCanonicalStoreForAdmin,
-  resolveOperationalStore
+  resolveOperationalStore,
+  resolveSubscriptionContext
 };

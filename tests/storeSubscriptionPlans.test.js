@@ -36,6 +36,7 @@ test('effective plan honors prepaid transitions and expires them safely', () => 
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
     if (/^\.\.\/models\/(Product|Pet|Service|Store|User)$/.test(request)) return {};
+    if (request === '../models/StoreSubscriptionPayment') return { find: async () => [] };
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
@@ -60,6 +61,7 @@ test('active legacy stores retain Professional access regardless of stale verifi
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
     if (/^\.\.\/models\/(Product|Pet|Service|Store|User)$/.test(request)) return {};
+    if (request === '../models/StoreSubscriptionPayment') return { find: async () => [] };
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
@@ -228,7 +230,7 @@ test('subscription gates use the shared operational store resolver', async () =>
 test('dashboard consumes the same subscription-resolved store used by the entitlement gate', () => {
   const controller = read('controllers/storeController.js');
   assert.match(controller, /if \(req\.subscriptionStoreId\) \{\s*store = await Store\.findById\(req\.subscriptionStoreId\)/);
-  assert.match(controller, /const getMyStoreSubscription[\s\S]*?const store = await resolveOperationalStore\(req\.user\)/);
+  assert.match(controller, /const getMyStoreSubscription[\s\S]*?const context = await resolveSubscriptionContext\(req\.user\)/);
   assert.match(read('controllers/supplierController.js'), /const resolveAuthorizedStore = resolveOperationalStore/);
 });
 
@@ -245,6 +247,7 @@ test('subscription summary counts all customer-facing listing types and active s
     const model = request.match(/^\.\.\/models\/(Product|Pet|Service|Store|User)$/)?.[1];
     if (model === 'Store') return { findById: () => ({ select: async () => null }) };
     if (model) return { countDocuments: async () => counts[model] };
+    if (request === '../models/StoreSubscriptionPayment') return { find: async () => [] };
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
@@ -269,6 +272,7 @@ test('expired legacy Professional metadata still satisfies the supplier catalog 
     const model = request.match(/^\.\.\/models\/(Product|Pet|Service|Store|User)$/)?.[1];
     if (model === 'Store') return { findById: () => ({ select: async () => null }) };
     if (model) return { countDocuments: async () => 0 };
+    if (request === '../models/StoreSubscriptionPayment') return { find: async () => [] };
     return originalLoad.call(this, request, parent, isMain);
   };
   try {
@@ -297,6 +301,7 @@ test('listing limit blocks only a new activation and returns an upgrade-safe err
     if (model === 'Store') return { findById: () => ({ select: async () => null }) };
     if (model === 'Product') return { countDocuments: async () => 10 };
     if (model) return { countDocuments: async () => 0 };
+    if (request === '../models/StoreSubscriptionPayment') return { find: async () => [] };
     return originalLoad.call(this, request, parent, isMain);
   };
   try {

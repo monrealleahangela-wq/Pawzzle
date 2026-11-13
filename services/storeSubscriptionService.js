@@ -2,8 +2,14 @@ const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
+const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const User = require('../models/User');
-const { getSubscriptionPlan, normalizeSubscriptionTier, planHasEntitlement } = require('../config/subscriptionPlans');
+const {
+  SUBSCRIPTION_PLANS,
+  getSubscriptionPlan,
+  normalizeSubscriptionTier,
+  planHasEntitlement
+} = require('../config/subscriptionPlans');
 
 // Active stores that already existed when paid subscriptions were introduced
 // were promised Professional access. Keep that promise at runtime so legacy
@@ -34,6 +40,24 @@ const activeListingQueries = storeId => [
   Service.countDocuments({ store: storeId, isActive: true, isDeleted: { $ne: true } })
 ];
 
+const idString = value => String(value?._id || value || '');
+const storeSubscriptionFields = 'owner name createdAt updatedAt isActive isDeleted verificationStatus subscriptionLegacyGrantOptOutAt subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt pendingSubscription operatingLocations';
+
+const queryWithOptionalSelect = async (query, fields) => (
+  typeof query?.select === 'function' ? query.select(fields) : query
+);
+
+const newestActivePayment = payments => [...(payments || [])].sort((left, right) => {
+  const timestamp = payment => new Date(
+    payment?.periodStart
+      || payment?.paymentDetails?.paidAt
+      || payment?.updatedAt
+      || payment?.createdAt
+      || 0
+  ).getTime() || 0;
+  return timestamp(right) - timestamp(left);
+})[0] || null;
+
 const getEffectiveTier = store => {
   if (store?.pendingSubscription?.tier && store?.pendingSubscription?.effectiveAt
     && new Date(store.pendingSubscription.effectiveAt).getTime() <= Date.now()) {
@@ -51,17 +75,83 @@ const getEffectiveTier = store => {
   return configuredTier;
 };
 
-const getStoreSubscriptionSummary = async storeOrId => {
+// A business account can have more than one Store row after an application is
+// upgraded or repaired. Operational data remains scoped to the selected Store,
+// but subscription access belongs to the business account. Resolve the plan
+// once from all server-authorized business rows and current paid records so
+// Attendance, procurement, reports, and settings cannot disagree.
+const resolveAuthoritativeSubscription = async (store, options = {}) => {
+  if (!store?._id) return { tier: 'free', sourceStoreId: null, payment: null };
+
+  const ownerId = options.ownerId || store.owner?._id || store.owner;
+  const candidates = new Map([[idString(store), store]]);
+  for (const candidate of options.additionalStores || []) {
+    if (candidate?._id) candidates.set(idString(candidate), candidate);
+  }
+
+  if (ownerId) {
+    const relatedStores = await queryWithOptionalSelect(
+      Store.find({ owner: ownerId, isDeleted: { $ne: true } }),
+      storeSubscriptionFields
+    );
+    for (const candidate of relatedStores || []) candidates.set(idString(candidate), candidate);
+  }
+
+  const storeIds = [...candidates.values()].map(candidate => candidate._id).filter(Boolean);
+  const paymentScopes = [];
+  if (ownerId && storeIds.length) paymentScopes.push({ store: { $in: storeIds } });
+  if (ownerId) paymentScopes.push({ requestedBy: ownerId });
+
+  let payment = null;
+  if (paymentScopes.length) {
+    const now = new Date();
+    const payments = await StoreSubscriptionPayment.find({
+      status: 'paid',
+      periodStart: { $lte: now },
+      periodEnd: { $gt: now },
+      $or: paymentScopes
+    });
+    payment = newestActivePayment(payments);
+  }
+
+  // A current, confirmed payment is the strongest source of truth. This also
+  // makes an intentional paid downgrade authoritative instead of allowing an
+  // older legacy Professional grant to override it.
+  if (payment) {
+    return {
+      tier: normalizeSubscriptionTier(payment.targetTier),
+      sourceStoreId: payment.store || store._id,
+      payment
+    };
+  }
+
+  const selectedStore = [...candidates.values()].sort((left, right) => {
+    const leftRank = SUBSCRIPTION_PLANS[getEffectiveTier(left)]?.rank || 0;
+    const rightRank = SUBSCRIPTION_PLANS[getEffectiveTier(right)]?.rank || 0;
+    if (leftRank !== rightRank) return rightRank - leftRank;
+    const timestamp = value => new Date(value?.updatedAt || value?.createdAt || 0).getTime() || 0;
+    return timestamp(right) - timestamp(left);
+  })[0] || store;
+
+  return {
+    tier: getEffectiveTier(selectedStore),
+    sourceStoreId: selectedStore._id,
+    payment: null
+  };
+};
+
+const getStoreSubscriptionSummary = async (storeOrId, options = {}) => {
   const store = typeof storeOrId === 'object' && storeOrId?._id
     ? storeOrId
-    : await Store.findById(storeOrId).select('name createdAt isActive isDeleted verificationStatus subscriptionLegacyGrantOptOutAt subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt pendingSubscription operatingLocations');
+    : await Store.findById(storeOrId).select(storeSubscriptionFields);
   if (!store) throw Object.assign(new Error('Store not found.'), { statusCode: 404 });
 
   const [products, pets, services, staff] = await Promise.all([
     ...activeListingQueries(store._id),
     User.countDocuments({ store: store._id, role: 'staff', isActive: { $ne: false }, isDeleted: { $ne: true }, staffStatus: { $nin: ['inactive', 'suspended', 'archived'] } })
   ]);
-  const effectiveTier = getEffectiveTier(store);
+  const authoritative = options.authoritativeSubscription || await resolveAuthoritativeSubscription(store, options);
+  const effectiveTier = normalizeSubscriptionTier(authoritative.tier);
   const pendingIsEffective = Boolean(store.pendingSubscription?.tier
     && store.pendingSubscription?.effectiveAt
     && new Date(store.pendingSubscription.effectiveAt).getTime() <= Date.now());
@@ -82,12 +172,16 @@ const getStoreSubscriptionSummary = async storeOrId => {
   return {
     tier: effectiveTier,
     configuredTier: normalizeSubscriptionTier(store.subscriptionTier),
-    expiresAt: pendingIsEffective
+    expiresAt: authoritative.payment?.periodEnd || (pendingIsEffective
       ? (store.pendingSubscription.expiresAt || null)
-      : (store.subscriptionExpires || null),
-    billingInterval: pendingIsEffective
+      : (store.subscriptionExpires || null)),
+    billingInterval: authoritative.payment?.billingInterval || (pendingIsEffective
       ? (store.pendingSubscription.billingInterval || 'monthly')
-      : (store.subscriptionBillingInterval || 'monthly'),
+      : (store.subscriptionBillingInterval || 'monthly')),
+    subscriptionSource: {
+      storeId: authoritative.sourceStoreId || store._id,
+      type: authoritative.payment ? 'paid_subscription' : 'store_configuration'
+    },
     trialAvailable: !store.subscriptionTrialUsedAt,
     pendingSubscription: pending,
     plan,
@@ -146,8 +240,8 @@ const assertCanAddStaff = async storeId => {
   return summary;
 };
 
-const assertStoreEntitlement = async (storeId, entitlement) => {
-  const summary = await getStoreSubscriptionSummary(storeId);
+const assertStoreEntitlement = async (storeId, entitlement, options = {}) => {
+  const summary = await getStoreSubscriptionSummary(storeId, options);
   if (!planHasEntitlement(summary.tier, entitlement)) {
     const required = Object.values(require('../config/subscriptionPlans').SUBSCRIPTION_PLANS)
       .find(plan => plan.entitlements.includes(entitlement));
@@ -172,6 +266,7 @@ module.exports = {
   LEGACY_PROFESSIONAL_GRANT_CUTOFF,
   isLegacyProfessionalStore,
   getEffectiveTier,
+  resolveAuthoritativeSubscription,
   getStoreSubscriptionSummary,
   assertCanActivateListing,
   assertCanAddStaff,
