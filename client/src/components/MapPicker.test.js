@@ -60,7 +60,7 @@ test('uses the best GPS reading, displays its uncertainty, and confirms exact co
 
   fireEvent.click(screen.getByRole('button', { name: /use current location/i }));
 
-  expect(await screen.findByText(/precise gps fix ±18 m/i)).toBeInTheDocument();
+  expect(await screen.findByText(/high-accuracy device location \(about ±18 m\)/i)).toBeInTheDocument();
   expect(screen.getByTestId('gps-accuracy-circle')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
 
@@ -71,4 +71,27 @@ test('uses the best GPS reading, displays its uncertainty, and confirms exact co
     locationSource: 'device_gps'
   })));
   expect(navigator.geolocation.clearWatch).toHaveBeenCalledWith(8);
+});
+
+test('uses a normal desktop location reading and asks the user to fine-tune it', async () => {
+  jest.useFakeTimers();
+  Object.defineProperty(navigator, 'geolocation', {
+    configurable: true,
+    value: {
+      watchPosition: jest.fn(success => {
+        success({ coords: { latitude: 14.4, longitude: 120.9, accuracy: 202 }, timestamp: 1 });
+        return 12;
+      }),
+      clearWatch: jest.fn()
+    }
+  });
+
+  render(<MapPicker onLocationSelected={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: /use current location/i }));
+  jest.advanceTimersByTime(3000);
+
+  expect(await screen.findByText(/approximate device location \(about ±202 m\)/i)).toBeInTheDocument();
+  expect(screen.getByText(/drag the pin to the exact entrance/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /confirm/i })).toBeEnabled();
+  jest.useRealTimers();
 });

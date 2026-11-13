@@ -12,6 +12,10 @@ import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } fr
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import { formatSupplierPackageWeight, normalizeSupplierPackageWeight } from '../../utils/supplierProductDetails';
+import {
+  prepareSupplierProductPayload,
+  supplierProductNumberInputValue
+} from '../../utils/supplierProductForm';
 
 const FDA_REVIEW_CATEGORIES = ['pet_food', 'pet_treats', 'medical_supplies', 'health_supplements'];
 const requiresFdaReview = category => FDA_REVIEW_CATEGORIES.includes(category);
@@ -148,9 +152,11 @@ const SupplierDashboard = () => {
         return toast.error('Complete the SKU and attribute values for every variant.');
       }
     }
+    const prepared = prepareSupplierProductPayload(productForm);
+    if (prepared.error) return toast.error(prepared.error);
+    const productPayload = prepared.payload;
     setSubmitting(true);
     try {
-      const productPayload = { ...productForm };
       if (productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet') {
         productPayload.weight = normalizedWeight;
       } else {
@@ -158,8 +164,8 @@ const SupplierDashboard = () => {
       }
       if (editingProduct) {
         await supplierService.updateProduct(editingProduct._id, productPayload);
-        if (productForm.productMode === 'variant') {
-          for (const variant of productForm.variants || []) {
+        if (productPayload.productMode === 'variant') {
+          for (const variant of productPayload.variants || []) {
             if (variant._id) await supplierService.updateVariant(editingProduct._id, variant._id, variant);
             else await supplierService.addVariant(editingProduct._id, variant);
           }
@@ -168,7 +174,7 @@ const SupplierDashboard = () => {
           ? 'Supply updated and submitted for FDA compliance review.'
           : 'Supply updated and published. FDA review is not required for this category.');
       } else {
-        if (productForm.productMode === 'variant') await supplierService.addVariantProduct(productPayload);
+        if (productPayload.productMode === 'variant') await supplierService.addVariantProduct(productPayload);
         else await supplierService.addProduct(productPayload);
         toast.success(needsFdaReview
           ? 'Supply submitted for FDA compliance review.'
@@ -796,17 +802,17 @@ const SupplierDashboard = () => {
                 </div>
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Wholesale Price (₱)</label>
-                  <input type="number" value={productForm.wholesalePrice} onChange={e => setProductForm(p => ({ ...p, wholesalePrice: parseFloat(e.target.value) || 0 }))}
+                  <input type="number" min="0" step="0.01" value={supplierProductNumberInputValue(productForm.wholesalePrice)} onChange={e => setProductForm(p => ({ ...p, wholesalePrice: e.target.value }))}
                     className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
                 </div>}
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</label>
-                  <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.availableStock} onChange={e => setProductForm(p => ({ ...p, availableStock: parseInt(e.target.value) || 0 }))}
+                  <input type="number" min="0" step="1" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : supplierProductNumberInputValue(productForm.availableStock)} onChange={e => setProductForm(p => ({ ...p, availableStock: e.target.value }))}
                     className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none disabled:opacity-60" />
                 </div>}
                 {productForm.productMode !== 'variant' && <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Min Order Qty</label>
-                  <input type="number" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : productForm.minimumOrderQuantity} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: parseInt(e.target.value) || 1 }))}
+                  <input type="number" min="1" step="1" disabled={productForm.itemType === 'live_pet'} value={productForm.itemType === 'live_pet' ? 1 : supplierProductNumberInputValue(productForm.minimumOrderQuantity)} onChange={e => setProductForm(p => ({ ...p, minimumOrderQuantity: e.target.value }))}
                     className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none disabled:opacity-60" />
                 </div>}
                 {productForm.productMode !== 'variant' && <label className="space-y-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unit of measure
@@ -822,7 +828,7 @@ const SupplierDashboard = () => {
                 </div>}
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
-                  <input type="number" value={productForm.deliveryLeadTimeDays} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: parseInt(e.target.value) || 1 }))}
+                  <input type="number" min="0" step="1" value={supplierProductNumberInputValue(productForm.deliveryLeadTimeDays)} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: e.target.value }))}
                     className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
                 </div>
               </div>
@@ -843,9 +849,9 @@ const SupplierDashboard = () => {
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="text-[9px] font-black uppercase text-slate-500">Variant SKU<input value={variant.sku} onChange={e => setVariantField(variantIndex, 'sku', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
-                    <label className="text-[9px] font-black uppercase text-slate-500">Wholesale price<input type="number" min="0" value={variant.wholesalePrice} onChange={e => setVariantField(variantIndex, 'wholesalePrice', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
-                    <label className="text-[9px] font-black uppercase text-slate-500">Supplier stock<input type="number" min="0" step="1" value={variant.availableStock} onChange={e => setVariantField(variantIndex, 'availableStock', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
-                    <label className="text-[9px] font-black uppercase text-slate-500">Minimum order<input type="number" min="1" step="1" value={variant.minimumOrderQuantity} onChange={e => setVariantField(variantIndex, 'minimumOrderQuantity', Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Wholesale price<input type="number" min="0" step="0.01" value={supplierProductNumberInputValue(variant.wholesalePrice)} onChange={e => setVariantField(variantIndex, 'wholesalePrice', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Supplier stock<input type="number" min="0" step="1" value={supplierProductNumberInputValue(variant.availableStock)} onChange={e => setVariantField(variantIndex, 'availableStock', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
+                    <label className="text-[9px] font-black uppercase text-slate-500">Minimum order<input type="number" min="1" step="1" value={supplierProductNumberInputValue(variant.minimumOrderQuantity)} onChange={e => setVariantField(variantIndex, 'minimumOrderQuantity', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /></label>
                     <label className="text-[9px] font-black uppercase text-slate-500">Unit<select value={variant.unitOfMeasure} onChange={e => setVariantField(variantIndex, 'unitOfMeasure', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm normal-case">{['piece','pack','box','kg','liter','bag','bottle','set','ml','gram','tube'].map(unit => <option key={unit}>{unit}</option>)}</select></label>
                     <label className="text-[9px] font-black uppercase text-slate-500">Package weight<div className="mt-1 flex"><input type="number" min="0.001" value={variant.weight} onChange={e => setVariantField(variantIndex, 'weight', e.target.value)} className="min-w-0 flex-1 rounded-l-xl border border-slate-200 px-3 py-2.5 text-sm normal-case" /><select value={variant.weightUnit} onChange={e => setVariantField(variantIndex, 'weightUnit', e.target.value)} className="rounded-r-xl border border-l-0 border-slate-200 px-2 text-xs"><option>g</option><option>kg</option></select></div></label>
                     <label className="flex items-center gap-2 self-end rounded-xl border border-slate-200 px-3 py-3 text-[9px] font-black uppercase text-slate-600"><input type="checkbox" checked={variant.isActive !== false && !variant.isDiscontinued} disabled={variant.isDiscontinued} onChange={e => setVariantField(variantIndex, 'isActive', e.target.checked)} className="h-4 w-4 accent-primary-700" /> Available to supplier catalog</label>
@@ -859,7 +865,7 @@ const SupplierDashboard = () => {
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {[['name','Pet name'],['breed','Breed'],['color','Color / markings']].map(([key,label]) => <label key={key} className="text-[9px] font-black uppercase text-slate-500">{label}<input required value={productForm.pet?.[key] || ''} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, [key]: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>)}
                   <label className="text-[9px] font-black uppercase text-slate-500">Species<select value={productForm.pet?.species || 'dog'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, species: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case">{['dog','cat','bird','fish','rabbit','hamster','reptile','other'].map(value => <option key={value}>{value}</option>)}</select></label>
-                  <label className="text-[9px] font-black uppercase text-slate-500">Age<input required min="0" type="number" value={productForm.pet?.age ?? 0} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, age: Number(e.target.value) } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>
+                  <label className="text-[9px] font-black uppercase text-slate-500">Age<input required min="0" step="0.01" type="number" value={supplierProductNumberInputValue(productForm.pet?.age)} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, age: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case" /></label>
                   <label className="text-[9px] font-black uppercase text-slate-500">Age unit<select value={productForm.pet?.ageUnit || 'years'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, ageUnit: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case"><option value="months">Months</option><option value="years">Years</option></select></label>
                   <label className="text-[9px] font-black uppercase text-slate-500">Sex<select value={productForm.pet?.gender || 'male'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, gender: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case"><option value="male">Male</option><option value="female">Female</option></select></label>
                   <label className="text-[9px] font-black uppercase text-slate-500">Size<select value={productForm.pet?.size || 'medium'} onChange={e => setProductForm(p => ({ ...p, pet: { ...p.pet, size: e.target.value } }))} className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm normal-case">{['small','medium','large','extra_large'].map(value => <option key={value}>{value.replace('_', ' ')}</option>)}</select></label>

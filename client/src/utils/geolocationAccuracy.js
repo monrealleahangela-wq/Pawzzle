@@ -1,5 +1,9 @@
 export const DESIRED_GPS_ACCURACY_METERS = 30;
-export const MAXIMUM_GPS_ACCURACY_METERS = 150;
+// Desktop browsers often provide a Wi-Fi-assisted position in the 150-300 m
+// range. It is still a useful starting point when the user confirms the pin.
+// Readings broader than 300 m are not accepted as a store/delivery location.
+export const MAXIMUM_GPS_ACCURACY_METERS = 300;
+export const GPS_REFINEMENT_WINDOW_MS = 3000;
 
 const locationError = (code, message, details = {}) => Object.assign(new Error(message), {
   code,
@@ -28,6 +32,29 @@ export const chooseMoreAccuratePosition = (current, candidate) => {
   return candidate.accuracy < current.accuracy ? candidate : current;
 };
 
+export const getLocationAccuracyPresentation = accuracy => {
+  const rounded = Number.isFinite(Number(accuracy)) ? Math.round(Number(accuracy)) : null;
+  if (rounded === null) {
+    return {
+      level: 'unknown',
+      label: 'Device location found',
+      guidance: 'Confirm the pin before saving.'
+    };
+  }
+  if (rounded <= DESIRED_GPS_ACCURACY_METERS) {
+    return {
+      level: 'precise',
+      label: `High-accuracy device location (about ±${rounded} m)`,
+      guidance: 'Confirm the pin before saving.'
+    };
+  }
+  return {
+    level: 'approximate',
+    label: `Approximate device location (about ±${rounded} m)`,
+    guidance: 'Check the address and drag the pin to the exact entrance if needed.'
+  };
+};
+
 export const getLocationErrorMessage = error => {
   if (error?.code === 'LOW_ACCURACY') {
     const rounded = Number.isFinite(error.accuracy) ? ` (about ±${Math.round(error.accuracy)} m)` : '';
@@ -46,7 +73,8 @@ export const getAccurateCurrentPosition = ({
   geolocation = typeof navigator !== 'undefined' ? navigator.geolocation : null,
   desiredAccuracy = DESIRED_GPS_ACCURACY_METERS,
   maximumAccuracy = MAXIMUM_GPS_ACCURACY_METERS,
-  timeout = 15000
+  timeout = 15000,
+  refinementWindow = GPS_REFINEMENT_WINDOW_MS
 } = {}) => new Promise((resolve, reject) => {
   if (!geolocation) {
     reject(locationError('UNSUPPORTED', 'This device does not support location services.'));
@@ -57,9 +85,11 @@ export const getAccurateCurrentPosition = ({
   let settled = false;
   let watchId;
   let timer;
+  let refinementTimer;
 
   const cleanup = () => {
     if (timer) clearTimeout(timer);
+    if (refinementTimer) clearTimeout(refinementTimer);
     if (watchId !== undefined && typeof geolocation.clearWatch === 'function') {
       geolocation.clearWatch(watchId);
     }
@@ -85,6 +115,11 @@ export const getAccurateCurrentPosition = ({
     try {
       best = chooseMoreAccuratePosition(best, normalizeBrowserPosition(position));
       if (best.accuracy <= desiredAccuracy) finishWithBest();
+      else if (best.accuracy <= maximumAccuracy && !refinementTimer) {
+        // Keep watching briefly for a better GPS/Wi-Fi sample, then use the
+        // best usable reading rather than failing a valid desktop location.
+        refinementTimer = setTimeout(finishWithBest, Math.min(refinementWindow, timeout));
+      }
     } catch (error) {
       if (!best) {
         settled = true;

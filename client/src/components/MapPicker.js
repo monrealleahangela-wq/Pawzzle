@@ -5,6 +5,7 @@ import { MapPin, Check, X, LocateFixed, Info } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
   getAccurateCurrentPosition,
+  getLocationAccuracyPresentation,
   getLocationErrorMessage
 } from '../utils/geolocationAccuracy';
 
@@ -204,6 +205,10 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
     }
   };
 
+  const accuracyPresentation = tempLocation?.locationSource === 'device_gps'
+    ? getLocationAccuracyPresentation(tempLocation.accuracyMeters)
+    : null;
+
   return (
     <div className={`space-y-4 animate-fade-in ${className}`}>
       <div className="flex flex-col sm:flex-row gap-3">
@@ -251,9 +256,14 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
               </p>
               <p className={`mb-5 rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-wider ${tempLocation.locationSource === 'device_gps' ? 'bg-blue-50 text-blue-700' : 'bg-primary-50 text-primary-700'}`}>
                 {tempLocation.locationSource === 'device_gps'
-                  ? `Precise GPS fix ±${Math.round(tempLocation.accuracyMeters)} m`
+                  ? accuracyPresentation.label
                   : 'Pin placed manually on the map'}
               </p>
+              {accuracyPresentation?.level === 'approximate' && (
+                <p className="-mt-2 mb-5 text-[10px] font-semibold leading-relaxed text-slate-600">
+                  {accuracyPresentation.guidance}
+                </p>
+              )}
               
               <div className="flex gap-3">
                 <button
@@ -284,7 +294,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
           <div className="min-w-0">
             <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Location selected</p>
             <p className="text-[10px] font-bold text-emerald-600 uppercase truncate">{address}</p>
-            {accuracyMeters && <p className="mt-1 text-[9px] font-bold text-blue-700">GPS accuracy: approximately ±{Math.round(accuracyMeters)} m</p>}
+            {accuracyMeters && <p className="mt-1 text-[9px] font-bold text-blue-700">{getLocationAccuracyPresentation(accuracyMeters).label}</p>}
           </div>
         </div>
       )}
