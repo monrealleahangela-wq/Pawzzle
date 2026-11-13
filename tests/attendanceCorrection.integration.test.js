@@ -30,7 +30,8 @@ test('attendance correction transactions, concurrency, payroll protection and au
   const Notification = require('../models/Notification');
   const ActivityLog = require('../models/ActivityLog');
   const {
-    submitCorrectionRequest, reviewCorrectionRequest, directCorrectAttendance, getEvidenceAccess
+    submitCorrectionRequest, reviewCorrectionRequest, directCorrectAttendance,
+    batchCorrectAttendance, getEvidenceAccess
   } = require('../services/attendanceCorrectionService');
   const { computePayrollPeriodAtomically } = require('../services/payrollComputationService');
 
@@ -223,6 +224,85 @@ test('attendance correction transactions, concurrency, payroll protection and au
       assert.equal(success.payrollImpact.manualReconciliationRequired, true);
       const finalized = await PayrollPeriod.findOne({ store: storeId, periodStart: new Date('2026-12-01T00:00:00Z') });
       assert.equal(finalized.status, 'approved');
+    });
+
+    await t.test('batch correction updates exact employees with separate audit entries', async () => {
+      const secondEmployeeId = new mongoose.Types.ObjectId();
+      await User.collection.insertOne({
+        _id: secondEmployeeId,
+        username: `attendance-batch-${Date.now()}`,
+        email: `attendance-batch-${Date.now()}@example.test`,
+        role: 'staff',
+        staffType: 'cashier',
+        store: storeId,
+        isActive: true,
+        isDeleted: false,
+        staffStatus: 'active',
+        employmentProfile: { employmentStatus: 'active' }
+      });
+      const records = await Attendance.create([
+        {
+          store: storeId, employee: employeeId, workDate: '2026-12-10', schedule,
+          timeIn: { at: new Date('2026-12-10T01:05:00Z'), validationStatus: 'valid' }, status: 'incomplete'
+        },
+        {
+          store: storeId, employee: secondEmployeeId, workDate: '2026-12-10', schedule,
+          timeIn: { at: new Date('2026-12-10T01:10:00Z'), validationStatus: 'valid' }, status: 'incomplete'
+        }
+      ]);
+
+      const results = await batchCorrectAttendance({
+        actor: manager,
+        storeId,
+        items: records.map(record => ({ attendanceId: record._id, expectedVersion: record.__v })),
+        input: {
+          workDate: '2026-12-10',
+          reason: 'Signed shift records confirm the shared opening and closing times.',
+          confirmed: true,
+          timeIn: '2026-12-10T01:00:00Z',
+          timeOut: '2026-12-10T09:00:00Z'
+        },
+        now: new Date('2026-12-11T00:00:00Z')
+      });
+
+      assert.equal(results.length, 2);
+      const stored = await Attendance.find({ _id: { $in: records.map(record => record._id) } }).sort({ employee: 1 });
+      assert.equal(stored.every(record => record.timeIn.at.toISOString() === '2026-12-10T01:00:00.000Z'), true);
+      assert.equal(stored.every(record => record.timeOut.at.toISOString() === '2026-12-10T09:00:00.000Z'), true);
+      assert.equal(stored.every(record => record.corrections.length === 1), true);
+    });
+
+    await t.test('batch correction rolls every record back when one version is stale', async () => {
+      const records = await Attendance.create([
+        {
+          store: storeId, employee: employeeId, workDate: '2026-12-11', schedule,
+          timeIn: { at: new Date('2026-12-11T01:03:00Z'), validationStatus: 'valid' }, status: 'incomplete'
+        },
+        {
+          store: storeId, employee: secondManagerId, workDate: '2026-12-11', schedule,
+          timeIn: { at: new Date('2026-12-11T01:04:00Z'), validationStatus: 'valid' }, status: 'incomplete'
+        }
+      ]);
+      await assert.rejects(() => batchCorrectAttendance({
+        actor: manager,
+        storeId,
+        items: [
+          { attendanceId: records[0]._id, expectedVersion: records[0].__v },
+          { attendanceId: records[1]._id, expectedVersion: records[1].__v + 1 }
+        ],
+        input: {
+          workDate: '2026-12-11',
+          reason: 'The shared paper log confirms both attendance times.',
+          confirmed: true,
+          timeIn: '2026-12-11T01:00:00Z',
+          timeOut: '2026-12-11T09:00:00Z'
+        },
+        now: new Date('2026-12-12T00:00:00Z')
+      }), error => error.statusCode === 409);
+
+      const unchanged = await Attendance.find({ _id: { $in: records.map(record => record._id) } });
+      assert.equal(unchanged.every(record => record.timeOut?.at == null), true);
+      assert.equal(unchanged.every(record => record.corrections.length === 0), true);
     });
 
     await t.test('evidence authorization is participant/store scoped and URLs are short-lived', async () => {

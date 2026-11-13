@@ -559,6 +559,7 @@ export const hrService = {
   getAttendanceCorrectionEvidence: (id) => api.get(`/hr/attendance/corrections/${id}/evidence`),
   createManualAttendance: (data) => api.post('/hr/attendance/manual', data),
   correctAttendance: (id, data) => api.patch(`/hr/attendance/${id}/correct`, data),
+  correctAttendanceBatch: (data) => api.patch('/hr/attendance/corrections/batch', data),
   reviewAttendanceLocation: (id, data) => api.patch(`/hr/attendance/${id}/location-review`, data),
   getLeaves: (params) => api.get('/hr/leaves', { params }),
   reviewLeave: (id, data) => api.patch(`/hr/leaves/${id}/review`, data),

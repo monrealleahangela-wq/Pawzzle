@@ -270,18 +270,23 @@ const reviewCorrectionRequest = async ({ actor, storeId, requestId, action, revi
   return safeRequest(result);
 };
 
-const directCorrectAttendance = async ({ actor, storeId, attendanceId, input, ipAddress, io, now = new Date() }) => {
+const validateDirectCorrectionInput = ({ actor, input }) => {
   if (!isAuthorizedReviewer(actor)) throw fail('Only an authorized Store manager or owner may correct attendance.', 403);
   const reason = String(input.reason || '').trim();
   if (reason.length < 5) throw fail('A correction reason of at least 5 characters is required.');
   if (input.confirmed !== true) throw fail('Confirm the before and after attendance values before saving.');
-  const session = await mongoose.startSession();
-  const notifications = [];
-  let result;
-  try {
-    await session.withTransaction(async () => {
+  return reason;
+};
+
+const applyDirectCorrectionInSession = async ({
+  actor, storeId, attendanceId, input, ipAddress, now, store, session, notifications
+}) => {
+      const reason = String(input.reason || '').trim();
       const attendance = await Attendance.findOne({ _id: attendanceId, store: storeId }).session(session);
       if (!attendance) throw fail('Attendance record not found.', 404);
+      if (input.workDate && attendance.workDate !== input.workDate) {
+        throw fail('Every selected attendance record must belong to the chosen work date.');
+      }
       if (id(attendance.employee) === id(actor._id) && !isPlatformAdmin(actor)) throw fail('You cannot directly correct your own attendance.', 403);
       const expectedVersion = Number(input.expectedVersion);
       if (!Number.isInteger(expectedVersion) || expectedVersion !== attendance.__v) throw fail('Attendance changed after it was loaded. Reload before applying a correction.', 409);
@@ -296,7 +301,6 @@ const directCorrectAttendance = async ({ actor, storeId, attendanceId, input, ip
       if (new Date(nextTimeIn) > now || (nextTimeOut && new Date(nextTimeOut) > now)) throw fail('Attendance timestamps cannot be in the future.');
       const allowedStatuses = ['present', 'late', 'undertime', 'incomplete'];
       if (input.status !== undefined && !allowedStatuses.includes(input.status)) throw fail('Select a valid attendance status.');
-      const store = await Store.findById(storeId).session(session);
       const computed = nextTimeOut ? calculateAttendance({
         timeIn: new Date(nextTimeIn), timeOut: new Date(nextTimeOut), schedule: attendance.schedule,
         graceMinutes: store?.hrSettings?.gracePeriodMinutes, overtimeEnabled: store?.hrSettings?.overtime?.enabled
@@ -368,13 +372,66 @@ const directCorrectAttendance = async ({ actor, storeId, attendanceId, input, ip
         changes: { before, after: snapshot(updated), effectiveDate: nextTimeOut || nextTimeIn, reason },
         ipAddress
       }], { session });
-      result = { attendance: updated, payrollImpact };
+      return { attendance: updated, payrollImpact };
+};
+
+const directCorrectAttendance = async ({ actor, storeId, attendanceId, input, ipAddress, io, now = new Date() }) => {
+  validateDirectCorrectionInput({ actor, input });
+  const session = await mongoose.startSession();
+  const notifications = [];
+  let result;
+  try {
+    await session.withTransaction(async () => {
+      const store = await Store.findById(storeId).session(session);
+      result = await applyDirectCorrectionInSession({
+        actor, storeId, attendanceId, input, ipAddress, now, store, session, notifications
+      });
     });
   } finally {
     await session.endSession();
   }
   emitNotifications(io, notifications);
   return result;
+};
+
+const batchCorrectAttendance = async ({ actor, storeId, items, input, ipAddress, io, now = new Date() }) => {
+  validateDirectCorrectionInput({ actor, input });
+  if (!Array.isArray(items) || items.length < 1) throw fail('Select at least one employee attendance record.');
+  if (items.length > 50) throw fail('A maximum of 50 attendance records can be corrected at once.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.workDate || ''))) throw fail('Select a valid work date.');
+  const attendanceIds = items.map(item => id(item?.attendanceId));
+  if (attendanceIds.some(attendanceId => !mongoose.isValidObjectId(attendanceId))) throw fail('One or more selected attendance records are invalid.');
+  if (new Set(attendanceIds).size !== attendanceIds.length) throw fail('Each attendance record can only be selected once.');
+
+  const session = await mongoose.startSession();
+  const notifications = [];
+  const results = [];
+  try {
+    await session.withTransaction(async () => {
+      // MongoDB may retry this callback after a transient transaction error.
+      // Clear side effects collected outside the transaction before each attempt.
+      results.length = 0;
+      notifications.length = 0;
+      const store = await Store.findById(storeId).session(session);
+      for (const item of items) {
+        results.push(await applyDirectCorrectionInSession({
+          actor,
+          storeId,
+          attendanceId: item.attendanceId,
+          input: { ...input, expectedVersion: item.expectedVersion },
+          ipAddress,
+          now,
+          store,
+          session,
+          notifications
+        }));
+      }
+    });
+  } finally {
+    await session.endSession();
+  }
+  emitNotifications(io, notifications);
+  return results;
 };
 
 const getEvidenceAccess = async ({ actor, storeId, requestId, cloudinary, now }) => {
@@ -394,5 +451,6 @@ module.exports = {
   listStoreRequests,
   reviewCorrectionRequest,
   directCorrectAttendance,
+  batchCorrectAttendance,
   getEvidenceAccess
 };

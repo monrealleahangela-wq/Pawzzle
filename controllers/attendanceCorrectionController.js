@@ -7,6 +7,7 @@ const {
   listStoreRequests,
   reviewCorrectionRequest,
   directCorrectAttendance,
+  batchCorrectAttendance,
   getEvidenceAccess
 } = require('../services/attendanceCorrectionService');
 
@@ -114,6 +115,31 @@ const directCorrection = async (req, res) => {
   } catch (error) { return safeError(res, error); }
 };
 
+const batchCorrection = async (req, res) => {
+  try {
+    requireReviewerRole(req.user);
+    const storeId = await storeIdFor(req);
+    const results = await batchCorrectAttendance({
+      actor: req.user,
+      storeId,
+      items: req.body.items,
+      input: req.body,
+      ipAddress: req.ip,
+      io: req.app.get('socketio')
+    });
+    const manualReconciliationCount = results.filter(
+      result => result.payrollImpact.manualReconciliationRequired
+    ).length;
+    return res.json({
+      message: manualReconciliationCount
+        ? `${results.length} attendance records corrected. ${manualReconciliationCount} require separate finalized-payroll reconciliation.`
+        : `${results.length} attendance records corrected and affected draft payroll marked for recomputation.`,
+      results,
+      manualReconciliationCount
+    });
+  } catch (error) { return safeError(res, error); }
+};
+
 const evidence = async (req, res) => {
   try {
     const storeId = isPlatformAdmin(req.user) ? undefined : await storeIdFor(req);
@@ -123,4 +149,4 @@ const evidence = async (req, res) => {
   } catch (error) { return safeError(res, error); }
 };
 
-module.exports = { submit, own, storeList, review, directCorrection, evidence };
+module.exports = { submit, own, storeList, review, directCorrection, batchCorrection, evidence };
