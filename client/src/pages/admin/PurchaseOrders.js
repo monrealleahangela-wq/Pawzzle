@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, CreditCard } from 'lucide-react';
+import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers, Star, Mail, Power, CreditCard, Search } from 'lucide-react';
 import { supplierService, purchaseOrderService, paymentService, getImageUrl, adminProductService } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
@@ -12,6 +12,7 @@ import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSumm
 import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 import { getProcurementItemImage } from '../../utils/procurementItemImage';
 import { getUserFacingError } from '../../utils/userFacingError';
+import { filterSupplierCatalogProducts, supplierCatalogCategory } from '../../utils/supplierCatalogFilter';
 
 const PurchaseOrders = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +26,7 @@ const PurchaseOrders = () => {
   const [procurementCart, setProcurementCart] = useState({ items: [], itemCount: 0, totalQuantity: 0, subtotal: 0, supplierCount: 0 });
   const [loading, setLoading] = useState(true);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [catalogFilters, setCatalogFilters] = useState({ search: '', category: 'all', availability: 'all' });
   const [showCheckout, setShowCheckout] = useState(false);
   const [submittingCart, setSubmittingCart] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -130,6 +132,7 @@ const PurchaseOrders = () => {
     try {
       const res = await supplierService.getCatalog(supplierId);
       setCatalog(res.data);
+      setCatalogFilters({ search: '', category: 'all', availability: 'all' });
       setShowCatalog(true);
     } catch (e) { toast.error('Failed to load catalog'); }
   };
@@ -337,6 +340,10 @@ const PurchaseOrders = () => {
 
   const cart = procurementCart.items || [];
   const cartTotal = procurementCart.subtotal || 0;
+  const catalogProducts = catalog?.products || [];
+  const catalogCategories = [...new Set(catalogProducts.map(supplierCatalogCategory))].sort();
+  const filteredCatalogProducts = filterSupplierCatalogProducts(catalogProducts, catalogFilters);
+  const hasCatalogFilters = Boolean(catalogFilters.search || catalogFilters.category !== 'all' || catalogFilters.availability !== 'all');
   const groupedCart = cart.reduce((groups, item) => {
     const key = String(item.supplierId);
     if (!groups[key]) groups[key] = { supplier: item.supplier, items: [] };
@@ -533,7 +540,7 @@ const PurchaseOrders = () => {
             <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:gap-3 sm:px-5">
               <div className="min-w-0">
                 <h3 id="supplier-catalog-title" className="truncate text-base font-black uppercase tracking-tight text-slate-900 sm:text-lg">{catalog.supplier?.businessName}</h3>
-                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Product catalog • {catalog.products?.length || 0} items</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Product catalog • {filteredCatalogProducts.length} of {catalogProducts.length} items</p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                 {cart.length > 0 && (
@@ -546,13 +553,43 @@ const PurchaseOrders = () => {
               </div>
             </header>
             <div className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4">
+              <section aria-label="Catalog filters" className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:p-3">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_10rem_auto]">
+                  <label className="relative min-w-0">
+                    <span className="sr-only">Search supplier products</span>
+                    <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={catalogFilters.search}
+                      onChange={event => setCatalogFilters(filters => ({ ...filters, search: event.target.value }))}
+                      placeholder="Search name, SKU, or variant"
+                      className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                    />
+                  </label>
+                  <label>
+                    <span className="sr-only">Filter by category</span>
+                    <select value={catalogFilters.category} onChange={event => setCatalogFilters(filters => ({ ...filters, category: event.target.value }))} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-primary-500">
+                      <option value="all">All categories</option>
+                      {catalogCategories.map(category => <option key={category} value={category}>{String(category).replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase())}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="sr-only">Filter by availability</span>
+                    <select value={catalogFilters.availability} onChange={event => setCatalogFilters(filters => ({ ...filters, availability: event.target.value }))} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none focus:border-primary-500">
+                      <option value="all">Any availability</option>
+                      <option value="available">In stock</option>
+                      <option value="unavailable">Out of stock</option>
+                    </select>
+                  </label>
+                  <button type="button" disabled={!hasCatalogFilters} onClick={() => setCatalogFilters({ search: '', category: 'all', availability: 'all' })} className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-[9px] font-black uppercase tracking-wide text-slate-600 transition hover:border-primary-300 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-40">Clear</button>
+                </div>
+              </section>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {catalog.products?.map(p => {
+                {filteredCatalogProducts.map(p => {
                   const inCart = cart.find(i => String(i.supplierProductId) === String(p._id) && !i.supplierVariantId);
                   return (
                     <div key={p._id} className={`overflow-hidden rounded-xl border bg-white ${inCart ? 'border-emerald-300 ring-2 ring-emerald-50' : 'border-slate-100'} shadow-sm`}>
-                      <div className="flex h-24 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 sm:h-28">
-                        {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-8 w-8 text-indigo-300" />}
+                      <div className="flex h-32 items-center justify-center bg-slate-50 p-3 sm:h-36">
+                        {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt={p.name || 'Supplier product'} className="h-full w-full object-contain" /> : <Package className="h-8 w-8 text-indigo-300" />}
                       </div>
                       <div className="p-3">
                         {p.requiresPlatformReview === true && p.approvalStatus === 'approved' && <span className="mb-1.5 inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-emerald-800">FDA Evidence Reviewed</span>}
@@ -600,6 +637,14 @@ const PurchaseOrders = () => {
                   );
                 })}
               </div>
+              {filteredCatalogProducts.length === 0 && (
+                <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 text-center">
+                  <Search className="mb-3 h-7 w-7 text-slate-300" />
+                  <p className="text-sm font-black text-slate-800">No products match these filters</p>
+                  <p className="mt-1 text-xs text-slate-500">Try another keyword, category, or availability option.</p>
+                  <button type="button" onClick={() => setCatalogFilters({ search: '', category: 'all', availability: 'all' })} className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-[9px] font-black uppercase tracking-wide text-white">Show all products</button>
+                </div>
+              )}
             </div>
           </div>
         </div>
