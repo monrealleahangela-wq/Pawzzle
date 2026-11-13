@@ -242,3 +242,16 @@ html {
   position: relative;
   z-index: 0;
 }
+
+/* The shared profile intentionally uses muted labels, but the lightest utility
+   shades disappear against its white cards. Keep those labels readable in
+   light mode without changing the dark theme or other application screens. */
+html:not(.dark) .customer-profile-page .text-slate-300,
+html:not(.dark) .customer-profile-page .text-slate-400 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .customer-profile-page .text-neutral-300,
+html:not(.dark) .customer-profile-page .text-neutral-400 {
+  color: #52525b !important;
+}
