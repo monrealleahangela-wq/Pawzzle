@@ -1,6 +1,7 @@
 import {
   chooseMoreAccuratePosition,
   getAccurateCurrentPosition,
+  getLocationAccuracyPresentation,
   getLocationErrorMessage,
   normalizeBrowserPosition
 } from './geolocationAccuracy';
@@ -36,19 +37,41 @@ test('resolves the best high-accuracy watch reading and clears the watch', async
   expect(geolocation.clearWatch).toHaveBeenCalledWith(41);
 });
 
-test('rejects a coarse reading instead of presenting it as precise', async () => {
+test('accepts a usable desktop reading after allowing time for refinement', async () => {
   jest.useFakeTimers();
   const geolocation = {
     watchPosition: jest.fn(success => {
-      success(browserPosition(14.4, 120.9, 420));
+      success(browserPosition(14.4, 120.9, 202));
       return 7;
+    }),
+    clearWatch: jest.fn()
+  };
+
+  const result = getAccurateCurrentPosition({ geolocation, timeout: 5000, refinementWindow: 100 });
+  jest.advanceTimersByTime(100);
+  await expect(result).resolves.toMatchObject({ lat: 14.4, lng: 120.9, accuracy: 202 });
+  expect(getLocationAccuracyPresentation(202)).toMatchObject({
+    level: 'approximate',
+    label: expect.stringMatching(/about ±202 m/i),
+    guidance: expect.stringMatching(/drag the pin/i)
+  });
+  expect(geolocation.clearWatch).toHaveBeenCalledWith(7);
+  jest.useRealTimers();
+});
+
+test('rejects a genuinely unusable reading', async () => {
+  jest.useFakeTimers();
+  const geolocation = {
+    watchPosition: jest.fn(success => {
+      success(browserPosition(14.4, 120.9, 1200));
+      return 9;
     }),
     clearWatch: jest.fn()
   };
 
   const result = getAccurateCurrentPosition({ geolocation, timeout: 100 });
   jest.advanceTimersByTime(100);
-  await expect(result).rejects.toMatchObject({ code: 'LOW_ACCURACY', accuracy: 420 });
-  expect(getLocationErrorMessage({ code: 'LOW_ACCURACY', accuracy: 420 })).toMatch(/place the pin manually/i);
+  await expect(result).rejects.toMatchObject({ code: 'LOW_ACCURACY', accuracy: 1200 });
+  expect(getLocationErrorMessage({ code: 'LOW_ACCURACY', accuracy: 1200 })).toMatch(/place the pin manually/i);
   jest.useRealTimers();
 });

@@ -5,7 +5,7 @@ import storeApplicationService from '../../services/storeApplicationService';
 import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
-import { getAccurateCurrentPosition, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
+import { getAccurateCurrentPosition, getLocationAccuracyPresentation, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
 import '../../components/stores/StoreApplicationFields.css';
@@ -180,7 +180,8 @@ const StoreApplication = () => {
       handleChange('contactInfo.address.zipCode', addr.postcode || '');
       handleChange('contactInfo.address.coordinates', { lat: location.lat, lng: location.lng });
 
-      toast.success(`Precise location detected (about ±${Math.round(location.accuracy)} m). Please verify the pin and address.`);
+      const accuracy = getLocationAccuracyPresentation(location.accuracy);
+      toast.success(`${accuracy.label}. ${accuracy.guidance}`);
     } catch (error) {
       toast.error(getLocationErrorMessage(error));
     } finally {
