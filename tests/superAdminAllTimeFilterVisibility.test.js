@@ -47,3 +47,34 @@ test('transaction status filter uses the same unclipped visible-label control', 
   assert.match(source, /ariaLabel="Filter transactions by status"/, 'status filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped status select is still present');
 });
+
+test('booking status filter uses the same unclipped visible-label control', () => {
+  const source = read('client/src/pages/superadmin/BookingHistory.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'booking history does not import the shared select control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the booking status choices');
+  assert.match(source, /ariaLabel="Filter bookings by status"/, 'booking status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped booking status select is still present');
+});
+
+test('report filters use the shared unclipped visible-label controls', () => {
+  const source = read('client/src/pages/superadmin/ReportManagement.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'report management does not import the shared select control');
+  assert.match(source, /import SuperAdminDateRangeFilter/, 'report management does not import the shared date control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the report status choices');
+  assert.match(source, /ariaLabel="Filter reports by status"/, 'report status filter is missing its accessible label');
+  assert.match(source, /ariaLabel="Filter reports by date"/, 'report date filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped report status select is still present');
+});
+
+test('feedback filters use the shared unclipped visible-label controls', () => {
+  const source = read('client/src/pages/superadmin/FeedbackManagement.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'feedback management does not import the shared select control');
+  assert.match(source, /label: 'Any category'/, 'Any Category is missing from the feedback category choices');
+  assert.match(source, /label: 'Any status'/, 'Any Status is missing from the feedback status choices');
+  assert.match(source, /ariaLabel="Filter feedback by category"/, 'feedback category filter is missing its accessible label');
+  assert.match(source, /ariaLabel="Filter feedback by status"/, 'feedback status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped feedback selects are still present');
+});
