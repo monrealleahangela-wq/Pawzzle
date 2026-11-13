@@ -28,6 +28,29 @@ const booleanValue = (value, fallback = false) => {
   return value === true || value === 'true';
 };
 
+// Some applications created before review-history auditing was introduced
+// contain an explicit null instead of an array. Mongoose keeps that legacy
+// value when the same record is reused for a correction/resubmission, so a
+// direct `.push()` would turn an otherwise valid resubmission into a 500.
+const appendApplicationReviewEvent = (application, event) => {
+  if (!Array.isArray(application.reviewHistory)) {
+    application.reviewHistory = [];
+  }
+  application.reviewHistory.push(event);
+};
+
+// A correction submission starts a new review cycle on the same application
+// record. Clear the prior decision fields so legacy correction identifiers (or
+// a previous rejection) cannot invalidate the new save or remain presented as
+// the current review decision. The immutable reviewHistory is intentionally
+// retained.
+const resetApplicationReviewState = application => {
+  application.requiredCorrections = [];
+  application.rejectionReason = undefined;
+  application.reviewedBy = undefined;
+  application.reviewedAt = undefined;
+};
+
 const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
 
 const applicationValidationErrors = (data, files = {}) => {
@@ -487,6 +510,9 @@ const submitApplication = async (req, res) => {
     const isResubmission = Boolean(existingApplication && ['requires_more_info', 'rejected', 'draft'].includes(existingApplication.status));
     const application = isResubmission ? existingApplication : new StoreApplication();
     application.set(applicationData);
+    if (isResubmission) {
+      resetApplicationReviewState(application);
+    }
 
     // Completeness scoring is advisory only. Documents and tax status remain
     // pending until a Platform Admin explicitly reviews them.
@@ -498,7 +524,7 @@ const submitApplication = async (req, res) => {
     application.reviewNotes = application.verificationScore >= 60 
       ? 'Application submitted and awaiting manual review'
       : 'Application submitted but may require additional documentation due to low verification score';
-    application.reviewHistory.push({
+    appendApplicationReviewEvent(application, {
       action: isResubmission ? 'resubmitted' : 'submitted',
       actor: req.user.id,
       notes: isResubmission ? 'Applicant resubmitted requested corrections.' : 'Application submitted for Platform Admin review.'
@@ -714,7 +740,7 @@ const reviewApplication = async (req, res) => {
     application.requiredCorrections = requiredCorrections || [];
     application.reviewedBy = req.user.id;
     application.reviewedAt = new Date();
-    application.reviewHistory.push({
+    appendApplicationReviewEvent(application, {
       action: status === 'requires_more_info' ? 'needs_correction' : status,
       actor: req.user.id,
       notes: reviewNotes || rejectionReason || '',
@@ -941,7 +967,7 @@ const verifyTaxProfile = async (req, res) => {
     tax.verificationNotes = String(notes).trim();
     tax.rejectionReason = decision === 'rejected' ? String(rejectionReason).trim() : '';
     application.markModified('taxProfile');
-    application.reviewHistory.push({
+    appendApplicationReviewEvent(application, {
       action: decision === 'rejected' ? 'tax_rejected' : 'tax_verified',
       actor: req.user.id,
       notes: decision === 'rejected' ? tax.rejectionReason : tax.verificationNotes,
@@ -1108,7 +1134,7 @@ const requestMoreInfo = async (req, res) => {
     application.requiredInfo = requiredInfo;
     application.reviewedBy = req.user.id;
     application.reviewedAt = new Date();
-    application.reviewHistory.push({
+    appendApplicationReviewEvent(application, {
       action: 'needs_correction',
       actor: req.user.id,
       notes: message,
@@ -1222,5 +1248,7 @@ module.exports = {
   submitExpansionRequest,
   resolveAuthoritativeTaxProfile,
   applyAuthoritativeTaxFilters,
+  appendApplicationReviewEvent,
+  resetApplicationReviewState,
   upload
 };
