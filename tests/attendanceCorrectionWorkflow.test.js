@@ -75,6 +75,7 @@ test('routes separate self-service, review, evidence, and direct correction auth
   assert.match(routes, /attendance\/corrections\/:id\/review.*attendance\.review/);
   assert.match(routes, /attendance\/corrections\/:id\/evidence/);
   assert.match(routes, /attendance\/:id\/correct.*attendance\.review/);
+  assert.match(routes, /attendance\/corrections\/batch.*attendance\.review/);
   assert.doesNotMatch(routes, /auto-clock-out-review/);
 });
 
@@ -86,6 +87,9 @@ test('transaction service protects store scope, self-review, concurrency and fin
   assert.match(service, /status: 'pending', __v: request\.__v/);
   assert.match(service, /\['approved', 'paid'\]/);
   assert.match(service, /manualReconciliationRequired/);
+  assert.match(service, /maximum of 50 attendance records/);
+  assert.match(service, /Each attendance record can only be selected once/);
+  assert.match(service, /results\.length = 0/);
 });
 
 test('payroll recomputation marker and legacy system-generated clock-out blocker are preserved', () => {
@@ -105,6 +109,10 @@ test('employee and manager UI expose request, evidence, review and confirmation 
   assert.match(employee, /Supporting evidence/);
   assert.match(employee, /pending review/);
   assert.match(manager, /View evidence/);
-  assert.match(manager, /window\.confirm/);
+  assert.match(manager, /pawzzleConfirm/);
   assert.match(manager, /rejection reason/i);
+  const management = source('client/src/pages/admin/HRManagement.js');
+  assert.match(management, /Correct Multiple Attendance Records/);
+  assert.match(management, /correctAttendanceBatch/);
+  assert.match(management, /selectedAttendanceIds/);
 });

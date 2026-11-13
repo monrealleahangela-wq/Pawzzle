@@ -45,13 +45,6 @@ const time = (value) =>
         minute: "2-digit",
       })
     : "—";
-const localDateTime = (value) => {
-  if (!value) return "";
-  const parsed = new Date(value);
-  return new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-};
 const badge = (status) =>
   status === "approved" || status === "paid" || status === "present"
     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -1079,6 +1072,11 @@ const HRManagement = () => {
   });
   const [correction, setCorrection] = useState({
     attendanceId: "",
+    selectedAttendanceIds: [],
+    workDate: "",
+    clockIn: "",
+    clockOut: "",
+    clockOutNextDay: false,
     timeIn: "",
     timeOut: "",
     status: "",
@@ -1155,6 +1153,24 @@ const HRManagement = () => {
       ),
     [attendance, selectedAttendanceDate],
   );
+
+  const correctionCandidates = useMemo(
+    () =>
+      attendance.filter(
+        (record) =>
+          !record.isDerived && record.workDate === correction.workDate,
+      ),
+    [attendance, correction.workDate],
+  );
+
+  useEffect(() => {
+    if (!correction.workDate && selectedAttendanceDate) {
+      setCorrection((current) => ({
+        ...current,
+        workDate: selectedAttendanceDate,
+      }));
+    }
+  }, [correction.workDate, selectedAttendanceDate]);
 
   const reviewLeave = async (id, status) => {
     try {
@@ -1270,35 +1286,81 @@ const HRManagement = () => {
           workDate: selected.workDate,
         });
       } else {
+        const selectedRows = attendance.filter((row) =>
+          correction.selectedAttendanceIds.includes(row._id),
+        );
+        if (!selectedRows.length) {
+          toast.error("Select at least one employee attendance record.");
+          return;
+        }
+        if (!correction.workDate || !correction.clockIn) {
+          toast.error("Select a work date and clock-in time.");
+          return;
+        }
+        if (
+          selectedRows.some(
+            (row) => row.isDerived || row.workDate !== correction.workDate,
+          )
+        ) {
+          toast.error(
+            "The selected records changed. Select the employees again.",
+          );
+          return;
+        }
+        const timeIn = new Date(
+          `${correction.workDate}T${correction.clockIn}`,
+        );
+        let timeOut = null;
+        if (correction.clockOut) {
+          timeOut = new Date(`${correction.workDate}T${correction.clockOut}`);
+          if (correction.clockOutNextDay) {
+            timeOut.setDate(timeOut.getDate() + 1);
+          }
+        }
+        if (
+          Number.isNaN(timeIn.getTime()) ||
+          (timeOut && Number.isNaN(timeOut.getTime()))
+        ) {
+          toast.error("Enter valid attendance times.");
+          return;
+        }
         if (
           !(await pawzzleConfirm(
-            "Confirm the displayed before and proposed values. This will invalidate affected draft payroll calculations.",
+            `Apply the shared date and times to ${selectedRows.length} selected employee${selectedRows.length === 1 ? "" : "s"}? Each record remains individually audited, and affected draft payroll calculations will be invalidated.`,
             {
-              title: "Correct attendance record?",
-              confirmLabel: "Apply correction",
+              title: "Correct selected attendance records?",
+              confirmLabel: `Apply to ${selectedRows.length}`,
               tone: "warning",
             },
           ))
         )
           return;
         const data = {
+          items: selectedRows.map((row) => ({
+            attendanceId: row._id,
+            expectedVersion: row.__v,
+          })),
+          workDate: correction.workDate,
           reason: correction.reason,
           confirmed: true,
-          expectedVersion: selected.__v,
+          timeIn: timeIn.toISOString(),
+          timeOut: timeOut ? timeOut.toISOString() : null,
+          status: timeOut ? correction.status || undefined : "incomplete",
         };
-        if (correction.timeIn)
-          data.timeIn = new Date(correction.timeIn).toISOString();
-        data.timeOut = correction.timeOut
-          ? new Date(correction.timeOut).toISOString()
-          : null;
-        data.status = correction.timeOut
-          ? correction.status || undefined
-          : "incomplete";
-        await hrService.correctAttendance(correction.attendanceId, data);
+        await hrService.correctAttendanceBatch(data);
       }
-      toast.success("Attendance correction recorded.");
+      toast.success(
+        selected?.isDerived
+          ? "Attendance correction recorded."
+          : "Selected attendance records were corrected.",
+      );
       setCorrection({
         attendanceId: "",
+        selectedAttendanceIds: [],
+        workDate: "",
+        clockIn: "",
+        clockOut: "",
+        clockOutNextDay: false,
         timeIn: "",
         timeOut: "",
         status: "",
@@ -1551,7 +1613,6 @@ const HRManagement = () => {
 
       {!loading && tab === "attendance" && (
         <section
-          role="region"
           aria-label={`Detailed attendance records for ${calendarDateLabel(parseWorkDate(selectedAttendanceDate), true)}`}
           className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
         >
@@ -2265,67 +2326,181 @@ const HRManagement = () => {
         attendance.some((row) => !row.isDerived) && (
           <form
             onSubmit={submitCorrection}
-            className="mx-auto mt-5 max-w-4xl space-y-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
+            className="mx-auto mt-5 max-w-5xl space-y-5 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900"
           >
             <div>
-              <h2 className="font-bold">Correct Attendance</h2>
+              <h2 className="text-xl font-bold">
+                Correct Multiple Attendance Records
+              </h2>
               <p className="text-sm text-slate-500">
-                Review the original values in the selected record, then enter
-                justified timestamps. The server recalculates durations;
-                finalized payroll is never rewritten.
+                Choose a date and one or more employees, then apply the same
+                authorized clock-in and clock-out times. Every employee keeps
+                a separate audit entry; finalized payroll is never rewritten.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <select
-                required
-                value={correction.attendanceId}
-                onChange={(e) => {
-                  const row = attendance.find(
-                    (item) => item._id === e.target.value,
-                  );
-                  setCorrection({
-                    ...correction,
-                    attendanceId: e.target.value,
-                    timeIn: localDateTime(row?.timeIn?.at),
-                    timeOut: localDateTime(row?.timeOut?.at),
-                    status: row?.status || "",
-                  });
-                }}
-                className="rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm dark:border-slate-700"
-              >
-                <option value="">Select attendance record</option>
-                {attendance
-                  .filter((row) => !row.isDerived)
-                  .map((row) => (
-                    <option key={row._id} value={row._id}>
-                      {row.workDate} · {row.employee?.firstName}{" "}
-                      {row.employee?.lastName} · {time(row.timeIn?.at)}–
-                      {time(row.timeOut?.at)}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={correction.status}
-                onChange={(e) =>
-                  setCorrection({ ...correction, status: e.target.value })
-                }
-                className="rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm dark:border-slate-700"
-              >
-                <option value="">Recalculate status</option>
-                {["present", "late", "undertime", "incomplete"].map((value) => (
-                  <option key={value} value={value}>
-                    {value.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
+              <label className="text-sm font-semibold">
+                Work date
+                <input
+                  required
+                  type="date"
+                  value={correction.workDate}
+                  onChange={(e) =>
+                    setCorrection({
+                      ...correction,
+                      workDate: e.target.value,
+                      selectedAttendanceIds: [],
+                    })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 dark:border-slate-700"
+                />
+              </label>
+              <label className="text-sm font-semibold">
+                Resulting status
+                <select
+                  value={correction.status}
+                  onChange={(e) =>
+                    setCorrection({ ...correction, status: e.target.value })
+                  }
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 dark:border-slate-700"
+                >
+                  <option value="">Calculate automatically</option>
+                  {["present", "late", "undertime", "incomplete"].map(
+                    (value) => (
+                      <option key={value} value={value}>
+                        {value.replaceAll("_", " ")}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </label>
+            </div>
+
+            <fieldset className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/60">
+                <div>
+                  <h3 className="font-bold">Employees on this date</h3>
+                  <p className="text-xs text-slate-500">
+                    {correction.selectedAttendanceIds.length} selected from{" "}
+                    {correctionCandidates.length} attendance records
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold disabled:opacity-40 dark:border-slate-600"
+                    onClick={() =>
+                      setCorrection({
+                        ...correction,
+                        selectedAttendanceIds: correctionCandidates
+                          .filter(
+                            (row) =>
+                              ["super_admin", "platform_admin"].includes(
+                                user?.role,
+                              ) ||
+                              String(row.employee?._id || row.employee) !==
+                                String(user?._id || user?.id),
+                          )
+                          .map((row) => row._id),
+                      })
+                    }
+                    disabled={!correctionCandidates.length}
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold dark:border-slate-600"
+                    onClick={() =>
+                      setCorrection({
+                        ...correction,
+                        selectedAttendanceIds: [],
+                      })
+                    }
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                {correctionCandidates.length ? (
+                  correctionCandidates.map((row) => {
+                    const employeeId = String(
+                      row.employee?._id || row.employee || "",
+                    );
+                    const isOwnRecord =
+                      !["super_admin", "platform_admin"].includes(
+                        user?.role,
+                      ) && employeeId === String(user?._id || user?.id || "");
+                    const checked =
+                      correction.selectedAttendanceIds.includes(row._id);
+                    return (
+                      <label
+                        key={row._id}
+                        className={`flex items-center gap-3 px-4 py-3 ${
+                          isOwnRecord
+                            ? "cursor-not-allowed bg-slate-50 opacity-60 dark:bg-slate-800/40"
+                            : "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isOwnRecord}
+                          onChange={() =>
+                            setCorrection({
+                              ...correction,
+                              selectedAttendanceIds: checked
+                                ? correction.selectedAttendanceIds.filter(
+                                    (id) => id !== row._id,
+                                  )
+                                : [
+                                    ...correction.selectedAttendanceIds,
+                                    row._id,
+                                  ],
+                            })
+                          }
+                          className="h-4 w-4 rounded border-slate-300 accent-primary"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold">
+                            {row.employee?.firstName} {row.employee?.lastName}
+                          </span>
+                          <span className="block text-xs text-slate-500">
+                            {row.employee?.position ||
+                              row.employee?.role ||
+                              "Employee"}
+                            {isOwnRecord ? " - your own record" : ""}
+                          </span>
+                        </span>
+                        <span className="text-right text-xs text-slate-500">
+                          <span className="block font-semibold text-slate-700 dark:text-slate-200">
+                            {time(row.timeIn?.at)} - {time(row.timeOut?.at)}
+                          </span>
+                          <span className="capitalize">
+                            {row.status?.replaceAll("_", " ")}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p className="px-4 py-8 text-center text-sm text-slate-500">
+                    No recorded employee attendance is available for this date.
+                  </p>
+                )}
+              </div>
+            </fieldset>
+
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm font-semibold">
                 Corrected clock-in
                 <input
                   required
-                  type="datetime-local"
-                  value={correction.timeIn}
+                  type="time"
+                  value={correction.clockIn}
                   onChange={(e) =>
-                    setCorrection({ ...correction, timeIn: e.target.value })
+                    setCorrection({ ...correction, clockIn: e.target.value })
                   }
                   className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 dark:border-slate-700"
                 />
@@ -2333,29 +2508,58 @@ const HRManagement = () => {
               <label className="text-sm font-semibold">
                 Corrected clock-out{" "}
                 <span className="font-normal text-slate-500">
-                  (blank keeps incomplete)
+                  (optional)
                 </span>
                 <input
-                  type="datetime-local"
-                  value={correction.timeOut}
+                  type="time"
+                  value={correction.clockOut}
                   onChange={(e) =>
-                    setCorrection({ ...correction, timeOut: e.target.value })
+                    setCorrection({ ...correction, clockOut: e.target.value })
                   }
                   className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 dark:border-slate-700"
                 />
               </label>
-              <textarea
-                required
-                minLength={5}
-                placeholder="Required correction reason"
-                value={correction.reason}
-                onChange={(e) =>
-                  setCorrection({ ...correction, reason: e.target.value })
-                }
-                className="rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm dark:border-slate-700 sm:col-span-2"
-              />
+              <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={correction.clockOutNextDay}
+                  disabled={!correction.clockOut}
+                  onChange={(e) =>
+                    setCorrection({
+                      ...correction,
+                      clockOutNextDay: e.target.checked,
+                    })
+                  }
+                  className="h-4 w-4 rounded border-slate-300 accent-primary"
+                />
+                Clock-out is on the following day
+              </label>
+              <label className="text-sm font-semibold sm:col-span-2">
+                Correction reason
+                <textarea
+                  required
+                  minLength={5}
+                  placeholder="Explain why these employee records need the same correction."
+                  value={correction.reason}
+                  onChange={(e) =>
+                    setCorrection({ ...correction, reason: e.target.value })
+                  }
+                  className="mt-1 min-h-24 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm dark:border-slate-700"
+                />
+              </label>
             </div>
-            <Button>Review & Save Audited Correction</Button>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              <span>
+                The entire batch is rejected if any selected record changed or
+                cannot be corrected. Draft payroll is marked for recomputation.
+              </span>
+              <Button disabled={!correction.selectedAttendanceIds.length}>
+                Review & Apply to {correction.selectedAttendanceIds.length}{" "}
+                {correction.selectedAttendanceIds.length === 1
+                  ? "Employee"
+                  : "Employees"}
+              </Button>
+            </div>
           </form>
         )}
       {!loading &&

@@ -37,6 +37,7 @@ router.put('/employees/:employeeId/compensation', requirePermission('compensatio
 router.get('/attendance', requirePermission('attendance.view', 'attendance.manage'), attendancePlan, hr.managementAttendance);
 router.get('/attendance/corrections', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.storeList);
 router.patch('/attendance/corrections/:id/review', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.review);
+router.patch('/attendance/corrections/batch', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.batchCorrection);
 router.post('/attendance/manual', requirePermission('attendance.manage'), hr.createManualAttendance);
 router.patch('/attendance/:id/correct', requirePermission('attendance.review', 'attendance.manage'), attendanceCorrections.directCorrection);
 router.patch('/attendance/:id/location-review', requirePermission('attendance.review', 'attendance.manage'), hr.reviewLocationAttendance);
