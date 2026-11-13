@@ -601,8 +601,8 @@ const SupplierDashboard = () => {
           <div className="responsive-card-grid [--card-min:17rem] sm:[--card-min:18rem] [--card-gap:1rem]">
             {products.map(p => (
               <div key={p._id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group">
-                <div className="h-32 bg-primary-50 flex items-center justify-center">
-                  {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt="" className="w-full h-full object-cover" /> : <Package className="h-10 w-10 text-primary-300" />}
+                <div className="flex h-40 items-center justify-center bg-slate-50 p-3">
+                  {p.images?.[0] ? <img src={getImageUrl(p.images[0])} alt={p.name || 'Supplier product'} className="h-full w-full object-contain" /> : <Package className="h-10 w-10 text-primary-300" />}
                 </div>
                 <div className="p-4">
                   <p className="text-[9px] font-black text-primary-600 uppercase tracking-widest">{p.itemType === 'live_pet' ? 'Live pet · unique animal' : `${p.itemType === 'product' ? 'Product' : 'Pet supply'} · ${p.category?.replace('_', ' ')}`}</p>
