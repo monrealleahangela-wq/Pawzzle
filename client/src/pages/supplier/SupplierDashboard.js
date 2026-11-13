@@ -11,6 +11,7 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import { formatSupplierPackageWeight, normalizeSupplierPackageWeight } from '../../utils/supplierProductDetails';
 
 const FDA_REVIEW_CATEGORIES = ['pet_food', 'pet_treats', 'medical_supplies', 'health_supplements'];
 const requiresFdaReview = category => FDA_REVIEW_CATEGORIES.includes(category);
@@ -41,7 +42,7 @@ const SupplierDashboard = () => {
   const initialProduct = {
     productMode: 'simple', itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
     wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
-    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', images: [],
+    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', weight: '', images: [],
     ingredients: '', nutritionalInformation: '', intendedSpecies: [], safetyNotes: '',
     fdaRegistrationNumber: '', fdaRegistrationExpiry: '', regulatoryDocuments: [],
     variants: [],
@@ -129,6 +130,11 @@ const SupplierDashboard = () => {
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     const needsFdaReview = requiresFdaReview(productForm.category);
+    const normalizedWeight = normalizeSupplierPackageWeight(productForm.weight);
+    if (productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet'
+      && String(productForm.weight ?? '').trim() && normalizedWeight === undefined) {
+      return toast.error('Package weight must be greater than zero grams.');
+    }
     if (needsFdaReview && !editingProduct && !String(productForm.fdaRegistrationNumber || '').trim()) {
       return toast.error('Enter the FDA product registration number.');
     }
@@ -144,8 +150,14 @@ const SupplierDashboard = () => {
     }
     setSubmitting(true);
     try {
+      const productPayload = { ...productForm };
+      if (productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet') {
+        productPayload.weight = normalizedWeight;
+      } else {
+        delete productPayload.weight;
+      }
       if (editingProduct) {
-        await supplierService.updateProduct(editingProduct._id, productForm);
+        await supplierService.updateProduct(editingProduct._id, productPayload);
         if (productForm.productMode === 'variant') {
           for (const variant of productForm.variants || []) {
             if (variant._id) await supplierService.updateVariant(editingProduct._id, variant._id, variant);
@@ -156,8 +168,8 @@ const SupplierDashboard = () => {
           ? 'Supply updated and submitted for FDA compliance review.'
           : 'Supply updated and published. FDA review is not required for this category.');
       } else {
-        if (productForm.productMode === 'variant') await supplierService.addVariantProduct(productForm);
-        else await supplierService.addProduct(productForm);
+        if (productForm.productMode === 'variant') await supplierService.addVariantProduct(productPayload);
+        else await supplierService.addProduct(productPayload);
         toast.success(needsFdaReview
           ? 'Supply submitted for FDA compliance review.'
           : 'Supply published. FDA review is not required for this category.');
@@ -600,11 +612,15 @@ const SupplierDashboard = () => {
                       <p className={`text-sm font-black ${p.availableStock <= 0 ? 'text-rose-600' : p.availableStock < 10 ? 'text-amber-600' : 'text-emerald-600'}`}>{p.itemType === 'live_pet' ? (p.availableStock === 1 ? 'Available' : 'Unavailable') : p.availableStock}</p>
                     </div>
                   </div>
+                  {p.itemType !== 'live_pet' && p.productMode !== 'variant' && <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Package weight</span>
+                    <span className="text-[10px] font-black text-slate-700">{formatSupplierPackageWeight(p.weight)}</span>
+                  </div>}
                   {p.productMode === 'variant' && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
                     <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Variants</p><span className="text-[9px] font-black text-primary-700">{p.variants?.length || 0}</span></div>
                     {(p.variants || []).map(variant => <div key={variant._id} className="rounded-lg border border-slate-100 bg-white p-2 text-[9px]">
                       <div className="flex items-start justify-between gap-2"><span className="font-black text-slate-800">{(variant.attributes || []).map(attribute => attribute.valueLabel).join(' · ')}</span><span className={`rounded-full px-1.5 py-0.5 font-black uppercase ${variant.isDiscontinued ? 'bg-slate-100 text-slate-500' : variant.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-primary-50 text-primary-700'}`}>{variant.isDiscontinued ? 'Discontinued' : variant.isActive ? 'Available' : 'Paused'}</span></div>
-                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-500"><span>SKU {variant.sku}</span><span>{formatPeso(variant.wholesalePrice)}</span><span>Stock {variant.availableStock}</span><span>MOQ {variant.minimumOrderQuantity}</span></div>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-slate-500"><span>SKU {variant.sku}</span><span>{formatPeso(variant.wholesalePrice)}</span><span>Stock {variant.availableStock}</span><span>MOQ {variant.minimumOrderQuantity}</span><span>Weight {variant.weight ? `${variant.weight} ${variant.weightUnit || 'g'}` : 'Not specified'}</span></div>
                       {requiresFdaReview(p.category) && <span className="mt-1 inline-block font-bold uppercase text-primary-700">FDA: {String(variant.regulatoryReview?.status || 'pending_review').replace('_', ' ')}</span>}
                     </div>)}
                   </div>}
@@ -736,6 +752,30 @@ const SupplierDashboard = () => {
                 </div>
                 {!variantCapabilities.enabled && <p className="mt-3 rounded-xl border border-primary-100 bg-white p-3 text-[10px] font-semibold leading-4 text-primary-900">Product variants require one-time platform activation. Ask the platform administrator to complete supplier variant database readiness, then refresh this page.</p>}
               </div>}
+              <section className="rounded-xl border border-slate-200 bg-white p-3" aria-labelledby="supplier-product-images-heading">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h4 id="supplier-product-images-heading" className="text-[9px] font-black uppercase tracking-widest text-slate-600">Product images</h4>
+                    <p className="mt-1 text-[10px] text-slate-500">Add clear product or packaging photos. The first image is used as the catalog cover.</p>
+                  </div>
+                  <span className="rounded-full bg-primary-50 px-2 py-1 text-[8px] font-black uppercase text-primary-700">{productForm.images?.length || 0} uploaded</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {productForm.images?.map((img, i) => (
+                    <div key={`${img}-${i}`} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      <img src={getImageUrl(img)} alt={`Product ${i + 1}`} className="h-full w-full object-cover" />
+                      {i === 0 && <span className="absolute left-1 top-1 rounded bg-slate-900/80 px-1.5 py-0.5 text-[7px] font-black uppercase text-white">Cover</span>}
+                      <button type="button" aria-label={`Remove product image ${i + 1}`} onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
+                        className="absolute inset-0 flex items-center justify-center bg-rose-600/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><Trash2 className="h-4 w-4 text-white" /></button>
+                    </div>
+                  ))}
+                  <label className="flex h-20 min-w-20 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 px-3 text-center transition hover:border-primary-400 hover:bg-primary-50">
+                    <Plus className="h-5 w-5 text-slate-400" />
+                    <span className="mt-1 text-[8px] font-black uppercase text-slate-500">Add photos</span>
+                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </label>
+                </div>
+              </section>
               <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{productForm.itemType === 'live_pet' ? 'Pet / Catalog Name' : 'Product Name'}</label>
@@ -774,6 +814,12 @@ const SupplierDashboard = () => {
                     {['piece', 'pack', 'box', 'kg', 'liter', 'bag', 'bottle', 'set', 'ml', 'gram', 'tube'].map(unit => <option key={unit} value={unit}>{unit}</option>)}
                   </select>
                 </label>}
+                {productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet' && <div className="space-y-1">
+                  <label htmlFor="supplier-package-weight" className="text-[9px] font-black uppercase tracking-widest text-slate-400">Package weight (grams)</label>
+                  <input id="supplier-package-weight" type="number" min="0.01" step="0.01" value={productForm.weight ?? ''} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} placeholder="Example: 1000"
+                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
+                  <p className="text-[9px] font-medium text-slate-400">Enter the total packaged weight. Example: 1 kg = 1000 g.</p>
+                </div>}
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>
                   <input type="number" value={productForm.deliveryLeadTimeDays} onChange={e => setProductForm(p => ({ ...p, deliveryLeadTimeDays: parseInt(e.target.value) || 1 }))}
@@ -845,28 +891,10 @@ const SupplierDashboard = () => {
                   <input value={productForm.safetyNotes || ''} onChange={e => setProductForm(p => ({ ...p, safetyNotes: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-medium normal-case text-slate-900" />
                 </label>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(12rem,0.6fr)]">
               <div className="space-y-2 rounded-xl border border-slate-200 p-3">
                 <div><h4 className="text-[9px] font-black uppercase tracking-widest text-slate-600">{requiresFdaReview(productForm.category) ? 'FDA compliance evidence' : 'Supporting documents'}</h4><p className="mt-1 text-[10px] text-slate-500">{requiresFdaReview(productForm.category) ? 'Required: upload the FDA registration, product certificate, or equivalent evidence that matches the registration number above.' : 'Optional: upload product specifications, test results, or other supporting files. FDA evidence is not required for this category.'}</p></div>
                 <div className="flex flex-wrap gap-2">{(productForm.regulatoryDocuments || []).map((document, index) => <div key={`${document.documentUrl}-${index}`} className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[10px] text-slate-700"><FileText className="h-3.5 w-3.5" /><span className="max-w-[12rem] truncate">{document.originalName || 'Supporting document'}</span><button type="button" onClick={() => setProductForm(p => ({ ...p, regulatoryDocuments: p.regulatoryDocuments.filter((_, itemIndex) => itemIndex !== index) }))} className="text-rose-600"><X className="h-3.5 w-3.5" /></button></div>)}</div>
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-2 text-[9px] font-black uppercase text-slate-600 hover:border-primary-500"><Plus className="h-4 w-4" /> {requiresFdaReview(productForm.category) ? 'Upload FDA evidence' : 'Add supporting files'}<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleComplianceUpload} /></label>
-              </div>
-              <div className="space-y-2 rounded-xl border border-slate-200 p-3">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Images</label>
-                <div className="flex gap-3 flex-wrap">
-                  {productForm.images?.map((img, i) => (
-                    <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-xl border border-slate-200">
-                      <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => setProductForm(p => ({ ...p, images: p.images.filter((_, idx) => idx !== i) }))}
-                        className="absolute inset-0 bg-rose-600/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Trash2 className="h-4 w-4 text-white" /></button>
-                    </div>
-                  ))}
-                  <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-slate-200 hover:border-primary-400">
-                    <Plus className="h-5 w-5 text-slate-400" />
-                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                  </label>
-                </div>
-              </div>
               </div>
             </div>
             <footer className="flex shrink-0 gap-2 border-t border-slate-100 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">

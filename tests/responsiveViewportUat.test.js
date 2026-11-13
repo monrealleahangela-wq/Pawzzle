@@ -201,7 +201,14 @@ test('supplier product submission stays compact and anchored to the viewport', (
   assert.match(supplier, /aria-label="Close product form"/);
   assert.match(supplier, /max-h-\[calc\(100dvh-1rem\)\][^"`]*max-w-3xl/);
   assert.match(supplier, /space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5/);
-  assert.match(supplier, /lg:grid-cols-\[minmax\(0,1\.4fr\)_minmax\(12rem,0\.6fr\)\]/);
+  assert.match(supplier, /id="supplier-product-images-heading"/);
+  assert.match(supplier, /The first image is used as the catalog cover/);
+  const supplierProductModal = supplier.slice(supplier.indexOf('aria-labelledby="supplier-product-modal-title"'));
+  assert.ok(
+    supplierProductModal.indexOf('supplier-product-images-heading') < supplierProductModal.indexOf("productForm.itemType === 'live_pet' ? 'Pet / Catalog Name' : 'Product Name'"),
+    'product images should appear before the main product details',
+  );
+  assert.match(supplier, /Package weight \(grams\)/);
   assert.match(supplier, /flex shrink-0 gap-2 border-t[^"`]*px-4 py-3/);
 });
 
