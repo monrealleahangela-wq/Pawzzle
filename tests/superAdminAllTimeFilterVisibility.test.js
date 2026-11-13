@@ -67,3 +67,14 @@ test('report filters use the shared unclipped visible-label controls', () => {
   assert.match(source, /ariaLabel="Filter reports by date"/, 'report date filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped report status select is still present');
 });
+
+test('feedback filters use the shared unclipped visible-label controls', () => {
+  const source = read('client/src/pages/superadmin/FeedbackManagement.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'feedback management does not import the shared select control');
+  assert.match(source, /label: 'Any category'/, 'Any Category is missing from the feedback category choices');
+  assert.match(source, /label: 'Any status'/, 'Any Status is missing from the feedback status choices');
+  assert.match(source, /ariaLabel="Filter feedback by category"/, 'feedback category filter is missing its accessible label');
+  assert.match(source, /ariaLabel="Filter feedback by status"/, 'feedback status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped feedback selects are still present');
+});

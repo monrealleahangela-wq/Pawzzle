@@ -1,8 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Trash2, CheckCircle, Search, Star, Smartphone, Monitor, Layout, User, ChevronLeft, ChevronRight, Smile, Bug, Zap, Sparkles, ChevronDown } from 'lucide-react';
+import { MessageSquare, Trash2, CheckCircle, Search, Star, Smartphone, Monitor, Layout, User, ChevronLeft, ChevronRight, Smile, Bug, Zap, Sparkles } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { reviewService } from '../../services/apiService';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import SuperAdminSelectFilter from '../../components/superadmin/SuperAdminSelectFilter';
+
+const categoryOptions = [
+    { value: '', label: 'Any category' },
+    { value: 'UI/UX', label: 'UI / UX' },
+    { value: 'Performance', label: 'Performance' },
+    { value: 'Features', label: 'Features' },
+    { value: 'Bug Report', label: 'Bugs' }
+];
+
+const statusOptions = [
+    { value: '', label: 'Any status' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'reviewed', label: 'Reviewed' },
+    { value: 'implemented', label: 'Implemented' }
+];
 
 const FeedbackManagement = () => {
     const [feedbacks, setFeedbacks] = useState([]);
@@ -141,40 +157,25 @@ const FeedbackManagement = () => {
                         />
                     </form>
 
-                    <div className="md:col-span-3 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                            <Sparkles className="h-4 w-4 text-primary-500" />
-                        </div>
-                        <select
-                            value={filter.category}
-                            onChange={(e) => setFilter({ ...filter, category: e.target.value, page: 1 })}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="" className="bg-slate-900 text-white font-black">ANY CATEGORY</option>
-                            <option value="UI/UX" className="bg-slate-900 text-white font-black">UI / UX</option>
-                            <option value="Performance" className="bg-slate-900 text-white font-black">PERFORMANCE</option>
-                            <option value="Features" className="bg-slate-900 text-white font-black">FEATURES</option>
-                            <option value="Bug Report" className="bg-slate-900 text-white font-black text-rose-400">BUGS</option>
-                        </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-                    </div>
+                    <SuperAdminSelectFilter
+                        ariaLabel="Filter feedback by category"
+                        value={filter.category}
+                        onChange={(value) => handleFilterChange('category', value)}
+                        options={categoryOptions}
+                        Icon={Sparkles}
+                        className="md:col-span-3"
+                    />
 
-                    <div className="md:col-span-3 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2 flex items-center">
-                            <Zap className="h-4 w-4 text-emerald-500" />
-                        </div>
-                        <select
-                            value={filter.status}
-                            onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="" className="bg-slate-900 text-white font-black">ANY STATUS</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
-                            <option value="reviewed" className="bg-slate-900 text-white font-black">REVIEWED</option>
-                            <option value="implemented" className="bg-slate-900 text-white font-black text-emerald-400">IMPLEMENTED</option>
-                        </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-                    </div>
+                    <SuperAdminSelectFilter
+                        ariaLabel="Filter feedback by status"
+                        value={filter.status}
+                        onChange={(value) => handleFilterChange('status', value)}
+                        options={statusOptions}
+                        Icon={Zap}
+                        className="md:col-span-3"
+                        iconClassName="text-emerald-500"
+                        focusClassName="focus-within:ring-emerald-500/50"
+                    />
                 </div>
             </div>
 
