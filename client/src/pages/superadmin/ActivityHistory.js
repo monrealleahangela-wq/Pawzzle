@@ -4,6 +4,7 @@ import { userService, petService, productService, orderService } from '../../ser
 import { formatTime12h } from '../../utils/timeFormatters';
 import { Users, Heart, Package, ShoppingCart, Shield, Search, Calendar, Filter, RefreshCw, ChevronDown, Target } from 'lucide-react';
 import { formatPeso } from '../../utils/paymentSummary';
+import SuperAdminDateRangeFilter from '../../components/superadmin/SuperAdminDateRangeFilter';
 
 const ActivityHistory = () => {
     const [data, setData] = useState({
@@ -187,22 +188,12 @@ const ActivityHistory = () => {
                         </select>
                         <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
                     </div>
-                    <div className="md:col-span-3 relative">
-                        <div className="absolute left-8 top-1/2 -translate-y-1/2">
-                            <Calendar className="h-3.5 w-3.5 text-blue-500" />
-                        </div>
-                        <select
-                            aria-label="Filter activity by date"
-                            value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-12 !min-h-12 !max-h-12 bg-slate-800 border-none text-white text-[10px] font-black uppercase leading-normal tracking-widest rounded-2xl pl-20 pr-10 py-0 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
-                            <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
-                            <option value="week" className="bg-slate-900 text-white font-black">THIS WEEK</option>
-                            <option value="month" className="bg-slate-900 text-white font-black">THIS MONTH</option>
-                        </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-                    </div>
+                    <SuperAdminDateRangeFilter
+                        ariaLabel="Filter activity by date"
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
+                        className="md:col-span-3"
+                    />
                 </div>
             </div>
 
