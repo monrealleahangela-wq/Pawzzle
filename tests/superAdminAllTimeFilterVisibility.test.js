@@ -56,3 +56,14 @@ test('booking status filter uses the same unclipped visible-label control', () =
   assert.match(source, /ariaLabel="Filter bookings by status"/, 'booking status filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped booking status select is still present');
 });
+
+test('report filters use the shared unclipped visible-label controls', () => {
+  const source = read('client/src/pages/superadmin/ReportManagement.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'report management does not import the shared select control');
+  assert.match(source, /import SuperAdminDateRangeFilter/, 'report management does not import the shared date control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the report status choices');
+  assert.match(source, /ariaLabel="Filter reports by status"/, 'report status filter is missing its accessible label');
+  assert.match(source, /ariaLabel="Filter reports by date"/, 'report date filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped report status select is still present');
+});
