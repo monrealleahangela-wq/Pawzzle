@@ -19,6 +19,7 @@ jest.mock('../../services/apiService', () => ({
     updateCompensation: jest.fn(),
     getAttendance: jest.fn(),
     getAttendanceCorrections: jest.fn(),
+    createManualAttendance: jest.fn(),
     getPayrollPeriods: jest.fn(),
     getPayrollPeriod: jest.fn(),
     getPayrollReports: jest.fn()
@@ -285,5 +286,45 @@ describe('HRManagement Rider payroll setup', () => {
     expect(within(october19Table).getByText('Rina Rider')).toBeInTheDocument();
     expect(within(october19Table).getByText('Dex Dispatcher')).toBeInTheDocument();
     expect(within(october19Table).getByText('2 records')).toBeInTheDocument();
+  });
+
+  test('lets an owner enter worked hours and minutes for a missing attendance record', async () => {
+    hrService.getAttendance.mockResolvedValue({ data: { records: [{
+      _id: 'derived-2026-10-20-rider-a',
+      workDate: '2026-10-20',
+      status: 'absent',
+      workedMinutes: 0,
+      isDerived: true,
+      employee: { _id: 'rider-a', firstName: 'Rina', lastName: 'Rider', staffType: 'delivery_rider' }
+    }] } });
+    hrService.createManualAttendance.mockResolvedValue({ data: { message: 'Attendance correction recorded.' } });
+
+    render(<MemoryRouter initialEntries={['/admin/hr?tab=attendance']}><HRManagement /></MemoryRouter>);
+
+    await screen.findByRole('heading', { name: 'Resolve Missing Attendance' });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Missing attendance record' }), {
+      target: { value: 'derived-2026-10-20-rider-a' }
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Attendance status' }), {
+      target: { value: 'present' }
+    });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Worked hours' }), {
+      target: { value: '7' }
+    });
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Additional worked minutes' }), {
+      target: { value: '30' }
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Correction reason' }), {
+      target: { value: 'Owner verified the completed shift.' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Audited Record' }));
+
+    await waitFor(() => expect(hrService.createManualAttendance).toHaveBeenCalledWith({
+      reason: 'Owner verified the completed shift.',
+      status: 'present',
+      workedMinutes: 450,
+      employeeId: 'rider-a',
+      workDate: '2026-10-20'
+    }));
   });
 });

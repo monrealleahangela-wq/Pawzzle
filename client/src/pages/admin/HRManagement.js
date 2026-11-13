@@ -21,7 +21,10 @@ import {
   hasUiActionPermission,
 } from "../../utils/authorization";
 import { formatPeso } from "../../utils/paymentSummary";
-import { formatDurationMinutes } from "../../utils/durationFormat";
+import {
+  durationPartsToMinutes,
+  formatDurationMinutes,
+} from "../../utils/durationFormat";
 import PayrollPaymentWorkflow from "../../components/hr/PayrollPaymentWorkflow";
 import AttendanceCorrectionReviewPanel from "../../components/hr/AttendanceCorrectionReviewPanel";
 import { pawzzleConfirm, pawzzlePrompt } from "../../utils/pawzzleDialog";
@@ -93,30 +96,48 @@ const NumberField = ({ label, value, min = 0, max = 31, onChange }) => (
     />
   </label>
 );
-const DurationField = ({ field, value, onChange }) => {
-  const label = field
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (character) => character.toUpperCase());
+const WorkedTimeField = ({ hours, minutes, onHoursChange, onMinutesChange }) => {
+  const totalMinutes = durationPartsToMinutes(hours, minutes);
   return (
-    <label className="text-sm font-semibold">
-      {label}
-      <input
-        aria-label={label}
-        min="0"
-        step="1"
-        type="number"
-        placeholder="Exact minutes"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm dark:border-slate-700"
-      />
-      {value !== "" && (
-        <span className="mt-1 block text-xs font-normal text-slate-500">
-          Displays as {formatDurationMinutes(value)}; payroll keeps the exact
-          minutes.
-        </span>
-      )}
-    </label>
+    <fieldset>
+      <legend className="text-sm font-semibold">Worked time</legend>
+      <div className="mt-1 grid grid-cols-2 gap-2">
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+          Hours
+          <input
+            aria-label="Worked hours"
+            min="0"
+            step="1"
+            type="number"
+            inputMode="numeric"
+            placeholder="0"
+            value={hours}
+            onChange={(event) => onHoursChange(event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:text-slate-100"
+          />
+        </label>
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+          Minutes
+          <input
+            aria-label="Additional worked minutes"
+            min="0"
+            max="59"
+            step="1"
+            type="number"
+            inputMode="numeric"
+            placeholder="0"
+            value={minutes}
+            onChange={(event) => onMinutesChange(event.target.value)}
+            className="mt-1 w-full rounded-xl border border-slate-300 bg-transparent px-3 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:text-slate-100"
+          />
+        </label>
+      </div>
+      <p className="mt-1 text-xs font-normal text-slate-500">
+        {totalMinutes === null
+          ? "Use whole hours and 0 to 59 additional minutes."
+          : `${formatDurationMinutes(totalMinutes)} total (${totalMinutes} exact minutes for payroll).`}
+      </p>
+    </fieldset>
   );
 };
 const PayrollCutoffFields = ({ settings, setSettings }) => {
@@ -1061,7 +1082,8 @@ const HRManagement = () => {
     timeIn: "",
     timeOut: "",
     status: "",
-    workedMinutes: "",
+    workedHours: "",
+    workedMinutePart: "",
     reason: "",
   });
 
@@ -1232,10 +1254,18 @@ const HRManagement = () => {
         (row) => row._id === correction.attendanceId,
       );
       if (selected?.isDerived) {
+        const workedMinutes = durationPartsToMinutes(
+          correction.workedHours,
+          correction.workedMinutePart,
+        );
+        if (workedMinutes === null) {
+          toast.error("Enter whole hours and 0 to 59 additional minutes.");
+          return;
+        }
         await hrService.createManualAttendance({
           reason: correction.reason,
           status: correction.status || "absent",
-          workedMinutes: Number(correction.workedMinutes || 0),
+          workedMinutes,
           employeeId: selected.employee?._id,
           workDate: selected.workDate,
         });
@@ -1272,7 +1302,8 @@ const HRManagement = () => {
         timeIn: "",
         timeOut: "",
         status: "",
-        workedMinutes: "",
+        workedHours: "",
+        workedMinutePart: "",
         reason: "",
       });
       await loadTab();
@@ -2452,12 +2483,13 @@ const HRManagement = () => {
             <div>
               <h2 className="font-bold">Resolve Missing Attendance</h2>
               <p className="text-sm text-slate-500">
-                Select a derived absence, enter the authorized exact minutes,
-                and explain why it is being created.
+                Select a derived absence, enter the authorized worked hours and
+                minutes, and explain why the record is being created.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <select
+                aria-label="Missing attendance record"
                 required
                 value={correction.attendanceId}
                 onChange={(e) =>
@@ -2476,6 +2508,7 @@ const HRManagement = () => {
                   ))}
               </select>
               <select
+                aria-label="Attendance status"
                 value={correction.status}
                 onChange={(e) =>
                   setCorrection({ ...correction, status: e.target.value })
@@ -2495,14 +2528,18 @@ const HRManagement = () => {
                   </option>
                 ))}
               </select>
-              <DurationField
-                field="workedMinutes"
-                value={correction.workedMinutes}
-                onChange={(value) =>
-                  setCorrection({ ...correction, workedMinutes: value })
+              <WorkedTimeField
+                hours={correction.workedHours}
+                minutes={correction.workedMinutePart}
+                onHoursChange={(workedHours) =>
+                  setCorrection({ ...correction, workedHours })
+                }
+                onMinutesChange={(workedMinutePart) =>
+                  setCorrection({ ...correction, workedMinutePart })
                 }
               />
               <textarea
+                aria-label="Correction reason"
                 required
                 minLength={5}
                 placeholder="Reason for correction"

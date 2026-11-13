@@ -46,8 +46,9 @@ test('attendance displays use the shared formatter while direct corrections use 
   const admin = read('client/src/pages/admin/HRManagement.js');
   const staff = read('client/src/pages/staff/EmployeeHR.js');
   assert.match(admin, /formatDurationMinutes\(row\.workedMinutes\)/);
-  assert.match(admin, /Number\(correction\.workedMinutes \|\| 0\)/);
+  assert.match(admin, /durationPartsToMinutes\([\s\S]*correction\.workedHours,[\s\S]*correction\.workedMinutePart/);
+  assert.match(admin, /workedMinutes,/);
   assert.match(admin, /new Date\(correction\.timeOut\)\.toISOString\(\)/);
-  assert.match(staff, /formatDurationMinutes\(attendance\.today\?\.workedMinutes \|\| 0\)/);
-  assert.match(staff, /formatDurationMinutes\(slip\.attendanceSummary\?\.workedMinutes\)/);
+  assert.match(staff, /formatDurationMinutes\(\s*attendance\.today\?\.workedMinutes \|\| 0,?\s*\)/);
+  assert.match(staff, /formatDurationMinutes\(\s*slip\.attendanceSummary\?\.workedMinutes,?\s*\)/);
 });
