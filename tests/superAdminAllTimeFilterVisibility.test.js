@@ -89,3 +89,12 @@ test('support filters use the shared unclipped visible-label controls', () => {
   assert.match(source, /ariaLabel="Filter support tickets by date"/, 'support date filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped support status select is still present');
 });
+
+test('supplier status filter uses the shared unclipped visible-label control', () => {
+  const source = read('client/src/pages/superadmin/SupplierManagement.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'supplier management does not import the shared select control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the supplier status choices');
+  assert.match(source, /ariaLabel="Filter suppliers by status"/, 'supplier status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 text-white text-\[10px\]/, 'legacy clipped supplier status select is still present');
+});

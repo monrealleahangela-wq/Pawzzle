@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'react-toastify';
-import { Truck, CheckCircle, XCircle, Clock, Search, ChevronDown, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X, ClipboardCheck, FileText } from 'lucide-react';
+import { Truck, CheckCircle, XCircle, Clock, Search, Shield, Eye, Package, Star, TrendingUp, Users, Ban, X, ClipboardCheck, FileText } from 'lucide-react';
 import { supplierService, getImageUrl } from '../../services/apiService';
 import { formatPeso } from '../../utils/paymentSummary';
 import { pawzzlePrompt } from '../../utils/pawzzleDialog';
+import SuperAdminSelectFilter from '../../components/superadmin/SuperAdminSelectFilter';
+
+const SUPPLIER_STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'pending_verification', label: 'Pending' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'rejected', label: 'Rejected' }
+];
 
 const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -201,17 +210,14 @@ const SupplierManagement = () => {
               onChange={e => setSearchTerm(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchSuppliers()}
               className="w-full pl-16 pr-4 py-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 font-sans" />
           </div>
-          <div className="md:col-span-4 relative">
-            <Shield className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-500" />
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              className="w-full h-full bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-16 pr-10 py-4 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none cursor-pointer font-sans">
-              <option value="">All Statuses</option>
-              <option value="pending_verification">Pending</option>
-              <option value="verified">Verified</option>
-              <option value="suspended">Suspended</option>
-              <option value="rejected">Rejected</option>
-            </select>
-            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+          <div className="md:col-span-4">
+            <SuperAdminSelectFilter
+              ariaLabel="Filter suppliers by status"
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={SUPPLIER_STATUS_OPTIONS}
+              Icon={Shield}
+            />
           </div>
         </div>
       </div>
