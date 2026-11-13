@@ -89,3 +89,14 @@ test('support filters use the shared unclipped visible-label controls', () => {
   assert.match(source, /ariaLabel="Filter support tickets by date"/, 'support date filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped support status select is still present');
 });
+
+test('activity filters use the shared unclipped visible-label controls', () => {
+  const source = read('client/src/pages/superadmin/ActivityHistory.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'activity history does not import the shared select control');
+  assert.match(source, /import SuperAdminDateRangeFilter/, 'activity history does not import the shared date control');
+  assert.match(source, /label: 'All events'/, 'All Events is missing from the activity type choices');
+  assert.match(source, /ariaLabel="Filter activity by event type"/, 'activity event filter is missing its accessible label');
+  assert.match(source, /ariaLabel="Filter activity by date"/, 'activity date filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped activity event select is still present');
+});

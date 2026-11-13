@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { userService, petService, productService, orderService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
-import { Users, Heart, Package, ShoppingCart, Shield, Search, Calendar, Filter, RefreshCw, ChevronDown, Target } from 'lucide-react';
+import { Users, Heart, Package, ShoppingCart, Shield, Search, Calendar, Filter, RefreshCw, Target } from 'lucide-react';
 import { formatPeso } from '../../utils/paymentSummary';
 import SuperAdminDateRangeFilter from '../../components/superadmin/SuperAdminDateRangeFilter';
+import SuperAdminSelectFilter from '../../components/superadmin/SuperAdminSelectFilter';
 
 const ActivityHistory = () => {
     const [data, setData] = useState({
@@ -173,21 +174,19 @@ const ActivityHistory = () => {
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </form>
-                    <div className="md:col-span-4 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
-                            <Target className="h-3.5 w-3.5 text-primary-500" />
-                        </div>
-                        <select
-                            value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="all" className="bg-slate-900 text-white font-black">ALL EVENTS</option>
-                            <option value="user" className="bg-slate-900 text-white font-black">USER EVENTS</option>
-                            <option value="pet" className="bg-slate-900 text-white font-black">PET CATALOG</option>
-                            <option value="order" className="bg-slate-900 text-white font-black">TRANSACTION LOG</option>
-                        </select>
-                        <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
-                    </div>
+                    <SuperAdminSelectFilter
+                        Icon={Target}
+                        value={filterType}
+                        onChange={setFilterType}
+                        ariaLabel="Filter activity by event type"
+                        className="md:col-span-4"
+                        options={[
+                            { value: 'all', label: 'All events' },
+                            { value: 'user', label: 'User events' },
+                            { value: 'pet', label: 'Pet catalog' },
+                            { value: 'order', label: 'Transaction log' }
+                        ]}
+                    />
                     <SuperAdminDateRangeFilter
                         ariaLabel="Filter activity by date"
                         value={dateRange}
