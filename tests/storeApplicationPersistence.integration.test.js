@@ -69,8 +69,22 @@ test('Store Application submit, edit, reopen, and original-record selection pers
 
   const original = await StoreApplication.findOne({ applicant: applicantId, applicationType: 'new_store' }).select('+businessRegistration.documentUrl');
   assert.equal(original.businessRegistration.documentUrl, 'secure://registration/original');
-  original.status = 'requires_more_info';
-  await original.save();
+  // Reproduce legacy applications written before audit history was required.
+  // A raw update is intentional so Mongoose does not replace the null value
+  // with the schema's modern array default before the resubmission is loaded.
+  await StoreApplication.collection.updateOne(
+    { _id: original._id },
+    {
+      $set: {
+        status: 'requires_more_info',
+        reviewHistory: null,
+        requiredCorrections: ['businessName'],
+        rejectionReason: 'Correct the submitted business name.',
+        reviewedBy: new mongoose.Types.ObjectId(),
+        reviewedAt: new Date('2026-11-01T00:00:00.000Z')
+      }
+    }
+  );
 
   const updated = await callSubmit({ applicantId, body: requestBody('Corrected Store'), files: {} });
   assert.equal(updated.statusCode, 200);
@@ -81,6 +95,11 @@ test('Store Application submit, edit, reopen, and original-record selection pers
   const reopened = await StoreApplication.findById(original._id).select('+businessRegistration.documentUrl').lean();
   assert.equal(reopened.businessName, 'Corrected Store');
   assert.equal(reopened.businessRegistration.documentUrl, 'secure://registration/original');
+  assert.deepEqual(reopened.requiredCorrections, []);
+  assert.equal(reopened.rejectionReason, undefined);
+  assert.equal(reopened.reviewedBy, undefined);
+  assert.equal(reopened.reviewedAt, undefined);
+  assert.equal(reopened.reviewHistory.at(-1).action, 'resubmitted');
 
   await StoreApplication.create({
     applicant: applicantId,

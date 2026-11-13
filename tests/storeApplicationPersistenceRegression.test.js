@@ -5,7 +5,9 @@ const path = require('node:path');
 const StoreApplication = require('../models/StoreApplication');
 const {
   applicationValidationErrors,
+  appendApplicationReviewEvent,
   buildApplicationData,
+  resetApplicationReviewState,
   toApplicationResponse
 } = require('../controllers/storeApplicationController');
 
@@ -94,6 +96,54 @@ test('legacy original applications remain discoverable without matching expansio
   const legacySelector = /\$or: \[\{ applicationType: 'new_store' \}, \{ applicationType: \{ \$exists: false \} \}\]/g;
   assert.ok((controller.match(legacySelector) || []).length >= 2);
   assert.match(controller, /isResubmission \? existingApplication : new StoreApplication/);
+});
+
+test('legacy applications with null audit history can be resubmitted safely', () => {
+  const application = StoreApplication.hydrate({
+    _id: '64b000000000000000000010',
+    applicant: '64b000000000000000000001',
+    businessName: 'Legacy Store',
+    businessType: 'pet_store',
+    contactInfo: { phone: '09171234567', email: 'store@example.com' },
+    status: 'requires_more_info',
+    reviewHistory: null
+  });
+
+  appendApplicationReviewEvent(application, {
+    action: 'resubmitted',
+    actor: '64b000000000000000000001',
+    notes: 'Applicant resubmitted requested corrections.'
+  });
+
+  assert.equal(application.reviewHistory.length, 1);
+  assert.equal(application.reviewHistory[0].action, 'resubmitted');
+});
+
+test('resubmission starts a clean review cycle without deleting audit history', () => {
+  const application = StoreApplication.hydrate({
+    _id: '64b000000000000000000010',
+    applicant: '64b000000000000000000001',
+    businessName: 'Legacy Store',
+    status: 'requires_more_info',
+    requiredCorrections: ['businessName'],
+    rejectionReason: 'Update the registration details.',
+    reviewedBy: '64b000000000000000000002',
+    reviewedAt: new Date('2026-11-01T00:00:00.000Z'),
+    reviewHistory: [{
+      action: 'needs_correction',
+      actor: '64b000000000000000000002',
+      notes: 'Update the registration details.'
+    }]
+  });
+
+  resetApplicationReviewState(application);
+
+  assert.deepEqual(application.requiredCorrections, []);
+  assert.equal(application.rejectionReason, undefined);
+  assert.equal(application.reviewedBy, undefined);
+  assert.equal(application.reviewedAt, undefined);
+  assert.equal(application.reviewHistory.length, 1);
+  assert.equal(application.reviewHistory[0].action, 'needs_correction');
 });
 
 test('Profile delegates creation and correction to the canonical complete application form', () => {
