@@ -1133,7 +1133,7 @@ const Profile = () => {
                 
                 <div className="flex min-w-0 flex-col items-center gap-3 pt-2">
                   <div className="flex w-full min-w-0 items-center justify-center gap-2">
-                    <span className="max-w-full truncate px-3 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-neutral-400 uppercase tracking-widest">@{user.username}</span>
+                    <span className="max-w-full truncate px-3 py-1.5 bg-neutral-50 border border-slate-100 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest">@{user.username}</span>
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-2">
@@ -1151,15 +1151,15 @@ const Profile = () => {
                 {!isSpecializedStaff && !['super_admin', 'platform_admin'].includes(user.role) && (
                   <div className="grid grid-cols-3 gap-2 pt-6 border-t border-slate-50 sm:gap-4 sm:pt-10">
                     <div className="text-center group/stat cursor-pointer">
-                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
+                      <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Followers</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{followers.length}</p>
                     </div>
                     <button type="button" onClick={() => setActiveTab('followers')} className="min-w-0 text-center border-x border-slate-100 px-2 sm:px-4 group/stat cursor-pointer">
-                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Following</p>
+                      <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 group-hover/stat:text-primary transition-colors">Following</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{following.length}</p>
                     </button>
                     <button type="button" onClick={() => setActiveTab('favorites')} className="text-center group/stat cursor-pointer">
-                      <p className="text-[9px] font-black text-neutral-300 uppercase tracking-widest mb-2 group-hover/stat:text-rose-500 transition-colors">Favorites</p>
+                      <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-2 group-hover/stat:text-rose-500 transition-colors">Favorites</p>
                       <p className="text-2xl font-black text-neutral-900 leading-none">{favoriteCount}</p>
                     </button>
                   </div>
@@ -1190,7 +1190,7 @@ const Profile = () => {
                     onClick={() => setActiveTab(item.id)}
                     className={`flex items-center gap-4 whitespace-nowrap px-8 py-5 rounded-[1.5rem] font-black text-[11px] tracking-wide transition-all duration-500 group ${activeTab === item.id
                       ? 'bg-neutral-900 text-white shadow-strong scale-[1.02]'
-                      : 'text-neutral-400 hover:bg-neutral-50 hover:text-neutral-900'
+                      : 'text-slate-600 hover:bg-neutral-50 hover:text-neutral-900'
                       }`}
                   >
                     <item.icon className="h-5 w-5" />
@@ -1229,7 +1229,7 @@ const Profile = () => {
                       {user.role === 'admin' ? 'Store' : 'Recent'} <br />
                       <span className="text-primary-600 italic">{user.role === 'admin' ? 'Performance' : 'Activity'}</span>
                     </h2>
-                    <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight mt-1">
+                    <p className="text-[9px] sm:text-sm text-slate-600 font-bold uppercase tracking-tight mt-1">
                       {user.role === 'admin' ? 'Real-time store metrics' : 'Your orders and bookings'}
                     </p>
                   </header>
@@ -1257,14 +1257,14 @@ const Profile = () => {
 
                   {user.role === 'customer' && (
                     <div className="grid gap-2 sm:grid-cols-3">
-                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Pet profiles</p><p className="mt-1 text-base font-black text-slate-900">{myPets.length}</p><button type="button" onClick={() => setActiveTab('pets')} className="mt-1 text-[9px] font-bold text-primary-600">View pet summary</button></div>
-                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Upcoming booking</p><p className="mt-1 truncate text-xs font-black text-slate-900">{upcomingBooking?.service?.name || 'No upcoming service'}</p><p className="mt-1 text-[9px] text-slate-500">{upcomingBooking ? new Date(upcomingBooking.bookingDate).toLocaleDateString() : 'Book when your pet needs care.'}</p></div>
-                      <div className={`rounded-xl border p-3 ${actionReminders ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white'}`}><p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Reminders</p><p className="mt-1 text-base font-black text-slate-900">{actionReminders}</p><p className="mt-1 text-[9px] text-slate-500">{actionReminders ? 'Booking action requires your attention.' : 'No booking actions pending.'}</p></div>
+                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-600">Pet profiles</p><p className="mt-1 text-base font-black text-slate-900">{myPets.length}</p><button type="button" onClick={() => setActiveTab('pets')} className="mt-1 text-[9px] font-bold text-primary-600">View pet summary</button></div>
+                      <div className="rounded-xl border border-slate-100 bg-white p-3"><p className="text-[8px] font-black uppercase tracking-wider text-slate-600">Upcoming booking</p><p className="mt-1 truncate text-xs font-black text-slate-900">{upcomingBooking?.service?.name || 'No upcoming service'}</p><p className="mt-1 text-[9px] text-slate-600">{upcomingBooking ? new Date(upcomingBooking.bookingDate).toLocaleDateString() : 'Book when your pet needs care.'}</p></div>
+                      <div className={`rounded-xl border p-3 ${actionReminders ? 'border-amber-200 bg-amber-50' : 'border-slate-100 bg-white'}`}><p className="text-[8px] font-black uppercase tracking-wider text-slate-600">Reminders</p><p className="mt-1 text-base font-black text-slate-900">{actionReminders}</p><p className="mt-1 text-[9px] text-slate-600">{actionReminders ? 'Booking action requires your attention.' : 'No booking actions pending.'}</p></div>
                     </div>
                   )}
 
                   <div className="space-y-4">
-                    <h4 className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.3em] flex items-center gap-2">
+                    <h4 className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-[0.3em] flex items-center gap-2">
                       Recent Orders & Bookings
                     </h4>
                     <div className="divide-y divide-slate-50 border-t border-slate-50">
@@ -1297,7 +1297,7 @@ const Profile = () => {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="text-[10px] sm:text-sm font-black text-slate-900 tracking-tight leading-none mb-1">Order #{order.orderNumber || order._id.toString().slice(-6).toUpperCase()}</p>
-                                  <p className="text-[8px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter">{new Date(order.createdAt).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</p>
+                                  <p className="text-[8px] sm:text-xs font-bold text-slate-600 uppercase tracking-tighter">{new Date(order.createdAt).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</p>
                                 </div>
                               </div>
                               <div className="text-right">
@@ -1323,7 +1323,7 @@ const Profile = () => {
                                 </div>
                                 <div className="min-w-0">
                                   <p className="text-[10px] sm:text-sm font-black text-slate-900 tracking-tight leading-none mb-1">Inquiry for {req.pet?.name || 'Pet'}</p>
-                                  <p className="text-[8px] sm:text-xs font-bold text-slate-400 uppercase tracking-tighter">{new Date(req.createdAt).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</p>
+                                  <p className="text-[8px] sm:text-xs font-bold text-slate-600 uppercase tracking-tighter">{new Date(req.createdAt).toLocaleDateString('en-PH', { day: 'numeric', month: 'short' })}</p>
                                 </div>
                               </div>
                               <div className="text-right">
@@ -1336,7 +1336,7 @@ const Profile = () => {
                         </>
                       ) : (
                         <div className="py-12 text-center">
-                          <p className="text-[9px] sm:text-sm text-slate-300 font-black tracking-wide">Nothing here yet.</p>
+                          <p className="text-[9px] sm:text-sm text-slate-600 font-black tracking-wide">Nothing here yet.</p>
                         </div>
                       )}
                     </div>
@@ -1385,7 +1385,7 @@ const Profile = () => {
                         Profile <br />
                         <span className="text-primary-600 italic">Details</span>
                       </h2>
-                      <p className="text-[9px] sm:text-sm text-slate-400 font-bold uppercase tracking-tight">Your personal information</p>
+                      <p className="text-[9px] sm:text-sm text-slate-600 font-bold uppercase tracking-tight">Your personal information</p>
                     </div>
                     {!isEditing ? (
                       <button onClick={handleEdit} className="px-4 py-2 sm:px-6 sm:py-3 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black text-[9px] sm:text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2">
@@ -1405,7 +1405,7 @@ const Profile = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 sm:gap-x-12 sm:gap-y-10">
                     <div className="space-y-1">
-                      <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">First Name</label>
+                      <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">First Name</label>
                       {isEditing ? (
                         <input type="text" value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" />
                       ) : (
@@ -1413,7 +1413,7 @@ const Profile = () => {
                       )}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Last Name</label>
+                      <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Last Name</label>
                       {isEditing ? (
                         <input type="text" value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" />
                       ) : (
@@ -1421,7 +1421,7 @@ const Profile = () => {
                       )}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Contact</label>
+                      <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Contact</label>
                       {isEditing ? (
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -1434,16 +1434,16 @@ const Profile = () => {
                       )}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Email</label>
-                      <p className="text-sm sm:text-lg font-black text-slate-400 px-1 py-1 flex items-center gap-2 italic leading-none truncate opacity-60">
-                        <Mail className="h-4 w-4 text-slate-300" /> {user.email}
+                      <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Email</label>
+                      <p className="text-sm sm:text-lg font-black text-slate-700 px-1 py-1 flex items-center gap-2 italic leading-none truncate">
+                        <Mail className="h-4 w-4 text-slate-500" /> {user.email}
                       </p>
                     </div>
                   </div>
 
                   <div className="pt-4 sm:pt-10 space-y-6 sm:space-y-10">
                     <div className="flex items-center justify-between gap-4 border-b border-slate-50 pb-3">
-                      <h3 className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-[0.3em]">Address Information</h3>
+                      <h3 className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-[0.3em]">Address Information</h3>
                       {isEditing && (
                         <div className="flex bg-slate-100 p-1 rounded-xl">
                           <button
@@ -1490,7 +1490,7 @@ const Profile = () => {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 sm:gap-x-12 sm:gap-y-10 animate-fade-in">
                         <div className="md:col-span-2 space-y-1">
-                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Street Address</label>
+                          <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Street Address</label>
                           {isEditing ? (
                             <input type="text" value={formData.address.street} onChange={(e) => handleAddressChange('street', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="Street address" />
                           ) : (
@@ -1498,7 +1498,7 @@ const Profile = () => {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">City</label>
+                          <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">City</label>
                           {isEditing ? (
                             <select required value={formData.address.city} onChange={(e) => handleAddressChange('city', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer">
                               <option value="">Select City</option>
@@ -1509,7 +1509,7 @@ const Profile = () => {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Barangay</label>
+                          <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Barangay</label>
                           {isEditing ? (
                             <select required value={formData.address.barangay} onChange={(e) => handleAddressChange('barangay', e.target.value)} disabled={!formData.address.city} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all appearance-none cursor-pointer disabled:opacity-50">
                               <option value="">Select Barangay</option>
@@ -1520,11 +1520,11 @@ const Profile = () => {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">Province</label>
-                          <p className="text-sm sm:text-lg font-black text-slate-400 px-1 py-1 uppercase leading-none italic opacity-60">Cavite</p>
+                          <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">Province</label>
+                          <p className="text-sm sm:text-lg font-black text-slate-700 px-1 py-1 uppercase leading-none italic">Cavite</p>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[8px] sm:text-xs font-black text-slate-300 uppercase tracking-widest block ml-1">ZIP Code</label>
+                          <label className="text-[8px] sm:text-xs font-black text-slate-600 uppercase tracking-widest block ml-1">ZIP Code</label>
                           {isEditing ? (
                             <input type="text" value={formData.address.zipCode} onChange={(e) => handleAddressChange('zipCode', e.target.value)} className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-slate-50 border-2 border-slate-50 rounded-xl sm:rounded-2xl focus:border-primary-500 focus:bg-white outline-none font-bold text-sm sm:text-base transition-all" placeholder="4100" />
                           ) : (
