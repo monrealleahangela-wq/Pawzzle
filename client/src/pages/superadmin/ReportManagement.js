@@ -138,8 +138,9 @@ const ReportManagement = () => {
                             <Calendar className="h-3.5 w-3.5 text-emerald-500" />
                         </div>
                         <select
+                            aria-label="Filter reports by date"
                             value={filters.dateRange} onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-12 !min-h-12 !max-h-12 bg-slate-800 border-none text-white text-[10px] font-black uppercase leading-normal tracking-widest rounded-2xl pl-14 pr-10 py-0 outline-none focus:ring-2 focus:ring-rose-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
