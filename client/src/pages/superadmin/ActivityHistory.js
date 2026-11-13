@@ -192,8 +192,9 @@ const ActivityHistory = () => {
                             <Calendar className="h-3.5 w-3.5 text-blue-500" />
                         </div>
                         <select
+                            aria-label="Filter activity by date"
                             value={dateRange} onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-20 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
+                            className="w-full h-12 !min-h-12 !max-h-12 bg-slate-800 border-none text-white text-[10px] font-black uppercase leading-normal tracking-widest rounded-2xl pl-20 pr-10 py-0 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
                         >
                             <option value="" className="bg-slate-900 text-white font-black">ALL TIME</option>
                             <option value="today" className="bg-slate-900 text-white font-black">TODAY</option>
