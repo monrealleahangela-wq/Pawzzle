@@ -8,6 +8,7 @@ const SupplierProduct = require('../models/SupplierProduct');
 const {
   FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
+  withCatalogVisibleSupplierProduct,
   isSupplierProductPublished,
   hasReviewedContentUpdate,
   requiresFdaComplianceReview,
@@ -50,6 +51,16 @@ test('new supply approval state is represented without changing legacy publicati
         { productMode: 'simple' },
         { productMode: { $exists: false } },
         { productMode: null }
+      ] }
+    ]
+  });
+  assert.deepEqual(withCatalogVisibleSupplierProduct({ isActive: true }), {
+    $and: [
+      { isActive: true },
+      { $or: [
+        { category: { $nin: FDA_REVIEW_CATEGORIES } },
+        { requiresPlatformReview: { $ne: true } },
+        { approvalStatus: 'approved' }
       ] }
     ]
   });
@@ -108,7 +119,9 @@ test('catalog, carts, offer comparison, and final cart submission enforce public
   const supplierController = read('controllers/supplierController.js');
   const purchaseController = read('controllers/purchaseOrderController.js');
 
-  assert.match(supplierController, /const publishedFilter = withPublishedSupplierProduct\(filter\)/);
+  assert.match(supplierController, /const catalogFilter = withCatalogVisibleSupplierProduct\(filter\)/);
+  assert.match(supplierController, /value\.mappingRequired = !mapping/);
+  assert.match(supplierController, /value\.procurementReady = Boolean\(variantProcurement\.enabled && mapping\)/);
   assert.match(purchaseController, /SupplierProduct\.findOne\(withPublishedSupplierProduct/);
   assert.match(purchaseController, /const publishedFilter = withPublishedSupplierProduct\(filter\)/);
   assert.match(purchaseController, /!isSupplierProductPublished\(product\)/);
@@ -118,6 +131,7 @@ test('supplier and platform admin UIs expose category-scoped FDA review and auto
   const supplierUi = read('client/src/pages/supplier/SupplierDashboard.js');
   const adminUi = read('client/src/pages/superadmin/SupplierManagement.js');
   const procurementUi = read('client/src/pages/admin/PurchaseOrders.js');
+  const purchaseController = read('controllers/purchaseOrderController.js');
 
   assert.match(supplierUi, /FDA review not required/);
   assert.match(supplierUi, /Submit for FDA Review/);
@@ -128,5 +142,8 @@ test('supplier and platform admin UIs expose category-scoped FDA review and auto
   assert.match(adminUi, /Verify & publish/);
   assert.match(adminUi, /Request changes/);
   assert.match(procurementUi, /FDA Evidence Reviewed/);
+  assert.match(procurementUi, /Link inventory variant/);
+  assert.match(procurementUi, /createVariantMapping/);
+  assert.match(purchaseController, /ProductVariant\.find/);
   assert.doesNotMatch(`${supplierUi}\n${adminUi}`, /\bDFA\b/);
 });

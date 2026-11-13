@@ -11,6 +11,7 @@ const SupplierProductVariant = require('../models/SupplierProductVariant');
 const Store = require('../models/Store');
 const Inventory = require('../models/Inventory');
 const Product = require('../models/Product');
+const ProductVariant = require('../models/ProductVariant');
 const ServiceSupply = require('../models/ServiceSupply');
 const Pet = require('../models/Pet');
 const InventoryLot = require('../models/InventoryLot');
@@ -245,7 +246,7 @@ const getProcurementStoreProducts = async (req, res) => {
     const search = String(req.query.search || '').trim().slice(0, 80);
     const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const page = Math.max(1, Math.min(10000, Number.parseInt(req.query.page, 10) || 1));
-    const limit = 30;
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
     const supplyTarget = req.query.targetType === 'service_supply';
     const Target = supplyTarget ? ServiceSupply : Product;
     const filter = { store, isActive: true, isDeleted: { $ne: true } };
@@ -254,14 +255,27 @@ const getProcurementStoreProducts = async (req, res) => {
       { sku: { $regex: escapedSearch, $options: 'i' } }
     ];
     const [products, total] = await Promise.all([
-      Target.find(filter).select(supplyTarget ? 'name sku unitOfMeasure supplierProduct' : 'name sku unit supplierProductRef').sort({ name: 1, _id: 1 })
+      Target.find(filter).select(supplyTarget ? 'name sku unitOfMeasure supplierProduct' : 'name sku unit supplierProductRef productMode').sort({ name: 1, _id: 1 })
         .skip((page - 1) * limit).limit(limit),
       Target.countDocuments(filter)
     ]);
+    const sellerVariants = supplyTarget ? [] : await ProductVariant.find({
+      product: { $in: products.filter(product => product.productMode === 'variant').map(product => product._id) },
+      isActive: true,
+      isDiscontinued: false
+    }).select('product attributes sku price unit weight weightUnit images').sort({ product: 1, combinationKey: 1 }).lean();
+    const variantsByProduct = new Map();
+    sellerVariants.forEach(variant => {
+      const key = String(variant.product);
+      if (!variantsByProduct.has(key)) variantsByProduct.set(key, []);
+      variantsByProduct.get(key).push(variant);
+    });
     return res.json({ products: products.map(product => ({
       _id: product._id, name: product.name, sku: product.sku,
       unit: supplyTarget ? product.unitOfMeasure : product.unit,
-      supplierProductRef: supplyTarget ? product.supplierProduct : product.supplierProductRef
+      productMode: supplyTarget ? 'simple' : (product.productMode || 'simple'),
+      supplierProductRef: supplyTarget ? product.supplierProduct : product.supplierProductRef,
+      variants: supplyTarget ? [] : (variantsByProduct.get(String(product._id)) || [])
     })), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error('Get procurement Store products error:', error);

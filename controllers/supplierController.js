@@ -30,6 +30,7 @@ const { resolveOperationalStore } = require('../services/storeAccessService');
 const {
   FDA_REVIEW_CATEGORIES,
   withPublishedSupplierProduct,
+  withCatalogVisibleSupplierProduct,
   isSupplierProductPublished,
   hasReviewedContentUpdate,
   requiresFdaComplianceReview,
@@ -1457,19 +1458,21 @@ const getSupplierCatalog = async (req, res) => {
       return res.status(404).json({ message: 'Supplier not found or unavailable.' });
     }
 
-    const { category, search, page = 1, limit = 20 } = req.query;
+    const { category, search } = req.query;
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
     let filter = { supplier: supplier._id, isActive: true, isDeleted: false };
     if (category) filter.category = category;
     if (search) filter.name = { $regex: search, $options: 'i' };
 
     const skip = (page - 1) * limit;
-    const publishedFilter = withPublishedSupplierProduct(filter);
-    let products = await SupplierProduct.find(publishedFilter).populate('pet').sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit));
-    let total = await SupplierProduct.countDocuments(publishedFilter);
+    const catalogFilter = withCatalogVisibleSupplierProduct(filter);
+    const parentProducts = await SupplierProduct.find(catalogFilter).populate('pet').sort({ createdAt: -1 });
     const variantProcurement = await getVariantProcurementReadiness();
-    if (variantProcurement.enabled) {
-      const variantParents = await SupplierProduct.find({ ...filter, productMode: 'variant' }).sort({ createdAt: -1 });
-      const parentIds = variantParents.map(product => product._id);
+    const variantParents = parentProducts.filter(product => product.productMode === 'variant');
+    const parentIds = variantParents.map(product => product._id);
+    const variantsByParent = new Map();
+    if (parentIds.length) {
       const [variants, mappings] = await Promise.all([
         SupplierProductVariant.find({
           supplierProduct: { $in: parentIds }, isActive: true, isDiscontinued: false
@@ -1481,26 +1484,37 @@ const getSupplierCatalog = async (req, res) => {
         }).lean()
       ]);
       const mappingByVariant = new Map(mappings.map(mapping => [String(mapping.supplierVariant), mapping]));
-      const variantsByParent = new Map();
+      const parentById = new Map(variantParents.map(parent => [String(parent._id), parent]));
       for (const variant of variants) {
-        const parent = variantParents.find(item => String(item._id) === String(variant.supplierProduct));
+        const parent = parentById.get(String(variant.supplierProduct));
         const mapping = mappingByVariant.get(String(variant._id));
-        if (!parent || !mapping || !isVariantRegulatorilyEligible({ parent, variant })) continue;
+        if (!parent || !isVariantRegulatorilyEligible({ parent, variant })) continue;
         const value = variant.toObject();
-        value.variantMappingId = mapping._id;
-        value.sellerVariantId = mapping.sellerVariant;
+        value.variantMappingId = mapping?._id;
+        value.sellerVariantId = mapping?.sellerVariant;
+        value.sellerProductId = mapping?.sellerProduct;
+        value.mappingRequired = !mapping;
+        value.procurementReady = Boolean(variantProcurement.enabled && mapping);
         const key = String(parent._id);
         if (!variantsByParent.has(key)) variantsByParent.set(key, []);
         variantsByParent.get(key).push(value);
       }
-      const purchasableParents = variantParents
-        .filter(parent => variantsByParent.has(String(parent._id)))
-        .map(parent => ({ ...parent.toObject(), variants: variantsByParent.get(String(parent._id)) }));
-      products = [...products.map(product => product.toObject()), ...purchasableParents].slice(0, Number(limit));
-      total += purchasableParents.length;
     }
 
-    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, variantProcurement: { enabled: variantProcurement.enabled, reasons: variantProcurement.reasons }, pagination: { page: parseInt(page), totalPages: Math.ceil(total / limit), total } });
+    const visibleProducts = parentProducts.reduce((result, product) => {
+      const value = product.toObject();
+      if (product.productMode !== 'variant') {
+        result.push(value);
+        return result;
+      }
+      const variants = variantsByParent.get(String(product._id)) || [];
+      if (variants.length) result.push({ ...value, variants });
+      return result;
+    }, []);
+    const total = visibleProducts.length;
+    const products = visibleProducts.slice(skip, skip + limit);
+
+    res.json({ supplier: { _id: supplier._id, businessName: supplier.businessName, logo: supplier.logo, ratings: supplier.ratings, supplierType: supplier.supplierType || 'platform' }, products, variantProcurement: { enabled: variantProcurement.enabled, mappingWritesEnabled: variantProcurement.mappingWritesEnabled, reasons: variantProcurement.reasons }, pagination: { page, totalPages: Math.ceil(total / limit), total } });
   } catch (error) {
     console.error('Get supplier catalog error:', error);
     res.status(500).json({ message: 'Server error' });

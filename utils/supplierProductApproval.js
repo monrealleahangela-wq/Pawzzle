@@ -71,6 +71,13 @@ const withPublishedSupplierProduct = filter => ({
   $and: [filter || {}, publishedSupplierProductClause, simpleSupplierProductClause]
 });
 
+// Seller catalog discovery may include variant-mode parents, but only after the
+// parent has passed the same regulatory publication checks as simple products.
+// Variant-level regulatory eligibility is enforced separately for each child.
+const withCatalogVisibleSupplierProduct = filter => ({
+  $and: [filter || {}, publishedSupplierProductClause]
+});
+
 const isSupplierProductPublished = product => Boolean(product)
   && product.productMode !== 'variant'
   && (!requiresFdaComplianceReview(product)
@@ -104,6 +111,7 @@ module.exports = {
   publishedSupplierProductClause,
   simpleSupplierProductClause,
   withPublishedSupplierProduct,
+  withCatalogVisibleSupplierProduct,
   isSupplierProductPublished,
   hasReviewedContentUpdate
 };
