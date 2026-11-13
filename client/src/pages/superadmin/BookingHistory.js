@@ -4,7 +4,17 @@ import { bookingService } from '../../services/apiService';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
+import SuperAdminSelectFilter from '../../components/superadmin/SuperAdminSelectFilter';
 import { Calendar, Search, Download, Eye, X, DollarSign, CheckCircle, XCircle, AlertCircle, Building, PawPrint, Target, Activity, Shield, Globe, Briefcase } from 'lucide-react';
+
+const BOOKING_STATUS_FILTER_OPTIONS = [
+    { value: '', label: 'All statuses' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'no_show', label: 'No show' }
+];
 
 const BookingHistory = () => {
     const [bookings, setBookings] = useState([]);
@@ -189,22 +199,14 @@ const BookingHistory = () => {
                             className="w-full pl-16 pr-5 py-3.5 bg-slate-800 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl outline-none focus:ring-2 focus:ring-primary-500/50 placeholder:text-slate-600 transition-all font-sans"
                         />
                     </form>
-                    <div className="md:col-span-4 relative">
-                        <div className="absolute left-5 top-1/2 -translate-y-1/2">
-                            <Target className="h-3.5 w-3.5 text-primary-500" />
-                        </div>
-                        <select
-                            value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)}
-                            className="w-full h-full bg-slate-800 border-none text-white text-[10px] font-black uppercase tracking-widest rounded-2xl pl-14 pr-10 py-3.5 outline-none focus:ring-2 focus:ring-primary-500/50 appearance-none transition-all cursor-pointer font-sans"
-                        >
-                            <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
-                            <option value="pending" className="bg-slate-900 text-white font-black hover:bg-primary-600">PENDING</option>
-                            <option value="confirmed" className="bg-slate-900 text-white font-black hover:bg-primary-600">CONFIRMED</option>
-                            <option value="completed" className="bg-slate-900 text-white font-black hover:bg-primary-600">COMPLETED</option>
-                            <option value="cancelled" className="bg-slate-900 text-white font-black hover:bg-primary-600">CANCELLED</option>
-                            <option value="no_show" className="bg-slate-900 text-white font-black hover:bg-primary-600">NO SHOW</option>
-                        </select>
-                    </div>
+                    <SuperAdminSelectFilter
+                        ariaLabel="Filter bookings by status"
+                        value={filters.status}
+                        onChange={(value) => handleFilterChange('status', value)}
+                        options={BOOKING_STATUS_FILTER_OPTIONS}
+                        Icon={Target}
+                        className="md:col-span-4"
+                    />
                 </div>
             </div>
 

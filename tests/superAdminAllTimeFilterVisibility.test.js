@@ -47,3 +47,12 @@ test('transaction status filter uses the same unclipped visible-label control', 
   assert.match(source, /ariaLabel="Filter transactions by status"/, 'status filter is missing its accessible label');
   assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped status select is still present');
 });
+
+test('booking status filter uses the same unclipped visible-label control', () => {
+  const source = read('client/src/pages/superadmin/BookingHistory.js');
+
+  assert.match(source, /import SuperAdminSelectFilter/, 'booking history does not import the shared select control');
+  assert.match(source, /label: 'All statuses'/, 'All Statuses is missing from the booking status choices');
+  assert.match(source, /ariaLabel="Filter bookings by status"/, 'booking status filter is missing its accessible label');
+  assert.doesNotMatch(source, /w-full h-full bg-slate-800 border-none/, 'legacy clipped booking status select is still present');
+});
