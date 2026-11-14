@@ -72,7 +72,7 @@ test('Staff Management rider fields round-trip while reserved load remains serve
   assert.match(staffTest.validateRider({ ...normalized, licenseId: '' }, '09171234567'), /license/i);
 });
 
-test('new Rider accounts may be created before vehicle capacity is configured', () => {
+test('new Rider accounts require vehicle capacity configuration', () => {
   const normalized = staffTest.cleanRiderProfile({
     staffId: 'STF-0013',
     licenseId: 'DL-101',
@@ -81,7 +81,6 @@ test('new Rider accounts may be created before vehicle capacity is configured', 
   });
 
   assert.deepEqual(normalized.vehicleCapacity, { maxWeightKg: 0, maxParcelCount: 0 });
-  assert.equal(staffTest.validateRider(normalized, '09171234567', false), null);
   assert.match(staffTest.validateRider(normalized, '09171234567'), /weight capacity/i);
 });
 

@@ -232,18 +232,15 @@ const cleanRiderProfile = (profile = {}, existing = {}) => ({
         bankName: String(profile.payoutMethod?.bankName ?? existing.payoutMethod?.bankName ?? '').trim()
     }
 });
-const validateRider = (profile, phone, requireVehicleCapacity = true) => {
+const validateRider = (profile, phone) => {
     if (!profile.staffId) return 'Staff ID is required for a Delivery Rider.';
     if (!PHONE_PATTERN.test(String(phone || '').replace(/[\s-]/g, ''))) return 'Enter a valid Philippine mobile number.';
     if (!profile.licenseId) return 'Driver license information is required for a Delivery Rider.';
     if (!RIDER_VEHICLE_TYPES.includes(profile.vehicleType)) return 'Select a supported vehicle type for the Delivery Rider.';
     if (profile.vehicleType !== 'bicycle' && !profile.plateNumber) return 'Vehicle plate number is required.';
     if (!RIDER_STATUSES.includes(profile.accountStatus)) return 'Invalid rider account status.';
-    const hasVehicleCapacity = profile.vehicleCapacity.maxWeightKg !== 0 || profile.vehicleCapacity.maxParcelCount !== 0;
-    if (requireVehicleCapacity || hasVehicleCapacity) {
-        if (!Number.isFinite(profile.vehicleCapacity.maxWeightKg) || profile.vehicleCapacity.maxWeightKg <= 0) return 'Vehicle weight capacity must be greater than zero.';
-        if (!Number.isInteger(profile.vehicleCapacity.maxParcelCount) || profile.vehicleCapacity.maxParcelCount <= 0) return 'Vehicle parcel capacity must be a whole number greater than zero.';
-    }
+    if (!Number.isFinite(profile.vehicleCapacity.maxWeightKg) || profile.vehicleCapacity.maxWeightKg <= 0) return 'Vehicle weight capacity must be greater than zero.';
+    if (!Number.isInteger(profile.vehicleCapacity.maxParcelCount) || profile.vehicleCapacity.maxParcelCount <= 0) return 'Vehicle parcel capacity must be a whole number greater than zero.';
     if (Object.values(profile.earningRules).some(value => !Number.isFinite(value) || value < 0)) return 'Earning values must be valid non-negative amounts.';
     if (profile.earningRules.deduction > profile.earningRules.baseRate + profile.earningRules.incentive + profile.earningRules.bonus) return 'Deduction cannot exceed the rider earning.';
     if (profile.payoutMethod.type && (!profile.payoutMethod.accountName || !profile.payoutMethod.accountNumber)) return 'Complete the selected payout account details.';
@@ -382,7 +379,7 @@ const createStaff = async (req, res) => {
         let normalizedRiderProfile;
         if (staffType === 'delivery_rider') {
             normalizedRiderProfile = cleanRiderProfile({ ...(riderProfile || {}), staffId: generatedStaffId });
-            const riderError = validateRider(normalizedRiderProfile, phone, false);
+            const riderError = validateRider(normalizedRiderProfile, phone);
             if (riderError) return res.status(400).json({ message: riderError });
         }
         if (SPECIALIZED_STAFF_ROLES.includes(staffType)) {

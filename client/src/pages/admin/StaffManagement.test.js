@@ -82,7 +82,7 @@ test('staff onboarding exposes employment, statutory, salary, and payment fields
   expect(screen.getByLabelText(/^Account Number/)).toBeVisible();
 });
 
-test('new rider onboarding omits capacity, position, and department fields', async () => {
+test('new rider onboarding includes capacity but omits position and department', async () => {
   staffService.getAll.mockResolvedValue({ data: { staff: [] } });
   staffService.getConfiguration.mockResolvedValue({
     data: {
@@ -108,8 +108,8 @@ test('new rider onboarding omits capacity, position, and department fields', asy
 
   expect(screen.queryByLabelText('Position')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Department')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText('Maximum load (kg)')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText('Maximum parcels')).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/^Maximum load \(kg\)/)).toBeVisible();
+  expect(screen.getByLabelText(/^Maximum parcels/)).toBeVisible();
   expect(screen.getByLabelText("Driver's License")).toBeVisible();
   expect(screen.getByLabelText('Vehicle Type')).toBeVisible();
 
@@ -117,6 +117,8 @@ test('new rider onboarding omits capacity, position, and department fields', asy
   fireEvent.change(screen.getByLabelText("Driver's License"), { target: { value: 'DL-101' } });
   fireEvent.change(screen.getByLabelText('Vehicle Type'), { target: { value: 'motorcycle' } });
   fireEvent.change(screen.getByLabelText('Plate Number'), { target: { value: 'ABC 124' } });
+  fireEvent.change(screen.getByLabelText(/^Maximum load \(kg\)/), { target: { value: '20' } });
+  fireEvent.change(screen.getByLabelText(/^Maximum parcels/), { target: { value: '4' } });
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'rider.rico' } });
@@ -131,7 +133,7 @@ test('new rider onboarding omits capacity, position, and department fields', asy
   const [payload] = staffService.create.mock.calls[0];
   expect(payload.employmentProfile).not.toHaveProperty('position');
   expect(payload.employmentProfile).not.toHaveProperty('department');
-  expect(payload.riderProfile).not.toHaveProperty('vehicleCapacity');
+  expect(payload.riderProfile.vehicleCapacity).toEqual({ maxWeightKg: '20', maxParcelCount: '4' });
 });
 
 test('editing staff hides department and position and preserves them by omission', async () => {
