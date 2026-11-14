@@ -142,6 +142,67 @@ test('new rider onboarding includes capacity but omits position and department',
   expect(payload.riderProfile.vehicleCapacity).toEqual({ maxWeightKg: '20', maxParcelCount: '4' });
 });
 
+test('editing a rider shows capacity controls inside the staff form', async () => {
+  const rider = {
+    _id: 'rider-1',
+    firstName: 'Rico',
+    lastName: 'Santos',
+    email: 'rico@example.test',
+    username: 'rider.rico',
+    phone: '09171234567',
+    staffType: 'delivery_rider',
+    staffStatus: 'active',
+    isActive: true,
+    store: { _id: 'store-1', name: 'Main Branch' },
+    assignedServices: [],
+    employmentProfile: {
+      employmentStatus: 'active',
+      dateHired: '2026-11-14'
+    },
+    payrollProfile: {
+      compensationBasis: 'monthly',
+      baseRate: 18000,
+      effectiveDate: '2026-11-14'
+    },
+    professionalProfile: { staffId: 'STAFF-002' },
+    riderProfile: {
+      staffId: 'STAFF-002',
+      accountStatus: 'active',
+      licenseId: 'DL-101',
+      vehicleType: 'motorcycle',
+      plateNumber: 'ABC 124',
+      vehicleCapacity: { maxWeightKg: 20, maxParcelCount: 4 },
+      currentLoad: { weightKg: 2, parcelCount: 1 }
+    }
+  };
+  staffService.getAll.mockImplementation(params => Promise.resolve({
+    data: { staff: params?.archived ? [] : [rider] }
+  }));
+  staffService.getConfiguration.mockResolvedValue({
+    data: {
+      services: [],
+      branches: [{ _id: 'store-1', name: 'Main Branch' }],
+      availableRoles: ['delivery_rider'],
+      riderVehicleTypes: ['motorcycle']
+    }
+  });
+
+  renderPage();
+  fireEvent.change(await screen.findByLabelText('Actions for Rico'), {
+    target: { value: 'edit' }
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+  const dialog = screen.getByRole('dialog', { name: /Edit Staff/ });
+  const maximumLoad = screen.getByLabelText(/^Maximum load \(kg\)/);
+  const maximumParcels = screen.getByLabelText(/^Maximum parcels/);
+  expect(dialog).toContainElement(maximumLoad);
+  expect(dialog).toContainElement(maximumParcels);
+  expect(maximumLoad).toHaveValue(20);
+  expect(maximumParcels).toHaveValue(4);
+  expect(screen.getByLabelText('Current Rider capacity')).toBeVisible();
+});
+
 test('editing staff hides department and position and preserves them by omission', async () => {
   const member = {
     _id: 'staff-1',

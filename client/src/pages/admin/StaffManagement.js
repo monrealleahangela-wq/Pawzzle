@@ -805,115 +805,6 @@ export default function StaffManagement() {
           submitting={submitting}
         />
       )}
-      {wizard?.step === 2 &&
-        wizard.editing &&
-        wizard.form.staffType === "delivery_rider" && (
-        <div className="fixed bottom-20 right-4 z-[80] grid w-[min(36rem,calc(100vw-2rem))] gap-3 rounded-xl border bg-white p-4 shadow-xl sm:grid-cols-2">
-          <Field
-            label="Maximum load (kg)"
-            hint="Required for automatic assignments."
-          >
-            <input
-              className={input}
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={
-                wizard.form.riderProfile.vehicleCapacity?.maxWeightKg || ""
-              }
-              onChange={(event) =>
-                setForm({
-                  riderProfile: {
-                    ...wizard.form.riderProfile,
-                    vehicleCapacity: {
-                      ...wizard.form.riderProfile.vehicleCapacity,
-                      maxWeightKg: event.target.value,
-                    },
-                  },
-                })
-              }
-            />
-          </Field>
-          <Field
-            label="Maximum parcels"
-            hint="Required for automatic assignments."
-          >
-            <input
-              className={input}
-              type="number"
-              min="1"
-              step="1"
-              value={
-                wizard.form.riderProfile.vehicleCapacity?.maxParcelCount || ""
-              }
-              onChange={(event) =>
-                setForm({
-                  riderProfile: {
-                    ...wizard.form.riderProfile,
-                    vehicleCapacity: {
-                      ...wizard.form.riderProfile.vehicleCapacity,
-                      maxParcelCount: event.target.value,
-                    },
-                  },
-                })
-              }
-            />
-          </Field>
-          {wizard.editing && (
-            <div
-              className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 text-xs sm:col-span-2"
-              aria-label="Current Rider capacity"
-            >
-              <div>
-                <span className="block text-[9px] font-bold uppercase text-slate-400">
-                  Reserved load
-                </span>
-                <b>
-                  {Number(wizard.form.riderProfile.currentLoad?.weightKg || 0)}{" "}
-                  kg ·{" "}
-                  {Number(
-                    wizard.form.riderProfile.currentLoad?.parcelCount || 0,
-                  )}{" "}
-                  parcel(s)
-                </b>
-              </div>
-              <div>
-                <span className="block text-[9px] font-bold uppercase text-slate-400">
-                  Remaining capacity
-                </span>
-                <b>
-                  {Math.max(
-                    0,
-                    Number(
-                      wizard.form.riderProfile.vehicleCapacity?.maxWeightKg ||
-                        0,
-                    ) -
-                      Number(
-                        wizard.form.riderProfile.currentLoad?.weightKg || 0,
-                      ),
-                  )}{" "}
-                  kg ·{" "}
-                  {Math.max(
-                    0,
-                    Number(
-                      wizard.form.riderProfile.vehicleCapacity
-                        ?.maxParcelCount || 0,
-                    ) -
-                      Number(
-                        wizard.form.riderProfile.currentLoad?.parcelCount || 0,
-                      ),
-                  )}{" "}
-                  parcel(s)
-                </b>
-              </div>
-              <p className="col-span-2 text-[10px] text-slate-500">
-                Reserved load is maintained by active Delivery assignments and
-                cannot be edited here.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
       {profile && (
         <SpecializedStaffProfileModal
           data={profile}
@@ -1704,63 +1595,114 @@ function StaffWizard({
                         }
                       />
                     </Field>
-                    {!editing && (
-                      <>
-                        <Field
-                          label="Maximum load (kg)"
-                          hint="Required for automatic assignments."
-                        >
-                          <input
-                            required
-                            className={input}
-                            type="number"
-                            min="0.1"
-                            step="0.1"
-                            value={
-                              form.riderProfile.vehicleCapacity?.maxWeightKg ||
-                              ""
-                            }
-                            onChange={(event) =>
-                              setForm({
-                                riderProfile: {
-                                  ...form.riderProfile,
-                                  vehicleCapacity: {
-                                    ...form.riderProfile.vehicleCapacity,
-                                    maxWeightKg: event.target.value,
-                                  },
-                                },
-                              })
-                            }
-                          />
-                        </Field>
-                        <Field
-                          label="Maximum parcels"
-                          hint="Required for automatic assignments."
-                        >
-                          <input
-                            required
-                            className={input}
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={
-                              form.riderProfile.vehicleCapacity
-                                ?.maxParcelCount || ""
-                            }
-                            onChange={(event) =>
-                              setForm({
-                                riderProfile: {
-                                  ...form.riderProfile,
-                                  vehicleCapacity: {
-                                    ...form.riderProfile.vehicleCapacity,
-                                    maxParcelCount: event.target.value,
-                                  },
-                                },
-                              })
-                            }
-                          />
-                        </Field>
-                      </>
+                    <Field
+                      label="Maximum load (kg)"
+                      hint="Required for automatic assignments."
+                    >
+                      <input
+                        required
+                        className={input}
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={
+                          form.riderProfile.vehicleCapacity?.maxWeightKg || ""
+                        }
+                        onChange={(event) =>
+                          setForm({
+                            riderProfile: {
+                              ...form.riderProfile,
+                              vehicleCapacity: {
+                                ...form.riderProfile.vehicleCapacity,
+                                maxWeightKg: event.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </Field>
+                    <Field
+                      label="Maximum parcels"
+                      hint="Required for automatic assignments."
+                    >
+                      <input
+                        required
+                        className={input}
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={
+                          form.riderProfile.vehicleCapacity?.maxParcelCount ||
+                          ""
+                        }
+                        onChange={(event) =>
+                          setForm({
+                            riderProfile: {
+                              ...form.riderProfile,
+                              vehicleCapacity: {
+                                ...form.riderProfile.vehicleCapacity,
+                                maxParcelCount: event.target.value,
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </Field>
+                    {editing && (
+                      <div
+                        className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 text-xs sm:col-span-2"
+                        aria-label="Current Rider capacity"
+                      >
+                        <div>
+                          <span className="block text-[9px] font-bold uppercase text-slate-400">
+                            Reserved load
+                          </span>
+                          <b>
+                            {Number(
+                              form.riderProfile.currentLoad?.weightKg || 0,
+                            )}{" "}
+                            kg ·{" "}
+                            {Number(
+                              form.riderProfile.currentLoad?.parcelCount || 0,
+                            )}{" "}
+                            parcel(s)
+                          </b>
+                        </div>
+                        <div>
+                          <span className="block text-[9px] font-bold uppercase text-slate-400">
+                            Remaining capacity
+                          </span>
+                          <b>
+                            {Math.max(
+                              0,
+                              Number(
+                                form.riderProfile.vehicleCapacity?.maxWeightKg ||
+                                  0,
+                              ) -
+                                Number(
+                                  form.riderProfile.currentLoad?.weightKg || 0,
+                                ),
+                            )}{" "}
+                            kg ·{" "}
+                            {Math.max(
+                              0,
+                              Number(
+                                form.riderProfile.vehicleCapacity
+                                  ?.maxParcelCount || 0,
+                              ) -
+                                Number(
+                                  form.riderProfile.currentLoad?.parcelCount ||
+                                    0,
+                                ),
+                            )}{" "}
+                            parcel(s)
+                          </b>
+                        </div>
+                        <p className="col-span-2 text-[10px] text-slate-500">
+                          Reserved load is maintained by active Delivery
+                          assignments and cannot be edited here.
+                        </p>
+                      </div>
                     )}
                   </>
                 )}
