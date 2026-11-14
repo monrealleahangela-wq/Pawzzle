@@ -10,6 +10,7 @@ jest.mock('../../services/apiService', () => ({
   staffService: {
     getAll: jest.fn(),
     getConfiguration: jest.fn(),
+    create: jest.fn(),
     update: jest.fn()
   },
   uploadService: { uploadImage: jest.fn() }
@@ -79,6 +80,58 @@ test('staff onboarding exposes employment, statutory, salary, and payment fields
   expect(screen.getByLabelText(/^Pag-IBIG Number/)).toBeVisible();
   expect(screen.getByLabelText('Salary Payment Method')).toBeVisible();
   expect(screen.getByLabelText(/^Account Number/)).toBeVisible();
+});
+
+test('new rider onboarding omits capacity, position, and department fields', async () => {
+  staffService.getAll.mockResolvedValue({ data: { staff: [] } });
+  staffService.getConfiguration.mockResolvedValue({
+    data: {
+      services: [],
+      branches: [{ _id: 'store-1', name: 'Main Branch' }],
+      availableRoles: ['delivery_rider'],
+      riderVehicleTypes: ['motorcycle'],
+      nextStaffId: 'STAFF-002'
+    }
+  });
+  staffService.create.mockResolvedValue({ data: { emailSent: true } });
+
+  renderPage();
+  await screen.findByText('No staff match these filters.');
+  fireEvent.click(screen.getByRole('button', { name: 'Add Staff' }));
+  fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Rico' } });
+  fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Santos' } });
+  fireEvent.change(screen.getByLabelText('Mobile Number'), { target: { value: '09171234567' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'rico@example.test' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+  fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'delivery_rider' } });
+
+  expect(screen.queryByLabelText('Position')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Department')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Maximum load (kg)')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Maximum parcels')).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Driver's License")).toBeVisible();
+  expect(screen.getByLabelText('Vehicle Type')).toBeVisible();
+
+  fireEvent.change(screen.getByLabelText('Monthly Salary'), { target: { value: '18000' } });
+  fireEvent.change(screen.getByLabelText("Driver's License"), { target: { value: 'DL-101' } });
+  fireEvent.change(screen.getByLabelText('Vehicle Type'), { target: { value: 'motorcycle' } });
+  fireEvent.change(screen.getByLabelText('Plate Number'), { target: { value: 'ABC 124' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'rider.rico' } });
+  fireEvent.change(screen.getByLabelText(/^Temporary Password/), { target: { value: 'TempPass1!' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Staff' }));
+
+  await waitFor(() => {
+    expect(staffService.create).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog', { name: /Add Staff/ })).not.toBeInTheDocument();
+  });
+  await screen.findByText('No staff match these filters.');
+  const [payload] = staffService.create.mock.calls[0];
+  expect(payload.employmentProfile).not.toHaveProperty('position');
+  expect(payload.employmentProfile).not.toHaveProperty('department');
+  expect(payload.riderProfile).not.toHaveProperty('vehicleCapacity');
 });
 
 test('editing staff hides department and position and preserves them by omission', async () => {
