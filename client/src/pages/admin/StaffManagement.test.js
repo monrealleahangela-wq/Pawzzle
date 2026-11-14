@@ -122,7 +122,13 @@ test('new rider onboarding includes capacity but omits position and department',
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'rider.rico' } });
-  fireEvent.change(screen.getByLabelText(/^Temporary Password/), { target: { value: 'TempPass1!' } });
+  const temporaryPassword = screen.getByLabelText(/^Temporary Password/);
+  expect(temporaryPassword).toHaveAttribute('type', 'password');
+  fireEvent.click(screen.getByRole('button', { name: 'Show temporary password' }));
+  expect(temporaryPassword).toHaveAttribute('type', 'text');
+  fireEvent.click(screen.getByRole('button', { name: 'Hide temporary password' }));
+  expect(temporaryPassword).toHaveAttribute('type', 'password');
+  fireEvent.change(temporaryPassword, { target: { value: 'TempPass1!' } });
   fireEvent.click(screen.getByRole('button', { name: 'Create Staff' }));
 
   await waitFor(() => {

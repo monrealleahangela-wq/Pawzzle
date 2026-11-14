@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   KeyRound,
   Plus,
   RefreshCw,
@@ -1244,6 +1246,7 @@ function StaffWizard({
   submitting,
 }) {
   const { form, step, editing } = state;
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const isSpecialist = SPECIALISTS.includes(form.staffType);
   const specialtyLabel =
     {
@@ -1935,14 +1938,35 @@ function StaffWizard({
                     label="Temporary Password"
                     hint="At least 8 characters with upper, lower, number, and symbol."
                   >
-                    <input
-                      className={input}
-                      type="password"
-                      value={form.temporaryPassword}
-                      onChange={(event) =>
-                        setForm({ temporaryPassword: event.target.value })
-                      }
-                    />
+                    <div className="relative">
+                      <input
+                        className={`${input} pr-10`}
+                        type={showTemporaryPassword ? "text" : "password"}
+                        value={form.temporaryPassword}
+                        onChange={(event) =>
+                          setForm({ temporaryPassword: event.target.value })
+                        }
+                      />
+                      <button
+                        type="button"
+                        aria-label={
+                          showTemporaryPassword
+                            ? "Hide temporary password"
+                            : "Show temporary password"
+                        }
+                        aria-pressed={showTemporaryPassword}
+                        onClick={() =>
+                          setShowTemporaryPassword((visible) => !visible)
+                        }
+                        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-500 transition hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                      >
+                        {showTemporaryPassword ? (
+                          <EyeOff size={15} aria-hidden="true" />
+                        ) : (
+                          <Eye size={15} aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
                   </Field>
                 )}
               </div>
