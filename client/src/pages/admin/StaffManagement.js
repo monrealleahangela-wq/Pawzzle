@@ -429,7 +429,6 @@ export default function StaffManagement() {
       return "Complete the rider license and vehicle details.";
     if (
       wizard.step === 2 &&
-      wizard.editing &&
       form.staffType === "delivery_rider" &&
       (!(Number(form.riderProfile.vehicleCapacity?.maxWeightKg) > 0) ||
         !(Number(form.riderProfile.vehicleCapacity?.maxParcelCount) > 0))
@@ -470,11 +469,6 @@ export default function StaffManagement() {
         delete employmentProfile.position;
         delete employmentProfile.department;
         payload.employmentProfile = employmentProfile;
-      }
-      if (!wizard.editing && payload.staffType === "delivery_rider") {
-        const riderProfile = { ...payload.riderProfile };
-        delete riderProfile.vehicleCapacity;
-        payload.riderProfile = riderProfile;
       }
       if (wizard.editing) {
         delete payload.email;
@@ -1707,6 +1701,64 @@ function StaffWizard({
                         }
                       />
                     </Field>
+                    {!editing && (
+                      <>
+                        <Field
+                          label="Maximum load (kg)"
+                          hint="Required for automatic assignments."
+                        >
+                          <input
+                            required
+                            className={input}
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={
+                              form.riderProfile.vehicleCapacity?.maxWeightKg ||
+                              ""
+                            }
+                            onChange={(event) =>
+                              setForm({
+                                riderProfile: {
+                                  ...form.riderProfile,
+                                  vehicleCapacity: {
+                                    ...form.riderProfile.vehicleCapacity,
+                                    maxWeightKg: event.target.value,
+                                  },
+                                },
+                              })
+                            }
+                          />
+                        </Field>
+                        <Field
+                          label="Maximum parcels"
+                          hint="Required for automatic assignments."
+                        >
+                          <input
+                            required
+                            className={input}
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={
+                              form.riderProfile.vehicleCapacity
+                                ?.maxParcelCount || ""
+                            }
+                            onChange={(event) =>
+                              setForm({
+                                riderProfile: {
+                                  ...form.riderProfile,
+                                  vehicleCapacity: {
+                                    ...form.riderProfile.vehicleCapacity,
+                                    maxParcelCount: event.target.value,
+                                  },
+                                },
+                              })
+                            }
+                          />
+                        </Field>
+                      </>
+                    )}
                   </>
                 )}
               </div>
