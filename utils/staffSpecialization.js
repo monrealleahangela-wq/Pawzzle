@@ -36,6 +36,9 @@ const isRoleEligibleForService = (staffType, service) => {
   return false;
 };
 
+const getCompatibleSpecializedRolesForService = service => SPECIALIZED_STAFF_ROLES
+  .filter(role => isRoleEligibleForService(role, service));
+
 const getStaffSpecializationRole = staff => {
   if (!staff) return null;
   if (staff.role === 'staff') {
@@ -301,6 +304,7 @@ module.exports = {
   VETERINARY_ROLES,
   PLATFORM_VERIFIED_SPECIALIST_ROLES,
   getEnabledSpecializedRoles,
+  getCompatibleSpecializedRolesForService,
   isLaboratoryService,
   getStaffSpecializationRole,
   isActiveStaffAccount,
