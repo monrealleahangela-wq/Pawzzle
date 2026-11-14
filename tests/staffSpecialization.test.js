@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   getEnabledSpecializedRoles,
+  getCompatibleSpecializedRolesForService,
   isRoleEligibleForService,
   isWithinStaffSchedule
 } = require('../utils/staffSpecialization');
@@ -28,6 +29,29 @@ test('keeps grooming and training roles out of veterinary services', () => {
   const consultation = { name: 'Veterinary Consultation', category: 'health_wellness' };
   assert.equal(isRoleEligibleForService('groomer', consultation), false);
   assert.equal(isRoleEligibleForService('trainer', consultation), false);
+});
+
+test('reports the compatible Pet Care roles for every service category', () => {
+  assert.deepEqual(
+    getCompatibleSpecializedRolesForService({ name: 'Veterinary Consultation', category: 'health_wellness' }),
+    ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse']
+  );
+  assert.deepEqual(
+    getCompatibleSpecializedRolesForService({ name: 'Veterinary Laboratory Testing', category: 'health_wellness' }),
+    ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician']
+  );
+  assert.deepEqual(
+    getCompatibleSpecializedRolesForService({ name: 'Full Grooming', category: 'grooming' }),
+    ['groomer']
+  );
+  assert.deepEqual(
+    getCompatibleSpecializedRolesForService({ name: 'Puppy Training', category: 'training' }),
+    ['trainer']
+  );
+  assert.deepEqual(
+    getCompatibleSpecializedRolesForService({ name: 'Overnight Boarding', category: 'boarding_hotel' }),
+    ['boarding_staff', 'boarding_specialist']
+  );
 });
 
 test('checks staff shift hours without requiring schedules for legacy staff', () => {
