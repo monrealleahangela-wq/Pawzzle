@@ -65,6 +65,12 @@ const SPECIALISTS = [
   "boarding_staff",
   "boarding_specialist",
 ];
+const compatibleServicesForRole = (services, staffType) =>
+  (services || []).filter(
+    (service) =>
+      !Array.isArray(service.compatibleStaffRoles) ||
+      service.compatibleStaffRoles.includes(staffType),
+  );
 const DAYS = [
   "monday",
   "tuesday",
@@ -417,6 +423,12 @@ export default function StaffManagement() {
       !(Number(form.employmentProfile.compensation.baseRate) > 0)
     )
       return "Enter a valid monthly salary or compensation rate.";
+    if (
+      wizard.step === 2 &&
+      SPECIALISTS.includes(form.staffType) &&
+      !compatibleServicesForRole(configuration.services, form.staffType).length
+    )
+      return "No compatible active services are configured for this role at the assigned store.";
     if (
       wizard.step === 2 &&
       SPECIALISTS.includes(form.staffType) &&
@@ -1139,6 +1151,10 @@ function StaffWizard({
   const { form, step, editing } = state;
   const [showTemporaryPassword, setShowTemporaryPassword] = useState(false);
   const isSpecialist = SPECIALISTS.includes(form.staffType);
+  const compatibleServices = compatibleServicesForRole(
+    config.services,
+    form.staffType,
+  );
   const specialtyLabel =
     {
       veterinarian: "Clinical specialization",
@@ -1403,6 +1419,57 @@ function StaffWizard({
                     }
                   />
                 </Field>
+                {isSpecialist && (
+                  <fieldset className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:col-span-2">
+                    <legend className="px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      Compatible Services
+                    </legend>
+                    <p className="mb-2 text-[11px] text-slate-500">
+                      Choose at least one service this Pet Care role can handle.
+                    </p>
+                    {compatibleServices.length ? (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {compatibleServices.map((service) => (
+                          <label
+                            key={service._id}
+                            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={form.assignedServices.includes(
+                                service._id,
+                              )}
+                              onChange={(event) =>
+                                setForm({
+                                  assignedServices: event.target.checked
+                                    ? [
+                                        ...form.assignedServices,
+                                        service._id,
+                                      ]
+                                    : form.assignedServices.filter(
+                                        (id) => id !== service._id,
+                                      ),
+                                })
+                              }
+                            />
+                            <span>
+                              <b className="block">{service.name}</b>
+                              <small className="text-slate-400">
+                                {roleLabel(service.category)}
+                              </small>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                        No compatible active services are configured for this
+                        role at the assigned store. Add or activate a matching
+                        service before creating this staff account.
+                      </p>
+                    )}
+                  </fieldset>
+                )}
                 {!editing && form.staffType !== "delivery_rider" && (
                   <>
                     <Field label="Position">
@@ -1707,44 +1774,6 @@ function StaffWizard({
                   </>
                 )}
               </div>
-              {isSpecialist && (
-                <Field
-                  label={
-                    form.staffType === "boarding_staff"
-                      ? "Boarding Services"
-                      : "Services Handled"
-                  }
-                >
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(config.services || []).map((service) => (
-                      <label
-                        key={service._id}
-                        className="flex items-center gap-2 rounded-lg border p-2 text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={form.assignedServices.includes(service._id)}
-                          onChange={(event) =>
-                            setForm({
-                              assignedServices: event.target.checked
-                                ? [...form.assignedServices, service._id]
-                                : form.assignedServices.filter(
-                                    (id) => id !== service._id,
-                                  ),
-                            })
-                          }
-                        />
-                        <span>
-                          <b className="block">{service.name}</b>
-                          <small className="text-slate-400">
-                            {roleLabel(service.category)}
-                          </small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </Field>
-              )}
               <div>
                 <p className="mb-2 text-[10px] font-bold uppercase text-slate-500">
                   Working Schedule, Breaks & Availability

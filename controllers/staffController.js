@@ -30,6 +30,7 @@ const { hasProtectedPayrollInput, mergeProtectedPayrollProfile } = require('../u
 const {
     SPECIALIZED_STAFF_ROLES,
     getEnabledSpecializedRoles,
+    getCompatibleSpecializedRolesForService,
     isRoleEligibleForService,
     getStaffSpecializationRole,
     getProfessionalVerificationStatus,
@@ -806,14 +807,18 @@ const getStaffConfiguration = async (req, res) => {
         const accessibleStoreIds = await getOwnedStoreIds(req.user);
         const [store, services, branches] = await Promise.all([
             Store.findById(storeId).select('name businessType operationalModules +staffSequence'),
-            Service.find({ store: storeId, isActive: true, isDeleted: { $ne: true } }).select('name category subCategory description duration'),
+            Service.find({ store: storeId, isActive: true, isDeleted: { $ne: true } }).select('name category subCategory description duration isActive isDeleted'),
             Store.find(accessibleStoreIds?.length ? { _id: { $in: accessibleStoreIds } } : {}).select('name businessType')
         ]);
         if (!store) return res.status(404).json({ message: 'Store branch not found.' });
+        const servicesWithCompatibility = services.map(service => ({
+            ...service.toObject(),
+            compatibleStaffRoles: getCompatibleSpecializedRolesForService(service)
+        }));
         res.json({
             store,
             branches,
-            services,
+            services: servicesWithCompatibility,
             enabledSpecializedRoles: getEnabledSpecializedRoles(services),
             nextStaffId: `STF-${String(Number(store.staffSequence || 0) + 1).padStart(4, '0')}`,
             availableRoles: STAFF_MANAGEMENT_ROLES,

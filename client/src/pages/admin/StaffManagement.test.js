@@ -82,6 +82,112 @@ test('staff onboarding exposes employment, statutory, salary, and payment fields
   expect(screen.getByLabelText(/^Account Number/)).toBeVisible();
 });
 
+test('all Pet Care roles show their compatible services beside the role fields', async () => {
+  const services = [
+    {
+      _id: 'service-vet',
+      name: 'Veterinary Consultation',
+      category: 'health_wellness',
+      compatibleStaffRoles: ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse']
+    },
+    {
+      _id: 'service-lab',
+      name: 'Veterinary Laboratory Testing',
+      category: 'health_wellness',
+      compatibleStaffRoles: ['veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician']
+    },
+    {
+      _id: 'service-grooming',
+      name: 'Full Grooming',
+      category: 'grooming',
+      compatibleStaffRoles: ['groomer']
+    },
+    {
+      _id: 'service-training',
+      name: 'Puppy Training',
+      category: 'training',
+      compatibleStaffRoles: ['trainer']
+    },
+    {
+      _id: 'service-boarding',
+      name: 'Overnight Boarding',
+      category: 'boarding_hotel',
+      compatibleStaffRoles: ['boarding_staff', 'boarding_specialist']
+    }
+  ];
+  const roles = [
+    ['veterinarian', 'Veterinary Consultation'],
+    ['veterinary_technician', 'Veterinary Consultation'],
+    ['veterinary_assistant', 'Veterinary Consultation'],
+    ['veterinary_nurse', 'Veterinary Consultation'],
+    ['veterinary_laboratory_technician', 'Veterinary Laboratory Testing'],
+    ['groomer', 'Full Grooming'],
+    ['trainer', 'Puppy Training'],
+    ['boarding_staff', 'Overnight Boarding']
+  ];
+  staffService.getAll.mockResolvedValue({ data: { staff: [] } });
+  staffService.getConfiguration.mockResolvedValue({
+    data: {
+      services,
+      branches: [{ _id: 'store-1', name: 'Main Branch' }],
+      availableRoles: roles.map(([role]) => role),
+      riderVehicleTypes: [],
+      nextStaffId: 'STAFF-003'
+    }
+  });
+
+  renderPage();
+  await screen.findByText('No staff match these filters.');
+  fireEvent.click(screen.getByRole('button', { name: 'Add Staff' }));
+  fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Ana' } });
+  fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Santos' } });
+  fireEvent.change(screen.getByLabelText('Mobile Number'), { target: { value: '09171234567' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ana@example.test' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+  for (const [role, serviceName] of roles) {
+    fireEvent.change(screen.getByLabelText('Role'), { target: { value: role } });
+    expect(screen.getByText('Compatible Services')).toBeVisible();
+    expect(screen.getByRole('checkbox', { name: new RegExp(serviceName) })).toBeVisible();
+  }
+  fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'groomer' } });
+  expect(screen.queryByRole('checkbox', { name: /Puppy Training/ })).not.toBeInTheDocument();
+});
+
+test('Pet Care roles explain when the store has no compatible active service', async () => {
+  staffService.getAll.mockResolvedValue({ data: { staff: [] } });
+  staffService.getConfiguration.mockResolvedValue({
+    data: {
+      services: [],
+      branches: [{ _id: 'store-1', name: 'Main Branch' }],
+      availableRoles: ['veterinarian'],
+      riderVehicleTypes: [],
+      nextStaffId: 'STAFF-004'
+    }
+  });
+
+  renderPage();
+  await screen.findByText('No staff match these filters.');
+  fireEvent.click(screen.getByRole('button', { name: 'Add Staff' }));
+  fireEvent.change(screen.getByLabelText('First Name'), { target: { value: 'Ana' } });
+  fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Santos' } });
+  fireEvent.change(screen.getByLabelText('Mobile Number'), { target: { value: '09171234567' } });
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ana@example.test' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.change(screen.getByLabelText('Role'), { target: { value: 'veterinarian' } });
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'No compatible active services are configured for this role at the assigned store.'
+  );
+  fireEvent.change(screen.getByLabelText('Position'), { target: { value: 'Veterinarian' } });
+  fireEvent.change(screen.getByLabelText('Department'), { target: { value: 'Pet Care' } });
+  fireEvent.change(screen.getByLabelText('Monthly Salary'), { target: { value: '30000' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'No compatible active services are configured for this role at the assigned store.'
+  );
+});
+
 test('new rider onboarding includes capacity but omits position and department', async () => {
   staffService.getAll.mockResolvedValue({ data: { staff: [] } });
   staffService.getConfiguration.mockResolvedValue({
