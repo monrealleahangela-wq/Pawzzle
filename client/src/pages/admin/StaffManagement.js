@@ -405,6 +405,7 @@ export default function StaffManagement() {
     if (
       wizard.step === 2 &&
       !wizard.editing &&
+      form.staffType !== "delivery_rider" &&
       (!form.employmentProfile.position.trim() ||
         !form.employmentProfile.department.trim())
     )
@@ -428,6 +429,7 @@ export default function StaffManagement() {
       return "Complete the rider license and vehicle details.";
     if (
       wizard.step === 2 &&
+      wizard.editing &&
       form.staffType === "delivery_rider" &&
       (!(Number(form.riderProfile.vehicleCapacity?.maxWeightKg) > 0) ||
         !(Number(form.riderProfile.vehicleCapacity?.maxParcelCount) > 0))
@@ -463,11 +465,18 @@ export default function StaffManagement() {
       }
       const payload = { ...wizard.form, avatar };
       delete payload.avatarFile;
-      if (wizard.editing) {
+      if (wizard.editing || payload.staffType === "delivery_rider") {
         const employmentProfile = { ...payload.employmentProfile };
         delete employmentProfile.position;
         delete employmentProfile.department;
         payload.employmentProfile = employmentProfile;
+      }
+      if (!wizard.editing && payload.staffType === "delivery_rider") {
+        const riderProfile = { ...payload.riderProfile };
+        delete riderProfile.vehicleCapacity;
+        payload.riderProfile = riderProfile;
+      }
+      if (wizard.editing) {
         delete payload.email;
         delete payload.username;
         delete payload.temporaryPassword;
@@ -800,7 +809,9 @@ export default function StaffManagement() {
           submitting={submitting}
         />
       )}
-      {wizard?.step === 2 && wizard.form.staffType === "delivery_rider" && (
+      {wizard?.step === 2 &&
+        wizard.editing &&
+        wizard.form.staffType === "delivery_rider" && (
         <div className="fixed bottom-20 right-4 z-[80] grid w-[min(36rem,calc(100vw-2rem))] gap-3 rounded-xl border bg-white p-4 shadow-xl sm:grid-cols-2">
           <Field
             label="Maximum load (kg)"
@@ -1504,7 +1515,7 @@ function StaffWizard({
                     }
                   />
                 </Field>
-                {!editing && (
+                {!editing && form.staffType !== "delivery_rider" && (
                   <>
                     <Field label="Position">
                       <input required className={input} value={form.employmentProfile.position} onChange={(event) => setEmployment({ position: event.target.value })} />
