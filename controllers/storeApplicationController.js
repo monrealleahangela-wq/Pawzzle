@@ -66,6 +66,17 @@ const buildOriginalApplicationSelector = applicantId => ({
   isDeleted: { $ne: true }
 });
 
+// Capture the persisted review state before the same Mongoose document is
+// prepared for resubmission. The document is later changed to under_review;
+// reading its status at update time would create a filter that can never match
+// the still-rejected database row.
+const buildResubmissionUpdateFilter = (application, applicantId) => ({
+  _id: application._id,
+  applicant: applicantId,
+  status: application.status,
+  isDeleted: { $ne: true }
+});
+
 const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
 
 const applicationValidationErrors = (data, files = {}) => {
@@ -416,6 +427,9 @@ const submitApplication = async (req, res) => {
     const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne(
       buildOriginalApplicationSelector(req.user.id)
     ).sort({ createdAt: -1 }));
+    const resubmissionUpdateFilter = existingApplication
+      ? buildResubmissionUpdateFilter(existingApplication, req.user.id)
+      : null;
     // Never trust document URLs posted by the browser. Reuse the already-owned
     // secure upload unless the applicant supplied a replacement file.
     applicationData.businessRegistration.documentUrl = req.files?.businessRegistration
@@ -562,12 +576,7 @@ const submitApplication = async (req, res) => {
       }, {});
 
       application = await applicationQueryWithPrivateFields(StoreApplication.findOneAndUpdate(
-        {
-          _id: existingApplication._id,
-          applicant: req.user.id,
-          status: existingApplication.status,
-          isDeleted: { $ne: true }
-        },
+        resubmissionUpdateFilter,
         {
           $set: {
             ...resubmissionFields,
@@ -1328,5 +1337,6 @@ module.exports = {
   appendApplicationReviewEvent,
   resetApplicationReviewState,
   buildOriginalApplicationSelector,
+  buildResubmissionUpdateFilter,
   upload
 };
