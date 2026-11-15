@@ -25,7 +25,12 @@ test('seller plan catalog uses the approved allowances, prices, annual discount,
   assert.equal(SUBSCRIPTION_PLANS.growth.trialDays, 14);
   assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.SUPPLIER_CATALOG));
   assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.MANUAL_RESTOCKING));
+  for (const tier of ['free', 'starter', 'growth', 'professional']) {
+    assert.ok(SUBSCRIPTION_PLANS[tier].entitlements.includes(ENTITLEMENTS.GOODS_RECEIVING), `${tier} must be able to receive an order it was allowed to place`);
+  }
+  assert.ok(!SUBSCRIPTION_PLANS.starter.entitlements.includes(ENTITLEMENTS.SUPPLIER_PROCUREMENT));
   assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.PRODUCT_VARIANTS));
+  assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.SUPPLIER_PROCUREMENT));
   assert.ok(SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY));
   assert.equal(normalizeSubscriptionTier('basic'), 'free');
   assert.equal(normalizeSubscriptionTier('premium'), 'growth');
