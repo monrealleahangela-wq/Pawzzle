@@ -11,14 +11,16 @@ router.use(authenticate);
 const attendancePlan = requireSubscriptionEntitlement(ENTITLEMENTS.STAFF_ATTENDANCE);
 const payrollPlan = requireSubscriptionEntitlement(ENTITLEMENTS.PAYROLL);
 const compensationPlan = requireSubscriptionEntitlement(ENTITLEMENTS.COMPENSATION);
-router.use(['/attendance', '/me/attendance', '/me/leaves', '/leaves'], attendancePlan);
+router.use(['/attendance', '/me/leaves', '/leaves'], attendancePlan);
 router.use(['/payroll', '/payslips', '/remittances', '/reports/payroll', '/me/payslips'], payrollPlan);
 
 // Employee self-service. Controllers enforce that the caller is an active,
 // assigned Store employee and never accept an employee ID from the client.
-router.get('/me/attendance', attendancePlan, hr.myAttendance);
-router.post('/me/attendance/time-in', attendancePlan, hr.timeIn);
-router.post('/me/attendance/time-out', attendancePlan, hr.timeOut);
+// A Store plan must not prevent an existing employee from recording their
+// own attendance; paid attendance entitlements apply to management tooling.
+router.get('/me/attendance', hr.myAttendance);
+router.post('/me/attendance/time-in', hr.timeIn);
+router.post('/me/attendance/time-out', hr.timeOut);
 router.get('/me/attendance/corrections', attendanceCorrections.own);
 router.post('/me/attendance/corrections', uploadAttendanceEvidence, handleUploadError, attendanceCorrections.submit);
 router.get('/attendance/corrections/:id/evidence', attendanceCorrections.evidence);
