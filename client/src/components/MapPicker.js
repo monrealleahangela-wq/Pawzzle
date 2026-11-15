@@ -8,6 +8,7 @@ import {
   getLocationAccuracyPresentation,
   getLocationErrorMessage
 } from '../utils/geolocationAccuracy';
+import { normalizeNominatimAddress } from '../utils/nominatimAddress';
 
 // Fix for Leaflet default icon issues in React
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -120,13 +121,7 @@ const MapPicker = ({ onLocationSelected, initialAddress = '', initialCoordinates
         return null;
       }
 
-      const formattedAddress = {
-        street: data.address?.road || data.address?.suburb || '',
-        city: data.address?.city || data.address?.town || data.address?.municipality || '',
-        barangay: data.address?.neighbourhood || data.address?.village || '',
-        zipCode: data.address?.postcode || '',
-        full: data.display_name
-      };
+      const formattedAddress = normalizeNominatimAddress(data);
 
       return formattedAddress;
     } catch (err) {

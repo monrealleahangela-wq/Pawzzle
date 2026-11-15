@@ -95,3 +95,31 @@ test('uses a normal desktop location reading and asks the user to fine-tune it',
   expect(screen.getByRole('button', { name: /confirm/i })).toBeEnabled();
   jest.useRealTimers();
 });
+
+test('stores a residential locality such as Narra II as the selected barangay', async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      display_name: 'Narra II, Silang, Cavite, Calabarzon, 4118, Philippines',
+      address: {
+        residential: 'Narra II',
+        town: 'Silang',
+        state: 'Cavite',
+        postcode: '4118'
+      }
+    })
+  });
+  const onLocationSelected = jest.fn();
+  render(<MapPicker onLocationSelected={onLocationSelected} />);
+
+  fireEvent.click(screen.getByRole('button', { name: /use current location/i }));
+  await screen.findByText(/Narra II, Silang, Cavite/i);
+  fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+
+  await waitFor(() => expect(onLocationSelected).toHaveBeenCalledWith(expect.objectContaining({
+    street: 'Narra II',
+    city: 'Silang',
+    barangay: 'Narra II',
+    zipCode: '4118'
+  })));
+});

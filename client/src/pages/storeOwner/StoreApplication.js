@@ -6,6 +6,7 @@ import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, Ar
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
 import MapPicker from '../../components/MapPicker';
 import { getAccurateCurrentPosition, getLocationAccuracyPresentation, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
+import { normalizeNominatimAddress, toLocationOptionValue } from '../../utils/nominatimAddress';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
 import '../../components/stores/StoreApplicationFields.css';
@@ -169,15 +170,12 @@ const StoreApplication = () => {
       const data = await response.json();
 
       if (!data.address) throw new Error('No address was found for this GPS location.');
-      const addr = data.address;
-      const street = addr.road || addr.suburb || addr.building || '';
-      const city = (addr.city || addr.town || addr.municipality || '').toLowerCase();
-      const barangay = (addr.village || addr.neighbourhood || addr.suburb || '').toLowerCase();
+      const address = normalizeNominatimAddress(data);
 
-      handleChange('contactInfo.address.street', street);
-      handleChange('contactInfo.address.city', city);
-      handleChange('contactInfo.address.barangay', barangay);
-      handleChange('contactInfo.address.zipCode', addr.postcode || '');
+      handleChange('contactInfo.address.street', address.street);
+      handleChange('contactInfo.address.city', toLocationOptionValue(address.city));
+      handleChange('contactInfo.address.barangay', toLocationOptionValue(address.barangay));
+      handleChange('contactInfo.address.zipCode', address.zipCode);
       handleChange('contactInfo.address.coordinates', { lat: location.lat, lng: location.lng });
 
       const accuracy = getLocationAccuracyPresentation(location.accuracy);
@@ -934,8 +932,8 @@ const StoreApplication = () => {
                           address: {
                             ...prev.contactInfo.address,
                             street: location.street || location.full,
-                            city: (location.city || '').toLowerCase().replace(/\s+/g, '_').replace('municipality_of_', ''),
-                            barangay: (location.barangay || '').toLowerCase().replace(/\s+/g, '_'),
+                            city: toLocationOptionValue(location.city),
+                            barangay: toLocationOptionValue(location.barangay),
                             zipCode: location.zipCode || prev.contactInfo.address.zipCode,
                             coordinates: {
                               lat: location.lat,
