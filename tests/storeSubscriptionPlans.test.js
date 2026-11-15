@@ -375,6 +375,16 @@ test('core supplier operations stay available while advanced plan features remai
   assert.match(stores, /consolidated-inventory\/:inventoryId\/location/);
 });
 
+test('staff self-service attendance is available without Growth while management stays gated', () => {
+  const hr = read('routes/hr.js');
+  assert.match(hr, /router\.get\('\/me\/attendance', hr\.myAttendance\)/);
+  assert.match(hr, /router\.post\('\/me\/attendance\/time-in', hr\.timeIn\)/);
+  assert.match(hr, /router\.post\('\/me\/attendance\/time-out', hr\.timeOut\)/);
+  assert.doesNotMatch(hr, /router\.use\(\[[^\]]*'\/me\/attendance'/);
+  assert.doesNotMatch(hr, /router\.(?:get|post)\('\/me\/attendance[^']*', attendancePlan/);
+  assert.match(hr, /router\.get\('\/attendance', requirePermission\('attendance\.view', 'attendance\.manage'\), attendancePlan, hr\.managementAttendance\)/);
+});
+
 test('new marketplace transactions charge no platform fee', () => {
   const originalLoad = Module._load;
   Module._load = function load(request, parent, isMain) {
