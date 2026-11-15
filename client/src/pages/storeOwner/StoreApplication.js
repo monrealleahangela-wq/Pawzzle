@@ -901,22 +901,23 @@ const StoreApplication = () => {
                 </div>
               </div>
 
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
+              <section aria-labelledby="store-location-heading" className="min-w-0 self-start space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 id="store-location-heading" className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-900">
                     <Building className="h-3 w-3 text-primary-500" /> Store location {isFieldBroken('address') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">Update address</span>}
                   </h3>
-                  <div className="flex bg-slate-100 p-1 rounded-xl">
+                  <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 sm:flex sm:shrink-0">
                     <button
                       type="button"
                       onClick={() => setAddressInputType('map')}
-                      className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                      className={`rounded-lg px-3 py-2 text-center text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'map' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
                     >
                       Choose on map
                     </button>
                     <button
                       type="button"
                       onClick={() => setAddressInputType('manual')}
-                      className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
+                      className={`rounded-lg px-3 py-2 text-center text-[8px] font-black uppercase tracking-widest transition-all ${addressInputType === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-400'}`}
                     >
                       Enter address
                     </button>
@@ -993,6 +994,7 @@ const StoreApplication = () => {
                   </div>
                 )}
                 {fieldErrors['contactInfo.address.coordinates'] && <p data-field="contactInfo.address.coordinates" tabIndex="-1" className="md:col-span-2 text-xs font-bold text-rose-700">{fieldErrors['contactInfo.address.coordinates']}</p>}
+              </section>
             </div>
             <section className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-4">
               <div><h3 className="text-base font-black text-slate-900">BIR and tax information</h3><p className="mt-1 text-xs text-slate-600">Choose your current BIR registration status. Pawzzle will verify registered details using your BIR Form 2303.</p></div>
