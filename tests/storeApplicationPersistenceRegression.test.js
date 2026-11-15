@@ -8,6 +8,7 @@ const {
   appendApplicationReviewEvent,
   buildApplicationData,
   buildOriginalApplicationSelector,
+  buildResubmissionUpdateFilter,
   resetApplicationReviewState,
   toApplicationResponse
 } = require('../controllers/storeApplicationController');
@@ -158,6 +159,24 @@ test('resubmission starts a clean review cycle without deleting audit history', 
   assert.equal(application.reviewedAt, undefined);
   assert.equal(application.reviewHistory.length, 1);
   assert.equal(application.reviewHistory[0].action, 'needs_correction');
+});
+
+test('resubmission update keeps the original review status after the document is prepared', () => {
+  const application = StoreApplication.hydrate({
+    _id: '64b000000000000000010',
+    applicant: '64b000000000000000001',
+    businessName: 'Rejected Store',
+    businessType: 'pet_store',
+    status: 'rejected'
+  });
+  const filter = buildResubmissionUpdateFilter(application, application.applicant);
+
+  application.status = 'under_review';
+
+  assert.equal(filter.status, 'rejected');
+  assert.equal(application.status, 'under_review');
+  assert.equal(String(filter._id), String(application._id));
+  assert.equal(String(filter.applicant), String(application.applicant));
 });
 
 test('Profile delegates creation and correction to the canonical complete application form', () => {
