@@ -47,7 +47,13 @@ test('all required sections remain reachable on the responsive canonical form', 
   expect(screen.getByLabelText(/registration issued by/i)).toBeVisible();
   expect(screen.getByLabelText(/business contact number/i)).toBeVisible();
   expect(screen.getByText(/bir and tax information/i)).toBeVisible();
-  expect(screen.getByRole('button', { name: /choose on map/i })).toBeVisible();
+  const locationHeading = screen.getByRole('heading', { name: /store location/i });
+  const locationSection = locationHeading.closest('section');
+  expect(locationSection).toContainElement(screen.getByRole('button', { name: /choose on map/i }));
+  expect(locationSection).toContainElement(screen.getByRole('button', { name: /enter address/i }));
+  expect(locationSection).toContainElement(screen.getByRole('button', { name: /confirm test location/i }));
+  expect(locationSection.parentElement).toHaveClass('md:grid-cols-2');
+  expect(locationSection.parentElement.children).toHaveLength(2);
 
   fireEvent.click(screen.getByRole('button', { name: /documents/i }));
   expect(screen.getByText(/dti \/ sec certificate/i)).toBeVisible();
