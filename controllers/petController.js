@@ -209,7 +209,7 @@ const createPet = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Find the store for this user (admin or staff)
+    // Find the store for this user (admin or staff).
     let store;
     
     if (isOperationalStaff(req.user)) {
@@ -266,7 +266,11 @@ const createPet = async (req, res) => {
       store: store._id
     };
 
-    if (petData.status === 'available' && petData.isAvailable) await assertCanActivateListing(store);
+    if (petData.status === 'available' && petData.isAvailable) {
+      await assertCanActivateListing(store, {
+        ownerId: isStoreAdmin(req.user) ? (req.user._id || req.user.id) : undefined
+      });
+    }
 
     const pet = new Pet(petData);
     await pet.save();
@@ -411,7 +415,11 @@ const updatePet = async (req, res) => {
     const nextActiveListing = (updateData.status ?? pet.status) === 'available'
       && (updateData.isAvailable ?? pet.isAvailable) === true
       && !pet.isDeleted;
-    if (!wasActiveListing && nextActiveListing) await assertCanActivateListing(updateData.store || pet.store);
+    if (!wasActiveListing && nextActiveListing) {
+      await assertCanActivateListing(updateData.store || pet.store, {
+        ownerId: isStoreAdmin(req.user) ? (req.user._id || req.user.id) : undefined
+      });
+    }
 
     const updateOperation = { $set: updateData };
     const unset = {};

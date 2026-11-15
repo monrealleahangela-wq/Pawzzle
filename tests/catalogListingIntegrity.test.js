@@ -6,6 +6,7 @@ const Product = require('../models/Product');
 const Pet = require('../models/Pet');
 const Service = require('../models/Service');
 const Store = require('../models/Store');
+const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const User = require('../models/User');
 const StockSyncService = require('../services/stockSyncService');
 const { createProduct, getAllProducts } = require('../controllers/productController');
@@ -174,6 +175,8 @@ test('seller product creation persists normalized weight, cover order, and serve
   const originalFindById = Product.findById;
   const originalInitialize = StockSyncService.initializeInventoryForProduct;
   const originalStoreFindById = Store.findById;
+  const originalStoreFind = Store.find;
+  const originalPaymentFind = StoreSubscriptionPayment.find;
   const originalProductCount = Product.countDocuments;
   const originalPetCount = Pet.countDocuments;
   const originalServiceCount = Service.countDocuments;
@@ -187,7 +190,10 @@ test('seller product creation persists normalized weight, cover order, and serve
   };
   Product.findById = () => ({ populate: async () => saved });
   StockSyncService.initializeInventoryForProduct = async () => {};
-  Store.findById = () => ({ select: async () => ({ _id: '507f1f77bcf86cd799439011', subscriptionTier: 'free' }) });
+  const store = { _id: '507f1f77bcf86cd799439011', owner: '507f1f77bcf86cd799439012', subscriptionTier: 'free' };
+  Store.findById = () => ({ select: async () => store });
+  Store.find = async () => [store];
+  StoreSubscriptionPayment.find = async () => [];
   Product.countDocuments = async () => 0;
   Pet.countDocuments = async () => 0;
   Service.countDocuments = async () => 0;
@@ -219,6 +225,8 @@ test('seller product creation persists normalized weight, cover order, and serve
     Product.findById = originalFindById;
     StockSyncService.initializeInventoryForProduct = originalInitialize;
     Store.findById = originalStoreFindById;
+    Store.find = originalStoreFind;
+    StoreSubscriptionPayment.find = originalPaymentFind;
     Product.countDocuments = originalProductCount;
     Pet.countDocuments = originalPetCount;
     Service.countDocuments = originalServiceCount;
