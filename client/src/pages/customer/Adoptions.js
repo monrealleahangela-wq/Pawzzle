@@ -9,6 +9,57 @@ import EnhancedChatMessenger from '../../components/EnhancedChatMessenger';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import { getPetPriceLabel, getPetSaleUnitLabel } from '../../utils/petSaleUnit';
 
+const formatPeso = value => new Intl.NumberFormat('en-PH', {
+    style: 'currency', currency: 'PHP', minimumFractionDigits: 2
+}).format(Number(value || 0));
+
+export const PickupFeePanel = ({ request }) => {
+    const summary = request.pickupFeeSummary;
+    if (!summary) return null;
+
+    if (summary.status === 'finalized') {
+        return (
+            <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-950">
+                <p className="text-[10px] font-black uppercase tracking-widest">Final no-show settlement</p>
+                <div className="mt-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between gap-3"><span>Care fee ({summary.careFeeDays} day{summary.careFeeDays === 1 ? '' : 's'})</span><strong>{formatPeso(summary.accruedCareFee)}</strong></div>
+                    <div className="flex justify-between gap-3"><span>No-show fee</span><strong>{formatPeso(summary.noShowFee)}</strong></div>
+                    <div className="flex justify-between gap-3 border-t border-rose-200 pt-2"><span>Deducted from payment</span><strong>{formatPeso(summary.deductionTotal)}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Refundable balance</span><strong>{formatPeso(summary.refundDue)}</strong></div>
+                    <div className="flex justify-between gap-3"><span>Additional amount due</span><strong>{formatPeso(summary.additionalAmountDue)}</strong></div>
+                </div>
+                <p className="mt-3 text-[10px] leading-relaxed">The fees are settled only from the amount already paid. Any refundable balance remains subject to authorized payment-provider review.</p>
+            </div>
+        );
+    }
+
+    const graceActive = summary.status === 'grace_period';
+    return (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+            <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black uppercase tracking-widest">{graceActive ? '24-hour grace period' : 'Care fee now accruing'}</p>
+                    <p className="mt-1 text-xs leading-relaxed">Contact the seller in Pawzzle chat to arrange your one permitted reschedule.</p>
+                    <div className="mt-3 rounded-xl border border-amber-200 bg-white/70 p-3 text-xs">
+                        <div className="flex justify-between gap-3"><span>Current care fee</span><strong>{formatPeso(summary.accruedCareFee)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Calculation</span><strong>{summary.careFeeDays} × {formatPeso(summary.dailyCareFee)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Maximum care fee</span><strong>{formatPeso(summary.maximumCareFee)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Possible no-show fee if cancelled</span><strong>{formatPeso(summary.possibleNoShowFee)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Covered by existing payment</span><strong>{formatPeso(summary.coveredByExistingPayment)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Additional amount due now</span><strong>{formatPeso(summary.additionalAmountDue)}</strong></div>
+                        <div className="mt-1 flex justify-between gap-3"><span>Contact attempts</span><strong>{summary.contactAttempts}/{summary.minimumContactAttempts}</strong></div>
+                    </div>
+                    <p className="mt-2 text-[10px] leading-relaxed">No separate debt is created. If this purchase qualifies for no-show cancellation, applicable fees are deducted from the existing payment and any balance is reviewed for refund.</p>
+                    {summary.graceEndsAt && <p className="mt-2 text-[10px] font-black uppercase tracking-wide">Grace ends: {new Date(summary.graceEndsAt).toLocaleString()}</p>}
+                    {summary.nextCareFeeAt && !graceActive && <p className="mt-1 text-[10px] font-black uppercase tracking-wide">Next daily fee: {new Date(summary.nextCareFeeAt).toLocaleString()}</p>}
+                    {summary.cancellationEligibleAt && <p className="mt-1 text-[10px] font-black uppercase tracking-wide">Cancellation eligible: {new Date(summary.cancellationEligibleAt).toLocaleString()}</p>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Adoptions = ({ isSubcomponent = false }) => {
     const { user } = useAuth();
     const [requests, setRequests] = useState([]);
@@ -160,33 +211,7 @@ const Adoptions = ({ isSubcomponent = false }) => {
                                     </button>
                                 )}
 
-                                {request.status === 'pickup_missed' && (
-                                    <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-                                        <div className="flex items-start gap-3">
-                                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest">Contact the seller now</p>
-                                                <p className="mt-1 text-xs leading-relaxed">
-                                                    Your pickup was marked missed. Use chat to arrange the one allowed reschedule before the cancellation deadline.
-                                                </p>
-                                                {request.pickupCompliance?.cancellationEligibleAt && (
-                                                    <p className="mt-2 text-[10px] font-black uppercase tracking-wide">
-                                                        Cancellation eligible: {new Date(request.pickupCompliance.cancellationEligibleAt).toLocaleString()}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {request.status === 'no_show_cancelled' && request.pickupCompliance?.settlement && (
-                                    <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
-                                        <p className="text-[10px] font-black uppercase tracking-widest">No-show settlement review</p>
-                                        <div className="mt-2 flex justify-between text-xs"><span>Policy deductions</span><strong>₱{Number(request.pickupCompliance.settlement.deductionTotal || 0).toLocaleString()}</strong></div>
-                                        <div className="mt-1 flex justify-between text-xs"><span>Refundable balance</span><strong>₱{Number(request.pickupCompliance.settlement.refundDue || 0).toLocaleString()}</strong></div>
-                                        <p className="mt-2 text-[10px] leading-relaxed">Any refundable balance is reviewed and processed through the authorized payment workflow; this notice is not a completed refund receipt.</p>
-                                    </div>
-                                )}
+                                <PickupFeePanel request={request} />
 
                                 <div className="bg-slate-50/50 rounded-[2rem] p-5 mb-8 border border-slate-100 flex flex-col gap-3">
                                     <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">

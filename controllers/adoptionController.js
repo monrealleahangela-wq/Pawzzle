@@ -14,6 +14,7 @@ const { createNotification } = require('./notificationController');
 const {
     PET_PICKUP_POLICY,
     buildPickupAgreementSnapshot,
+    calculateAccruedCareFee,
     calculateNoShowSettlement,
     getNoShowRestriction,
     pickupTimeline,
@@ -35,9 +36,73 @@ const PAID_STATUSES = ['partially_paid', 'deposit_paid', 'paid_in_full'];
 
 const buildPurchaseFingerprint = data => crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
 
+const buildPickupFeeSummary = (request, now = new Date()) => {
+    if (!['pickup_missed', 'no_show_cancelled'].includes(request?.status)) return null;
+
+    const pricing = request.paymentDetails?.pricingBreakdown || {};
+    const amountPaid = Math.max(
+        0,
+        Number(pricing.paidAmount || 0),
+        Number(request.paymentDetails?.paidAmount || 0)
+    );
+    const listedPrice = Math.max(0, Number(pricing.totalPrice ?? request.petSnapshot?.listedPrice ?? 0));
+    const policy = request.pickupAgreement?.policy || PET_PICKUP_POLICY;
+
+    if (request.status === 'no_show_cancelled' && request.pickupCompliance?.settlement) {
+        const settlement = request.pickupCompliance.settlement;
+        return {
+            status: 'finalized',
+            asOf: settlement.calculatedAt || request.pickupCompliance.cancelledAt,
+            dailyCareFee: Number(policy.dailyCareFee || PET_PICKUP_POLICY.dailyCareFee),
+            careFeeCapDays: Number(policy.careFeeCapDays || PET_PICKUP_POLICY.careFeeCapDays),
+            careFeeDays: Number(settlement.careFeeDays || 0),
+            accruedCareFee: Number(settlement.careFee || 0),
+            noShowFee: Number(settlement.noShowFee || 0),
+            deductionTotal: Number(settlement.deductionTotal || 0),
+            refundDue: Number(settlement.refundDue || 0),
+            refundStatus: settlement.refundStatus,
+            amountPaid,
+            additionalAmountDue: 0
+        };
+    }
+
+    if (!request.pickupCompliance?.missedAt) return null;
+
+    const accrued = calculateAccruedCareFee({
+        missedAt: request.pickupCompliance?.missedAt,
+        now,
+        policy
+    });
+    const possibleNoShowFee = Math.round((Math.min(
+        listedPrice * Math.max(0, Number(policy.noShowFeeRate || 0)),
+        Math.max(0, Number(policy.noShowFeeCap || 0))
+    ) + Number.EPSILON) * 100) / 100;
+
+    return {
+        status: accrued.graceActive ? 'grace_period' : 'accruing',
+        asOf: accrued.asOf,
+        graceEndsAt: accrued.graceEndsAt,
+        cancellationEligibleAt: request.pickupCompliance?.cancellationEligibleAt || accrued.cancellationEligibleAt,
+        nextCareFeeAt: accrued.nextCareFeeAt,
+        dailyCareFee: accrued.dailyCareFee,
+        careFeeCapDays: accrued.careFeeCapDays,
+        careFeeDays: accrued.careFeeDays,
+        accruedCareFee: accrued.careFee,
+        maximumCareFee: accrued.maximumCareFee,
+        possibleNoShowFee,
+        amountPaid,
+        coveredByExistingPayment: Math.min(amountPaid, accrued.careFee),
+        additionalAmountDue: 0,
+        contactAttempts: request.pickupCompliance?.contactAttempts?.length || 0,
+        minimumContactAttempts: Number(policy.minimumContactAttempts || PET_PICKUP_POLICY.minimumContactAttempts)
+    };
+};
+
 const safeRequest = request => {
     const object = request?.toObject ? request.toObject() : { ...request };
     if (object?.pickupAgreement) delete object.pickupAgreement.acceptanceEvidence;
+    const pickupFeeSummary = buildPickupFeeSummary(object);
+    if (pickupFeeSummary) object.pickupFeeSummary = pickupFeeSummary;
     return object;
 };
 
@@ -500,7 +565,7 @@ const getMyAdoptionRequests = async (req, res) => {
             .populate('seller', 'firstName lastName email')
             .sort({ updatedAt: -1 });
 
-        res.json({ requests });
+        res.json({ requests: requests.map(safeRequest) });
     } catch (error) {
         console.error('Get my adoption requests error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -577,7 +642,7 @@ const getAdoptionByConversation = async (req, res) => {
             }
         }
 
-        res.json({ request });
+        res.json({ request: request ? safeRequest(request) : null });
     } catch (error) {
         console.error('Get adoption by conversation error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -652,7 +717,9 @@ const markPickupMissed = async (req, res) => {
             return res.status(409).json({ message: 'The pickup date must finish before it can be marked missed.' });
         }
 
-        const missedAt = new Date();
+        // Anchor deadlines to the end of the confirmed pickup date. A delayed
+        // staff action must not move the customer's grace period or fee clock.
+        const missedAt = new Date(scheduled.getTime() + 24 * 60 * 60 * 1000);
         const timeline = pickupTimeline(missedAt);
         request.status = 'pickup_missed';
         request.pickupCompliance = request.pickupCompliance || {};
@@ -807,10 +874,15 @@ const cancelForPickupNoShow = async (req, res) => {
         }
         const pricing = request.paymentDetails?.pricingBreakdown || {};
         const settlement = calculateNoShowSettlement({
-            totalPrice: pricing.totalPrice,
-            paidAmount: pricing.paidAmount ?? request.paymentDetails?.paidAmount,
+            totalPrice: pricing.totalPrice ?? request.petSnapshot?.listedPrice,
+            paidAmount: Math.max(
+                0,
+                Number(pricing.paidAmount || 0),
+                Number(request.paymentDetails?.paidAmount || 0)
+            ),
             scheduledFor: request.pickupCompliance.missedAt,
-            refundPolicyType: request.refundPolicySnapshot?.type
+            refundPolicyType: request.refundPolicySnapshot?.type,
+            policy: request.pickupAgreement?.policy || PET_PICKUP_POLICY
         });
         const reason = String(req.body?.reason || 'Buyer remained unresponsive after the pickup no-show period.').slice(0, 1000);
         request.paymentDetails = request.paymentDetails || {};
@@ -861,6 +933,7 @@ const cancelForPickupNoShow = async (req, res) => {
 };
 
 module.exports = {
+    buildPickupFeeSummary,
     createAdoptionRequest,
     updateAdoptionStatus,
     getMyAdoptionRequests,

@@ -75,12 +75,49 @@ const hasCurrentPickupAgreement = agreement => Boolean(
   && agreement.termsHash === policyHash(publicPickupPolicy())
 );
 
-const pickupTimeline = scheduledFor => {
+const pickupTimeline = (scheduledFor, policy = PET_PICKUP_POLICY) => {
   const scheduled = new Date(scheduledFor);
   if (Number.isNaN(scheduled.getTime())) return null;
   return {
-    graceEndsAt: new Date(scheduled.getTime() + PET_PICKUP_POLICY.graceHours * 60 * 60 * 1000),
-    cancellationEligibleAt: new Date(scheduled.getTime() + PET_PICKUP_POLICY.cancellationAfterDays * DAY)
+    graceEndsAt: new Date(scheduled.getTime() + Number(policy.graceHours) * 60 * 60 * 1000),
+    cancellationEligibleAt: new Date(scheduled.getTime() + Number(policy.cancellationAfterDays) * DAY)
+  };
+};
+
+const calculateAccruedCareFee = ({
+  missedAt,
+  now = new Date(),
+  policy = PET_PICKUP_POLICY
+}) => {
+  const timeline = pickupTimeline(missedAt, policy);
+  if (!timeline) throw new Error('A valid missed-pickup time is required.');
+
+  const current = new Date(now);
+  if (Number.isNaN(current.getTime())) throw new Error('A valid calculation time is required.');
+
+  const dailyCareFee = Math.max(0, Number(policy.dailyCareFee || 0));
+  const careFeeCapDays = Math.max(0, Number(policy.careFeeCapDays || 0));
+  const chargeableMs = Math.max(0, current.getTime() - timeline.graceEndsAt.getTime());
+  const careFeeDays = Math.min(
+    careFeeCapDays,
+    chargeableMs > 0 ? Math.ceil(chargeableMs / DAY) : 0
+  );
+  const careFee = roundCurrency(careFeeDays * dailyCareFee);
+  const nextCareFeeAt = careFeeDays >= careFeeCapDays
+    ? null
+    : new Date(timeline.graceEndsAt.getTime() + careFeeDays * DAY);
+
+  return {
+    asOf: current,
+    graceEndsAt: timeline.graceEndsAt,
+    cancellationEligibleAt: timeline.cancellationEligibleAt,
+    dailyCareFee,
+    careFeeCapDays,
+    careFeeDays,
+    careFee,
+    maximumCareFee: roundCurrency(dailyCareFee * careFeeCapDays),
+    nextCareFeeAt,
+    graceActive: current <= timeline.graceEndsAt
   };
 };
 
@@ -89,19 +126,17 @@ const calculateNoShowSettlement = ({
   paidAmount,
   scheduledFor,
   now = new Date(),
-  refundPolicyType = 'conditional_refund'
+  refundPolicyType = 'conditional_refund',
+  policy = PET_PICKUP_POLICY
 }) => {
-  const timeline = pickupTimeline(scheduledFor);
-  if (!timeline) throw new Error('A valid confirmed pickup date is required.');
   const paid = Math.max(0, Number(paidAmount || 0));
   const listed = Math.max(0, Number(totalPrice || 0));
-  const chargeableMs = Math.max(0, new Date(now).getTime() - timeline.graceEndsAt.getTime());
-  const careFeeDays = Math.min(
-    PET_PICKUP_POLICY.careFeeCapDays,
-    chargeableMs > 0 ? Math.ceil(chargeableMs / DAY) : 0
-  );
-  const careFee = roundCurrency(careFeeDays * PET_PICKUP_POLICY.dailyCareFee);
-  const noShowFee = roundCurrency(Math.min(listed * PET_PICKUP_POLICY.noShowFeeRate, PET_PICKUP_POLICY.noShowFeeCap));
+  const accrued = calculateAccruedCareFee({ missedAt: scheduledFor, now, policy });
+  const { careFeeDays, careFee } = accrued;
+  const noShowFee = roundCurrency(Math.min(
+    listed * Math.max(0, Number(policy.noShowFeeRate || 0)),
+    Math.max(0, Number(policy.noShowFeeCap || 0))
+  ));
   const statedDeductions = roundCurrency(noShowFee + careFee);
   const deductionTotal = refundPolicyType === 'no_refund'
     ? paid
@@ -137,6 +172,7 @@ const getNoShowRestriction = (cancelledRows = [], now = new Date()) => {
 module.exports = {
   PET_PICKUP_POLICY,
   buildPickupAgreementSnapshot,
+  calculateAccruedCareFee,
   calculateNoShowSettlement,
   getNoShowRestriction,
   hasCurrentPickupAgreement,

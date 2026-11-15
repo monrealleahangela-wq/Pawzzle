@@ -3,10 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const AdoptionRequest = require('../models/AdoptionRequest');
-const { createAdoptionRequest } = require('../controllers/adoptionController');
+const { buildPickupFeeSummary, createAdoptionRequest } = require('../controllers/adoptionController');
 const {
   PET_PICKUP_POLICY,
   buildPickupAgreementSnapshot,
+  calculateAccruedCareFee,
   calculateNoShowSettlement,
   getNoShowRestriction,
   hasCurrentPickupAgreement,
@@ -102,6 +103,50 @@ test('no-show settlement observes grace, fee caps, payment cap, and refund polic
   assert.equal(noRefund.refundDue, 0);
 });
 
+test('care fee preview exposes the grace period and each started chargeable day', () => {
+  const missedAt = new Date('2026-10-01T00:00:00.000Z');
+  const grace = calculateAccruedCareFee({ missedAt, now: new Date('2026-10-01T12:00:00.000Z') });
+  assert.equal(grace.graceActive, true);
+  assert.equal(grace.careFeeDays, 0);
+  assert.equal(grace.careFee, 0);
+  assert.equal(grace.nextCareFeeAt.toISOString(), '2026-10-02T00:00:00.000Z');
+
+  const firstStartedDay = calculateAccruedCareFee({ missedAt, now: new Date('2026-10-02T00:00:01.000Z') });
+  assert.equal(firstStartedDay.graceActive, false);
+  assert.equal(firstStartedDay.careFeeDays, 1);
+  assert.equal(firstStartedDay.careFee, 100);
+  assert.equal(firstStartedDay.nextCareFeeAt.toISOString(), '2026-10-03T00:00:00.000Z');
+
+  const capped = calculateAccruedCareFee({ missedAt, now: new Date('2026-10-20T00:00:00.000Z') });
+  assert.equal(capped.careFeeDays, 7);
+  assert.equal(capped.careFee, 700);
+  assert.equal(capped.maximumCareFee, 700);
+  assert.equal(capped.nextCareFeeAt, null);
+});
+
+test('customer pickup summary is server calculated and never creates extra debt', () => {
+  const summary = buildPickupFeeSummary({
+    status: 'pickup_missed',
+    petSnapshot: { listedPrice: 5000 },
+    paymentDetails: { paidAmount: 5000, pricingBreakdown: { totalPrice: 5000, paidAmount: 0 } },
+    pickupAgreement: { policy: PET_PICKUP_POLICY },
+    pickupCompliance: {
+      missedAt: new Date('2026-10-01T00:00:00.000Z'),
+      cancellationEligibleAt: new Date('2026-10-08T00:00:00.000Z'),
+      contactAttempts: [{}, {}]
+    }
+  }, new Date('2026-10-04T00:00:00.000Z'));
+
+  assert.equal(summary.status, 'accruing');
+  assert.equal(summary.careFeeDays, 2);
+  assert.equal(summary.accruedCareFee, 200);
+  assert.equal(summary.possibleNoShowFee, 500);
+  assert.equal(summary.coveredByExistingPayment, 200);
+  assert.equal(summary.amountPaid, 5000);
+  assert.equal(summary.additionalAmountDue, 0);
+  assert.equal(summary.contactAttempts, 2);
+});
+
 test('repeated no-show restrictions are temporary and escalation is deterministic', () => {
   const now = new Date('2026-10-24T00:00:00.000Z');
   const recent = daysAgo => ({ pickupCompliance: { cancelledAt: new Date(now.getTime() - daysAgo * DAY) } });
@@ -130,6 +175,7 @@ test('pickup workflow fields, protected routes, notifications, and payment gate 
   const payment = read('controllers/paymentController.js');
   const reconciliation = read('services/paymentReconciliationService.js');
   const modal = read('client/src/components/PetPurchaseModal.js');
+  const customerPurchases = read('client/src/pages/customer/Adoptions.js');
 
   assert.match(routes, /pickup-policy/);
   assert.match(routes, /pickup\/:requestId\/missed/);
@@ -143,4 +189,9 @@ test('pickup workflow fields, protected routes, notifications, and payment gate 
   assert.match(reconciliation, /no_show_cancelled/);
   assert.match(modal, /Pet Purchase and Pickup Agreement/);
   assert.match(modal, /pickupAgreementVersion/);
+  assert.match(controller, /pickupFeeSummary/);
+  assert.match(controller, /requests: requests\.map\(safeRequest\)/);
+  assert.match(customerPurchases, /Current care fee/);
+  assert.match(customerPurchases, /Final no-show settlement/);
+  assert.match(customerPurchases, /No separate debt is created/);
 });
