@@ -15,6 +15,7 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { hasUiActionPermission } from '../../utils/authorization';
+import { buildOrderDeliveryTimeline, getOrderDeliveryStatus } from '../../utils/orderDeliveryStatus';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -51,6 +52,8 @@ const OrderDetail = () => {
   const checkoutBatchId = order?.checkoutBatch?._id || order?.checkoutBatch;
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
   const orderLineItems = useMemo(() => orderLineItemRows(order?.items), [order?.items]);
+  const deliveryStatus = useMemo(() => getOrderDeliveryStatus(order), [order]);
+  const deliveryTimeline = useMemo(() => buildOrderDeliveryTimeline(order), [order]);
   const unreviewedProductItems = useMemo(
     () => orderLineItems.filter(item => item.itemType === 'product' && !item.reviewStatus?.isRated),
     [orderLineItems]
@@ -927,8 +930,8 @@ const OrderDetail = () => {
           )}
 
           {/* Enhanced Delivery & Complaint Tracking - Collapsible for Sellers */}
-          {order.deliveryMethod === 'delivery' && order.delivery && (
-            <div className={`card overflow-hidden border-2 ${order.delivery.complaints?.some(c => c.status === 'pending') ? 'border-rose-100 shadow-rose-50' : 'border-slate-100'}`}>
+          {order.deliveryMethod === 'delivery' && (
+            <div className={`card overflow-hidden border-2 ${order.delivery?.complaints?.some(c => c.status === 'pending') ? 'border-rose-100 shadow-rose-50' : 'border-slate-100'}`}>
               <button 
                 onClick={() => user?.role !== 'customer' && setIsTimelineCollapsed(!isTimelineCollapsed)}
                 className={`w-full p-6 flex justify-between items-center bg-slate-50 border-b border-slate-100 hover:bg-slate-100 transition-colors ${user?.role !== 'customer' ? 'cursor-pointer' : 'cursor-default'}`}
@@ -938,8 +941,8 @@ const OrderDetail = () => {
                   Delivery Timeline
                 </h2>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${order.delivery.assignmentType === 'internal' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                    {order.delivery.assignmentType === 'internal' ? 'Rider Assigned' : 'Awaiting Rider'}
+                  <span data-testid="delivery-status-badge" className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${deliveryStatus.badgeClass}`}>
+                    {deliveryStatus.label}
                   </span>
                   {user?.role !== 'customer' && (
                     isTimelineCollapsed ? <ChevronDown className="h-5 w-5 text-slate-400" /> : <ChevronUp className="h-5 w-5 text-slate-400" />
@@ -949,7 +952,28 @@ const OrderDetail = () => {
 
               <div className={user?.role !== 'customer' && isTimelineCollapsed ? 'hidden' : 'block'}>
                 <div className="p-6 space-y-4">
-                  {order.delivery.riderName && (
+                  <div data-testid="order-delivery-timeline" className="relative space-y-0 pl-1">
+                    {deliveryTimeline.map((entry, index) => (
+                      <div key={`${entry.status}-${entry.timestamp}-${index}`} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${entry.isCurrent ? 'border-primary-600 bg-primary-600 text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-600'}`}>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                          </div>
+                          {index < deliveryTimeline.length - 1 && <div className="min-h-9 w-px flex-1 bg-slate-200" />}
+                        </div>
+                        <div className="min-w-0 pb-4">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-slate-900">{entry.label}</p>
+                            {entry.isCurrent && <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-primary-700">Current</span>}
+                          </div>
+                          <p className="mt-0.5 text-[9px] font-bold text-slate-400">{new Date(entry.timestamp).toLocaleString()}</p>
+                          <p className="mt-1 text-[10px] leading-relaxed text-slate-500">{entry.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {order.delivery?.riderName && (
                     <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center font-black">
                         {order.delivery.riderName.charAt(0).toUpperCase()}
@@ -966,7 +990,7 @@ const OrderDetail = () => {
                     </div>
                   )}
                   
-                  {order.delivery.deliveredAt && (
+                  {order.delivery?.deliveredAt && (
                     <div className="p-5 bg-emerald-50 border-2 border-emerald-100 rounded-2xl flex flex-col gap-3 relative overflow-hidden">
                       <div className="absolute top-0 right-0 p-3">
                         <CheckCircle className="h-10 w-10 text-emerald-100 rotate-12" />
@@ -999,7 +1023,7 @@ const OrderDetail = () => {
                     </div>
                   )}
                   
-                  {order.delivery.riderVehicleInfo && (
+                  {order.delivery?.riderVehicleInfo && (
                     <div className="flex items-center gap-2 px-1 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                       <Activity className="h-3.5 w-3.5 text-primary-500" />
                       Transport: {order.delivery.riderVehicleInfo}
@@ -1022,7 +1046,7 @@ const OrderDetail = () => {
               </div>
 
               {/* Complaints List */}
-              {order.delivery.complaints && order.delivery.complaints.length > 0 && (
+              {order.delivery?.complaints && order.delivery.complaints.length > 0 && (
                 <div className="p-6 space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                     <AlertCircle className="h-3.5 w-3.5 text-rose-500" />
