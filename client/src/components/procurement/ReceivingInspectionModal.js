@@ -119,13 +119,13 @@ const ReceivingInspectionModal = ({
   const linkStateUnavailable = visibleItems.some(item => item.itemType !== 'live_pet') && (loadingLinks || Boolean(linkError));
 
   return (
-    <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-900/70 p-2" role="dialog" aria-modal="true" aria-label={`Receiving inspection ${order.orderNumber}`}>
-      <div className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-start justify-between border-b p-5">
-          <div><h3 className="text-base font-black">Receiving inspection</h3><p className="mt-1 text-[10px] text-slate-500">{order.orderNumber} · {order.supplier?.businessName}</p></div>
-          <button type="button" aria-label="Close receiving inspection" onClick={onClose}><X className="h-5 w-5" /></button>
+    <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-900/70 p-2 sm:p-4" role="dialog" aria-modal="true" aria-label={`Receiving inspection ${order.orderNumber}`}>
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b bg-white p-4 sm:p-5">
+          <div className="min-w-0"><h3 className="text-base font-black">Receiving inspection</h3><p className="mt-1 truncate text-[10px] text-slate-500">{order.orderNumber} · {order.supplier?.businessName}</p></div>
+          <button type="button" aria-label="Close receiving inspection" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500"><X className="h-5 w-5" /></button>
         </header>
-        <div className="flex-1 space-y-3 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
           {linkError && <div className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700"><AlertTriangle className="h-4 w-4 shrink-0" />{linkError}</div>}
           {visibleItems.map(item => {
             const row = form.items[item._id] || {};
@@ -160,7 +160,7 @@ const ReceivingInspectionModal = ({
           {form.photos.length > 0 && <p className="text-[9px] text-slate-500">{form.photos.length} photo{form.photos.length === 1 ? '' : 's'} selected</p>}
           {missingLinkItems.length > 0 && !loadingLinks && <p className="rounded-xl bg-amber-50 p-3 text-[10px] font-bold text-amber-800">Link or create a Store product for: {missingLinkItems.map(item => item.productName).join(', ')}.</p>}
         </div>
-        <footer className="flex gap-2 border-t p-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button type="button" disabled={submitting || linkStateUnavailable || missingLinkItems.length > 0} onClick={onSubmit} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase text-white disabled:opacity-50">{submitting ? 'Recording...' : resolution ? 'Submit Reinspection Report' : 'Submit Inspection Report'}</button></footer>
+        <footer className="flex shrink-0 gap-2 border-t bg-white p-3 sm:p-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button type="button" disabled={submitting || linkStateUnavailable || missingLinkItems.length > 0} onClick={onSubmit} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase text-white disabled:opacity-50">{submitting ? 'Recording...' : resolution ? 'Submit Reinspection Report' : 'Submit Inspection Report'}</button></footer>
       </div>
 
       {creation && <div className="fixed inset-0 z-[125] flex items-center justify-center bg-slate-950/70 p-3" role="dialog" aria-modal="true" aria-label="Create New Store Product">

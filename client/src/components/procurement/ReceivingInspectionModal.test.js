@@ -23,13 +23,13 @@ const order = {
   items: [{ _id: 'line-1', itemType: 'pet_supply', productName: 'petsup', quantity: 3 }]
 };
 
-const Harness = ({ onSubmit = jest.fn(), onProductLinked = jest.fn() }) => {
+const Harness = ({ onClose = jest.fn(), onSubmit = jest.fn(), onProductLinked = jest.fn() }) => {
   const [form, setForm] = useState({
     items: { 'line-1': { purchaseOrderItem: 'line-1', receivedQuantity: 3, damagedQuantity: 0, incorrectQuantity: 0, notes: '' } },
     notes: '',
     photos: []
   });
-  return <ReceivingInspectionModal order={order} form={form} setForm={setForm} submitting={false} resolution={null} onClose={jest.fn()} onSubmit={onSubmit} onProductLinked={onProductLinked} />;
+  return <ReceivingInspectionModal order={order} form={form} setForm={setForm} submitting={false} resolution={null} onClose={onClose} onSubmit={onSubmit} onProductLinked={onProductLinked} />;
 };
 
 beforeEach(() => {
@@ -52,6 +52,26 @@ beforeEach(() => {
       }]
     }
   });
+});
+
+test('keeps the close action and footer visible while only the modal body scrolls', async () => {
+  const onClose = jest.fn();
+  render(<Harness onClose={onClose} />);
+  await screen.findByText(/No compatible active Store product exists yet/i);
+
+  const dialog = screen.getByRole('dialog', { name: 'Receiving inspection PO-1001' });
+  const shell = dialog.firstElementChild;
+  const closeButton = screen.getByRole('button', { name: 'Close receiving inspection' });
+  const header = closeButton.closest('header');
+  const footer = screen.getByRole('button', { name: 'Cancel' }).closest('footer');
+
+  expect(shell).toHaveClass('max-h-[calc(100dvh-1rem)]', 'overflow-hidden');
+  expect(header).toHaveClass('shrink-0');
+  expect(header.nextElementSibling).toHaveClass('min-h-0', 'overflow-y-auto');
+  expect(footer).toHaveClass('shrink-0');
+
+  fireEvent.click(closeButton);
+  expect(onClose).toHaveBeenCalledTimes(1);
 });
 
 test('first-time product creation preserves the inspection draft and unlocks submission only after linking', async () => {
