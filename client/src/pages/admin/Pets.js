@@ -833,6 +833,12 @@ const AdminPets = () => {
                             {req.pickupCompliance?.graceEndsAt && (
                               <><br /><span className="normal-case text-amber-600">Grace ends {new Date(req.pickupCompliance.graceEndsAt).toLocaleString()}</span></>
                             )}
+                            {req.pickupFeeSummary?.status !== 'finalized' && req.pickupFeeSummary && (
+                              <><br /><span className="normal-case font-black text-amber-700">Care: {req.pickupFeeSummary.careFeeDays} × PHP {Number(req.pickupFeeSummary.dailyCareFee || 0).toLocaleString()} = PHP {Number(req.pickupFeeSummary.accruedCareFee || 0).toLocaleString()}</span></>
+                            )}
+                            {req.pickupFeeSummary?.status === 'finalized' && (
+                              <><br /><span className="normal-case font-black text-rose-700">Final deductions: PHP {Number(req.pickupFeeSummary.deductionTotal || 0).toLocaleString()}</span></>
+                            )}
                           </>
                         ) : (
                           <>
