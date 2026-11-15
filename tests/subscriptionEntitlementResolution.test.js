@@ -76,6 +76,37 @@ test('every subscription tier receives only its configured HR access', async () 
     );
   });
 });
+
+test('Starter can receive its procurement orders while advanced procurement remains Growth-only', async () => {
+  await withModelMocks({
+    '../models/Product': emptyCountModel,
+    '../models/Pet': emptyCountModel,
+    '../models/Service': emptyCountModel,
+    '../models/User': emptyCountModel,
+    '../models/Store': {},
+    '../models/StoreSubscriptionPayment': { find: async () => [] }
+  }, async () => {
+    const { assertStoreEntitlement } = require('../services/storeSubscriptionService');
+    const { ENTITLEMENTS } = require('../config/subscriptionPlans');
+    const store = {
+      _id: 'starter-procurement-store',
+      subscriptionTier: 'starter',
+      subscriptionLegacyGrantOptOutAt: new Date(),
+      operatingLocations: []
+    };
+    const authoritativeSubscription = { tier: 'starter', sourceStoreId: store._id, payment: null };
+
+    await assert.doesNotReject(() => assertStoreEntitlement(store, ENTITLEMENTS.GOODS_RECEIVING, {
+      authoritativeSubscription
+    }));
+    await assert.rejects(
+      () => assertStoreEntitlement(store, ENTITLEMENTS.SUPPLIER_PROCUREMENT, { authoritativeSubscription }),
+      error => error.code === 'SUBSCRIPTION_ENTITLEMENT_REQUIRED'
+        && error.details.currentTier === 'starter'
+        && error.details.requiredTier === 'growth'
+    );
+  });
+});
 test('a current paid Professional subscription overrides stale Free store metadata', async () => {
   const store = {
     _id: 'operational-store',
