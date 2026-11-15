@@ -34,6 +34,8 @@ const Harness = ({ onClose = jest.fn(), onSubmit = jest.fn(), onProductLinked = 
 
 beforeEach(() => {
   jest.clearAllMocks();
+  URL.createObjectURL = jest.fn(file => `blob:${file.name}`);
+  URL.revokeObjectURL = jest.fn();
   purchaseOrderService.getReceivingProductLinks.mockResolvedValue({
     data: {
       items: [{
@@ -52,6 +54,30 @@ beforeEach(() => {
       }]
     }
   });
+});
+
+test('shows previews for selected receiving photos and lets the user remove them', async () => {
+  const { unmount } = render(<Harness />);
+  await screen.findByText(/No compatible active Store product exists yet/i);
+  const damagedBox = new File(['damage'], 'damaged-box.jpg', { type: 'image/jpeg' });
+  const tornSeal = new File(['seal'], 'torn-seal.png', { type: 'image/png' });
+
+  fireEvent.change(screen.getByLabelText('Attach receiving photos'), {
+    target: { files: [damagedBox, tornSeal] }
+  });
+
+  expect(await screen.findByRole('region', { name: 'Selected receiving photo previews' })).toBeInTheDocument();
+  expect(screen.getByAltText('Receiving attachment 1: damaged-box.jpg')).toHaveAttribute('src', 'blob:damaged-box.jpg');
+  expect(screen.getByAltText('Receiving attachment 2: torn-seal.png')).toHaveAttribute('src', 'blob:torn-seal.png');
+  expect(screen.getByText('2 photos selected')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove damaged-box.jpg' }));
+  await waitFor(() => expect(screen.queryByAltText(/damaged-box\.jpg/)).not.toBeInTheDocument());
+  expect(screen.getByAltText('Receiving attachment 1: torn-seal.png')).toBeInTheDocument();
+  expect(screen.getByText('1 photo selected')).toBeInTheDocument();
+
+  unmount();
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:torn-seal.png');
 });
 
 test('keeps the close action and footer visible while only the modal body scrolls', async () => {

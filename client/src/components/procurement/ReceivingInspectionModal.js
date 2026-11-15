@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Camera, Link2, PackagePlus, X } from 'lucide-react';
+import { AlertTriangle, Camera, Link2, PackagePlus, Trash2, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { purchaseOrderService } from '../../services/apiService';
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
@@ -24,6 +24,7 @@ const ReceivingInspectionModal = ({
   const [creation, setCreation] = useState(null);
   const [creationForm, setCreationForm] = useState(emptyCreation);
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +43,16 @@ const ReceivingInspectionModal = ({
     return () => { active = false; };
   }, [order._id]);
 
+  useEffect(() => {
+    const previews = (form.photos || []).map((file, index) => ({
+      file,
+      key: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+      url: URL.createObjectURL(file)
+    }));
+    setPhotoPreviews(previews);
+    return () => previews.forEach(preview => URL.revokeObjectURL(preview.url));
+  }, [form.photos]);
+
   const visibleItems = useMemo(() => (
     (order.items || []).filter(item => Object.prototype.hasOwnProperty.call(form.items, item._id))
   ), [form.items, order.items]);
@@ -49,6 +60,17 @@ const ReceivingInspectionModal = ({
   const updateItem = (itemId, key, value) => setForm(previous => ({
     ...previous,
     items: { ...previous.items, [itemId]: { ...previous.items[itemId], [key]: value } }
+  }));
+
+  const choosePhotos = event => {
+    const files = Array.from(event.target.files || []);
+    setForm(previous => ({ ...previous, photos: files }));
+    event.target.value = '';
+  };
+
+  const removePhoto = index => setForm(previous => ({
+    ...previous,
+    photos: (previous.photos || []).filter((_, photoIndex) => photoIndex !== index)
   }));
 
   const updateLinkedProduct = (itemId, product, source = 'explicit') => {
@@ -156,8 +178,17 @@ const ReceivingInspectionModal = ({
             );
           })}
           <label className="block text-[9px] font-black uppercase text-slate-500">Overall notes<textarea value={form.notes} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} className="mt-1 min-h-20 w-full rounded-xl border border-slate-200 p-3 text-xs" /></label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-xs font-bold text-slate-600"><Camera className="h-4 w-4" /> Attach receiving photos<input type="file" multiple accept="image/*" className="hidden" onChange={event => setForm(previous => ({ ...previous, photos: Array.from(event.target.files || []) }))} /></label>
-          {form.photos.length > 0 && <p className="text-[9px] text-slate-500">{form.photos.length} photo{form.photos.length === 1 ? '' : 's'} selected</p>}
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 p-4 text-xs font-bold text-slate-600 transition hover:border-primary-400 hover:bg-primary-50/40"><Camera className="h-4 w-4" /> {form.photos.length > 0 ? 'Replace receiving photos' : 'Attach receiving photos'}<input aria-label="Attach receiving photos" type="file" multiple accept="image/*" className="hidden" onChange={choosePhotos} /></label>
+          {photoPreviews.length > 0 && <section aria-label="Selected receiving photo previews" className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3"><div><p className="text-[10px] font-black text-slate-800">Photo preview</p><p className="text-[9px] text-slate-500">{photoPreviews.length} photo{photoPreviews.length === 1 ? '' : 's'} selected</p></div><button type="button" onClick={() => setForm(previous => ({ ...previous, photos: [] }))} className="rounded-lg px-2 py-1 text-[9px] font-black uppercase text-rose-600 hover:bg-rose-50">Remove all</button></div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {photoPreviews.map((preview, index) => <figure key={preview.key} className="relative min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <img src={preview.url} alt={`Receiving attachment ${index + 1}: ${preview.file.name}`} className="h-24 w-full bg-slate-100 object-cover sm:h-28" />
+                <button type="button" aria-label={`Remove ${preview.file.name}`} onClick={() => removePhoto(index)} className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-slate-950/75 text-white shadow-sm transition hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-white"><Trash2 className="h-3.5 w-3.5" /></button>
+                <figcaption className="px-2 py-1.5"><p className="truncate text-[9px] font-bold text-slate-700" title={preview.file.name}>{preview.file.name}</p><p className="text-[8px] text-slate-400">{Math.max(1, Math.round(preview.file.size / 1024))} KB</p></figcaption>
+              </figure>)}
+            </div>
+          </section>}
           {missingLinkItems.length > 0 && !loadingLinks && <p className="rounded-xl bg-amber-50 p-3 text-[10px] font-bold text-amber-800">Link or create a Store product for: {missingLinkItems.map(item => item.productName).join(', ')}.</p>}
         </div>
         <footer className="flex shrink-0 gap-2 border-t bg-white p-3 sm:p-4"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs font-bold text-slate-500">Cancel</button><button type="button" disabled={submitting || linkStateUnavailable || missingLinkItems.length > 0} onClick={onSubmit} className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 text-[10px] font-black uppercase text-white disabled:opacity-50">{submitting ? 'Recording...' : resolution ? 'Submit Reinspection Report' : 'Submit Inspection Report'}</button></footer>
