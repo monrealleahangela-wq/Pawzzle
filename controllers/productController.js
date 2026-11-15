@@ -288,7 +288,11 @@ const createProduct = async (req, res) => {
 
     const createsActiveListing = productData.isActive !== false
       && !['draft', 'hidden'].includes(productData.visibility || 'published');
-    if (createsActiveListing) await assertCanActivateListing(storeId);
+    if (createsActiveListing) {
+      await assertCanActivateListing(storeId, {
+        ownerId: isStoreAdmin(req.user) ? (req.user._id || req.user.id) : undefined
+      });
+    }
 
     const product = new Product(productData);
     await product.save();
@@ -377,7 +381,11 @@ const updateProduct = async (req, res) => {
     const nextActiveListing = (updateData.isActive ?? product.isActive) !== false
       && !['draft', 'hidden'].includes(updateData.visibility ?? product.visibility)
       && !product.isDeleted;
-    if (!wasActiveListing && nextActiveListing) await assertCanActivateListing(product.store);
+    if (!wasActiveListing && nextActiveListing) {
+      await assertCanActivateListing(product.store, {
+        ownerId: isStoreAdmin(req.user) ? (req.user._id || req.user.id) : undefined
+      });
+    }
     
     // Explicitly update only mutable fields
     Object.assign(product, updateData);

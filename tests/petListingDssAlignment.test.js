@@ -7,6 +7,7 @@ const Product = require('../models/Product');
 const Service = require('../models/Service');
 const User = require('../models/User');
 const Store = require('../models/Store');
+const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const DecisionSupportService = require('../services/decisionSupportService');
 const { getPetAvailabilityIssue } = require('../services/petAvailabilityService');
 const { createPet, updatePet } = require('../controllers/petController');
@@ -145,6 +146,8 @@ test('create API requires aligned evidence and owns Store and internal identity 
 
 test('a valid aligned Add Pet payload is saved with authoritative Store and ignores deprecated approval input', async () => {
   const originalFindStore = Store.findOne;
+  const originalFindStores = Store.find;
+  const originalPaymentFind = StoreSubscriptionPayment.find;
   const originalSave = Pet.prototype.save;
   const originalFindPet = Pet.findById;
   const originalProductCount = Product.countDocuments;
@@ -154,7 +157,10 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and igno
   const ownerId = '507f1f77bcf86cd799439011';
   const storeId = '507f1f77bcf86cd799439012';
   let saved;
-  Store.findOne = async () => ({ _id: storeId, subscriptionTier: 'free' });
+  const store = { _id: storeId, owner: ownerId, subscriptionTier: 'free' };
+  Store.findOne = async () => store;
+  Store.find = async () => [store];
+  StoreSubscriptionPayment.find = async () => [];
   Product.countDocuments = async () => 0;
   Pet.countDocuments = async () => 0;
   Service.countDocuments = async () => 0;
@@ -209,6 +215,8 @@ test('a valid aligned Add Pet payload is saved with authoritative Store and igno
     assert.equal(saved.isAvailable, true);
   } finally {
     Store.findOne = originalFindStore;
+    Store.find = originalFindStores;
+    StoreSubscriptionPayment.find = originalPaymentFind;
     Pet.prototype.save = originalSave;
     Pet.findById = originalFindPet;
     Product.countDocuments = originalProductCount;

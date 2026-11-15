@@ -9,6 +9,7 @@ const { canOperateStore } = require('../utils/authorizationPolicy');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const { normalizeRecommendationCriteria } = require('../utils/serviceAdvisorPetContract');
 const { assertCanActivateListing } = require('../services/storeSubscriptionService');
+const { resolveSubscriptionContext } = require('../services/storeAccessService');
 
 const DEFAULT_REQUIREMENTS = [
   "Valid ID and contact details",
@@ -130,7 +131,10 @@ const createService = async (req, res) => {
       return res.status(403).json({ message: 'You can only create services for your own or assigned store' });
     }
 
-    await assertCanActivateListing(store);
+    const subscriptionContext = await resolveSubscriptionContext(req.user);
+    await assertCanActivateListing(store, {
+      authoritativeSubscription: subscriptionContext?.authoritativeSubscription
+    });
 
     const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, req.params.storeId, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
@@ -218,15 +222,17 @@ const createAdminService = async (req, res) => {
 
     const requirementsStr = requirementsList.join(', ');
 
-    // For admins, we don't require a specific store - they can create services
-    // The service will be associated with their user account or a default store
-    let serviceStore = null;
+    // Resolve the same operational Store and business subscription used by
+    // Settings and entitlement middleware. A stale user.store reference must
+    // not make a paid account look like Free while publishing a service.
+    const subscriptionContext = await resolveSubscriptionContext(req.user);
+    let serviceStore = subscriptionContext?.operationalStore || null;
 
-    // If admin has a store, use it
-    if (req.user.store) {
+    if (!serviceStore && req.user.store) {
       serviceStore = req.user.store;
       console.log('🏪 Using admin store:', req.user.store);
-    } else {
+    }
+    if (!serviceStore) {
       // For admins without a store, find or create a default one
       let defaultStore = await Store.findOne({ owner: req.user._id });
 
@@ -261,13 +267,16 @@ const createAdminService = async (req, res) => {
       console.log('🏪 Using default store:', serviceStore);
     }
 
-    await assertCanActivateListing(serviceStore);
-    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStore, { name, description, category, subCategory });
+    const serviceStoreId = serviceStore._id || serviceStore;
+    await assertCanActivateListing(serviceStore, {
+      authoritativeSubscription: subscriptionContext?.authoritativeSubscription
+    });
+    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStoreId, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
     const service = new Service({
       name,
       description,
-      store: serviceStore,
+      store: serviceStoreId,
       addedBy: req.user._id,
       category,
       subCategory,
@@ -295,7 +304,7 @@ const createAdminService = async (req, res) => {
     // Real-time Service Emission
     const io = req.app.get('socketio');
     if (io) {
-      io.to(`store_${serviceStore}`).emit('serviceUpdate', service);
+      io.to(`store_${serviceStoreId}`).emit('serviceUpdate', service);
       io.to('admin_global').emit('serviceUpdate', service);
     }
 
@@ -342,7 +351,10 @@ const updateService = async (req, res) => {
       });
     }
     if (service.isActive === false && updates.isActive === true) {
-      await assertCanActivateListing(service.store._id);
+      const subscriptionContext = await resolveSubscriptionContext(req.user);
+      await assertCanActivateListing(service.store, {
+        authoritativeSubscription: subscriptionContext?.authoritativeSubscription
+      });
     }
     Object.assign(service, updates);
     await service.save();

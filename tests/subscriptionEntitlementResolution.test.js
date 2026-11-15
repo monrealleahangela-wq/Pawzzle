@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Module = require('node:module');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const clearModules = () => {
   for (const modulePath of [
@@ -111,6 +113,61 @@ test('a current paid Professional subscription overrides stale Free store metada
     await assert.doesNotReject(() => assertStoreEntitlement(store, ENTITLEMENTS.STAFF_ATTENDANCE));
     await assert.doesNotReject(() => assertStoreEntitlement(store, ENTITLEMENTS.PAYROLL));
   });
+});
+
+test('a Premium business plan is not capped by the Free active-listing limit', async () => {
+  const operationalStore = {
+    _id: 'stale-free-service-store',
+    owner: 'legacy-owner-reference',
+    subscriptionTier: 'free',
+    subscriptionLegacyGrantOptOutAt: new Date(),
+    operatingLocations: []
+  };
+  const premiumStore = {
+    _id: 'premium-plan-store',
+    owner: 'premium-owner',
+    subscriptionTier: 'premium',
+    subscriptionLegacyGrantOptOutAt: new Date(),
+    operatingLocations: []
+  };
+
+  await withModelMocks({
+    '../models/Product': { countDocuments: async () => 10 },
+    '../models/Pet': emptyCountModel,
+    '../models/Service': emptyCountModel,
+    '../models/User': emptyCountModel,
+    '../models/Store': {
+      find: async query => {
+        assert.equal(query.owner, 'premium-owner');
+        return [premiumStore];
+      }
+    },
+    '../models/StoreSubscriptionPayment': { find: async () => [] }
+  }, async () => {
+    const { assertCanActivateListing } = require('../services/storeSubscriptionService');
+    const summary = await assertCanActivateListing(operationalStore, {
+      ownerId: 'premium-owner'
+    });
+
+    assert.equal(summary.tier, 'growth');
+    assert.equal(summary.plan.name, 'Pawzzle Growth');
+    assert.equal(summary.allowances.listings, 70);
+    assert.equal(summary.capabilities.canAddListing, true);
+  });
+});
+
+test('all listing writes use the canonical business subscription context', () => {
+  const controllers = ['serviceController.js', 'productController.js', 'petController.js']
+    .map(file => fs.readFileSync(path.join(__dirname, '..', 'controllers', file), 'utf8'));
+
+  assert.match(controllers[0], /resolveSubscriptionContext\(req\.user\)/);
+  assert.match(controllers[0], /authoritativeSubscription: subscriptionContext\?\.authoritativeSubscription/);
+  assert.match(controllers[0], /assertCanActivateListing\(serviceStore, \{/);
+  assert.match(controllers[0], /assertCanActivateListing\(service\.store, \{/);
+  assert.match(controllers[1], /assertCanActivateListing\(storeId, \{\s*ownerId:/);
+  assert.match(controllers[1], /assertCanActivateListing\(product\.store, \{\s*ownerId:/);
+  assert.match(controllers[2], /assertCanActivateListing\(store, \{/);
+  assert.match(controllers[2], /assertCanActivateListing\(updateData\.store \|\| pet\.store, \{\s*ownerId:/);
 });
 
 test('the newest current paid plan is authoritative over legacy grants and expired payments are ignored', async () => {

@@ -215,8 +215,8 @@ const limitError = (code, message, summary) => Object.assign(new Error(message),
   details: { tier: summary.tier, usage: summary.usage, allowances: summary.allowances }
 });
 
-const assertCanActivateListing = async storeId => {
-  const summary = await getStoreSubscriptionSummary(storeId);
+const assertCanActivateListing = async (storeId, options = {}) => {
+  const summary = await getStoreSubscriptionSummary(storeId, options);
   if (!summary.capabilities.canAddListing) {
     throw limitError(
       'SUBSCRIPTION_LISTING_LIMIT',
