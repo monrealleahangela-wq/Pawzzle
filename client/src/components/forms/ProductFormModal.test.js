@@ -50,3 +50,11 @@ test('legacy products remain editable while clearly identifying a missing weight
   expect(screen.getByText(/Legacy product: add a measured weight/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Save Changes/i })).toBeEnabled();
 });
+
+test('catalog editing cannot change authoritative stock or the established selling unit', () => {
+  render(<Harness editingProduct={{ _id: 'existing-product' }} />);
+  expect(screen.getByLabelText(/Stock Quantity/i)).toHaveAttribute('readonly');
+  expect(screen.getByRole('combobox', { name: /Selling Unit/i })).toBeDisabled();
+  expect(screen.getByText(/received supplier orders add stock/i)).toBeInTheDocument();
+  expect(screen.getByText(/Locked because existing inventory and orders use this unit/i)).toBeInTheDocument();
+});

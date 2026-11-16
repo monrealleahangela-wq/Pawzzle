@@ -124,6 +124,8 @@ test('first-time product creation preserves the inspection draft and unlocks sub
   expect(screen.getByLabelText('Description')).toHaveValue('Supplier-provided description');
   expect(screen.getByLabelText(/Store SKU/i)).toHaveValue('');
   expect(screen.getByLabelText('Selling price')).toHaveValue(null);
+  expect(screen.getByLabelText(/Ordered selling unit/i)).toHaveValue('pack');
+  expect(screen.getByLabelText(/Ordered selling unit/i)).toHaveAttribute('readonly');
 
   fireEvent.change(screen.getByLabelText(/Store SKU/i), { target: { value: 'STORE-PETSUP' } });
   fireEvent.change(screen.getByLabelText('Selling price'), { target: { value: '120' } });

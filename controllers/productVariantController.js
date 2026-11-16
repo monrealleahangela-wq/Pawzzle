@@ -190,6 +190,10 @@ const update = async (req, res) => {
         .select('+store +normalizedSku').session(session);
       if (!variant) throw httpError('Variant not found under this product.', 404);
       if (variant.isDiscontinued) throw httpError('A discontinued variant remains historical and cannot be edited.', 409);
+      if (Object.prototype.hasOwnProperty.call(req.body, 'unit')
+          && String(req.body.unit || '') !== String(variant.unit || 'piece')) {
+        throw httpError('The selling unit is locked after variant creation because inventory and order history use it.', 409, 'PRODUCT_UNIT_LOCKED');
+      }
       const candidate = variant.toObject();
       mutableFields.forEach(field => {
         if (Object.prototype.hasOwnProperty.call(req.body, field)) candidate[field] = req.body[field];

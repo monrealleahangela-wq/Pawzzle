@@ -33,6 +33,21 @@ const pickProductListingFields = input => Object.fromEntries(
     .map(field => [field, input[field]])
 );
 
+const withPreservedEmbeddedVariantStock = (variants, existingVariants = []) => {
+  const normalized = normalizeProductVariants(variants) || [];
+  const existingById = new Map(existingVariants
+    .filter(variant => variant?._id)
+    .map(variant => [String(variant._id), variant]));
+  const existingBySku = new Map(existingVariants
+    .filter(variant => String(variant?.sku || '').trim())
+    .map(variant => [String(variant.sku).trim(), variant]));
+  return normalized.map(variant => {
+    const existing = (variant?._id && existingById.get(String(variant._id)))
+      || existingBySku.get(String(variant?.sku || '').trim());
+    return { ...variant, stock: Number(existing?.stock ?? 0) };
+  });
+};
+
 // Helper: auto-find or auto-create a default store for an admin
 const resolveAdminStore = async (user) => {
   const Store = require('../models/Store');
@@ -259,7 +274,14 @@ const createProduct = async (req, res) => {
         message: 'Create variant products through the gated variant-product workflow so parent and child SKU claims commit together.'
       });
     }
-    const initialStock = requestedMode === 'variant' ? 0 : Number(req.body.stockQuantity || 0);
+    const requestedInitialStock = Number(req.body.stockQuantity || 0);
+    if (requestedInitialStock !== 0) {
+      return res.status(409).json({
+        code: 'PURCHASE_ORDER_RECEIVING_REQUIRED',
+        message: 'New catalog products start with zero stock. Place a supplier order and complete receiving inspection to add inventory.'
+      });
+    }
+    const initialStock = 0;
     const listingData = pickProductListingFields(req.body);
     listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
@@ -277,7 +299,7 @@ const createProduct = async (req, res) => {
       productMode: requestedMode,
       // Normalized variants live in ProductVariant. Legacy embedded rows are
       // preserved for existing products but are never generated for new mode.
-      variants: requestedMode === 'variant' ? [] : (normalizeProductVariants(listingData.variants) || []),
+      variants: requestedMode === 'variant' ? [] : withPreservedEmbeddedVariantStock(listingData.variants),
       images,
       coverImage: images[0],
       addedBy: req.user.id || req.user._id,
@@ -336,7 +358,31 @@ const updateProduct = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. You do not have permission to update this asset.' });
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'stockQuantity')
+        && Number(req.body.stockQuantity) !== Number(product.stockQuantity || 0)) {
+      return res.status(409).json({
+        code: 'PURCHASE_ORDER_RECEIVING_REQUIRED',
+        message: 'Stock is controlled by inventory receiving. Place a supplier order and complete receiving inspection to add stock.'
+      });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'unit')
+        && String(req.body.unit || '') !== String(product.unit || 'piece')) {
+      return res.status(409).json({
+        code: 'PRODUCT_UNIT_LOCKED',
+        message: 'The selling unit is locked after product creation because inventory and order history use it. Create or order the correct unit instead.'
+      });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'stockStatus')
+        && String(req.body.stockStatus) !== String(product.stockStatus)) {
+      return res.status(409).json({
+        code: 'INVENTORY_STATUS_CONTROLLED',
+        message: 'Availability is calculated from the authoritative inventory balance and cannot be changed in the product editor.'
+      });
+    }
+
     const updateData = pickProductListingFields(req.body);
+    delete updateData.unit;
+    delete updateData.stockStatus;
     if (Object.prototype.hasOwnProperty.call(updateData, 'category')) {
       updateData.category = requireProductCategory(updateData.category);
     }
@@ -362,7 +408,7 @@ const updateProduct = async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(updateData, 'variants')) {
       if (product.productMode === 'variant') delete updateData.variants;
-      else updateData.variants = normalizeProductVariants(updateData.variants);
+      else updateData.variants = withPreservedEmbeddedVariantStock(updateData.variants, product.variants || []);
     }
     if (product.productMode === 'variant') {
       if (Object.prototype.hasOwnProperty.call(updateData, 'sku') && updateData.sku !== product.sku) {

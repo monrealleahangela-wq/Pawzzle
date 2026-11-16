@@ -1414,7 +1414,8 @@ const getReceivingProductLinks = async (req, res) => {
       const eligibleProducts = supplierProduct ? storeProducts.filter(storeProduct => !getStoreProductCompatibilityIssue({
         storeProduct,
         supplierProduct,
-        storeId: order.store
+        storeId: order.store,
+        orderedUnit: orderItem.unitOfMeasureSnapshot
       })) : [];
       let linkedProduct = orderItem.storeProduct
         ? eligibleProducts.find(product => String(product._id) === String(orderItem.storeProduct)) || null
@@ -1443,7 +1444,7 @@ const getReceivingProductLinks = async (req, res) => {
         linkSource,
         linkLocked: Boolean(received?.inventoryApplied && Number(received.acceptedQuantity) > 0),
         eligibleProducts,
-        suggestions: getDraftProductSuggestions(supplierProduct)
+        suggestions: getDraftProductSuggestions(supplierProduct, orderItem.unitOfMeasureSnapshot)
       };
     });
     return res.json({ orderId: order._id, storeId: order.store, items });
@@ -1486,7 +1487,7 @@ const linkReceivingStoreProduct = async (req, res) => {
       if (!linkedProduct) {
         throw Object.assign(new Error('The selected Store product is unavailable or belongs to another Store.'), { statusCode: 403 });
       }
-      assertStoreProductCompatible({ storeProduct: linkedProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+      assertStoreProductCompatible({ storeProduct: linkedProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store, orderedUnit: orderItem.unitOfMeasureSnapshot });
       if (!linkedProduct.supplierProductRef) {
         linkedProduct.supplierRef = order.supplier;
         linkedProduct.supplierProductRef = orderItem.supplierProduct._id;
@@ -1531,7 +1532,7 @@ const createReceivingStoreProduct = async (req, res) => {
       if (orderItem.storeProduct) {
         product = await Product.findOne({ _id: orderItem.storeProduct, store: order.store, isDeleted: { $ne: true } }).session(session);
         if (!product) throw Object.assign(new Error('The existing Store product link is no longer valid.'), { statusCode: 409 });
-        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store, orderedUnit: orderItem.unitOfMeasureSnapshot });
         return;
       }
 
@@ -1541,13 +1542,14 @@ const createReceivingStoreProduct = async (req, res) => {
         isDeleted: { $ne: true }
       }).session(session);
       if (product) {
-        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+        assertStoreProductCompatible({ storeProduct: product, supplierProduct: orderItem.supplierProduct, storeId: order.store, orderedUnit: orderItem.unitOfMeasureSnapshot });
       } else {
         const productData = buildDraftStoreProduct({
           supplierProduct: orderItem.supplierProduct,
           supplierId: order.supplier,
           storeId: order.store,
           userId: req.user._id,
+          orderedUnit: orderItem.unitOfMeasureSnapshot,
           input: req.body
         });
         [product] = await Product.create([productData], { session });
@@ -1779,7 +1781,7 @@ const applyReceivingItem = async ({
     if (!storeProduct) {
       throw Object.assign(new Error(`Link "${orderItem.productName}" to a store product before accepting it into inventory.`), { statusCode: 409 });
     }
-    assertStoreProductCompatible({ storeProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store });
+    assertStoreProductCompatible({ storeProduct, supplierProduct: orderItem.supplierProduct, storeId: order.store, orderedUnit: orderItem.unitOfMeasureSnapshot });
     orderItem.storeProduct = storeProduct._id;
 
     const currentInventory = await Inventory.findOne({ store: order.store, product: storeProduct._id }).session(session);

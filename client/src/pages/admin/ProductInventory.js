@@ -104,8 +104,8 @@ const ProductInventory = () => {
     description: '',
     shortDescription: '',
     price: '',
-    stockQuantity: '',
-    stockStatus: 'in_stock',
+    stockQuantity: 0,
+    stockStatus: 'out_of_stock',
     lowStockThreshold: 5,
     maxOrderQuantity: '',
     images: [],
@@ -248,7 +248,7 @@ const ProductInventory = () => {
         ...product,
         category: normalizeProductCategory(product.category) || PRODUCT_CATEGORIES[0].value,
         price: product.price || '',
-        stockQuantity: product.stockQuantity || '',
+        stockQuantity: product.stockQuantity ?? 0,
         sku: product.sku || ''
       });
       if (product.productMode === 'variant') {
@@ -327,6 +327,11 @@ const ProductInventory = () => {
           price: Number(variant.price),
           weight: variant.weight ? Number(variant.weight) : undefined
         }));
+      }
+      if (editingProduct) {
+        delete payload.stockQuantity;
+        delete payload.stockStatus;
+        delete payload.unit;
       }
 
       if (editingProduct) {
@@ -679,7 +684,7 @@ const ProductInventory = () => {
                     {/* Top Badges */}
                     <div className="absolute top-2 right-2">
                       <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wide ${product.stockQuantity > 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                        {product.stockQuantity || 0} UNITS
+                        {product.stockQuantity || 0} {product.unit || 'unit'}
                       </span>
                     </div>
                     {product.isFeatured && (
@@ -1087,22 +1092,27 @@ const ProductInventory = () => {
                         <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-2 duration-300">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Stock Quantity</label>
-                             <input 
-                               type="number" value={productForm.stockQuantity}
-                               onChange={e => setProductForm(p => ({ ...p, stockQuantity: e.target.value }))}
-                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[12px] font-black outline-none focus:border-primary-500 transition-all"
-                             />
+                             <input aria-label="Stock Quantity" readOnly value={productForm.stockQuantity ?? 0}
+                               className="w-full cursor-not-allowed rounded-xl border-2 border-slate-100 bg-slate-100 px-5 py-3.5 text-[12px] font-black text-slate-700" />
+                             <p className="px-1 text-[9px] leading-relaxed text-slate-500">Updated only after a supplier order passes receiving inspection.</p>
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
-                             <select 
-                               value={productForm.stockStatus}
-                               onChange={e => setProductForm(p => ({ ...p, stockStatus: e.target.value }))}
-                               className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-xl text-[10px] font-black uppercase outline-none focus:border-primary-500 appearance-none"
+                             <select disabled
+                               value={Number(productForm.stockQuantity || 0) > 0 ? 'in_stock' : 'out_of_stock'}
+                               className="w-full cursor-not-allowed appearance-none rounded-xl border-2 border-slate-100 bg-slate-100 px-5 py-3.5 text-[10px] font-black uppercase text-slate-700"
                              >
                                <option value="in_stock">In Stock</option>
                                <option value="out_of_stock">Out of Stock</option>
                              </select>
+                          </div>
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Selling Unit</label>
+                             <select disabled={Boolean(editingProduct)} value={productForm.unit || 'piece'} onChange={e => setProductForm(p => ({ ...p, unit: e.target.value }))}
+                               className="w-full appearance-none rounded-xl border-2 border-slate-100 bg-slate-50 px-5 py-3.5 text-[10px] font-black uppercase text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100">
+                               <option value="piece">Piece</option><option value="pack">Pack</option><option value="box">Box</option><option value="bottle">Bottle</option><option value="bag">Bag</option><option value="kg">Kilogram</option>
+                             </select>
+                             {editingProduct && <p className="px-1 text-[9px] leading-relaxed text-slate-500">Locked to existing inventory and order history.</p>}
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Low Stock Alert</label>
@@ -1215,8 +1225,8 @@ const ProductInventory = () => {
                                        </td>
                                        <td className="p-2">
                                           <input 
-                                            type="number" value={v.stock} onChange={e => { const vn = [...productForm.variants]; vn[i].stock = e.target.value; setProductForm(p => ({ ...p, variants: vn })); }}
-                                            className="w-full px-2 py-2 bg-slate-50 border-none rounded text-[10px] font-bold outline-none" placeholder="0"
+                                            aria-label={`Variant ${i + 1} stock`} readOnly value={v.stock ?? 0}
+                                            className="w-full cursor-not-allowed rounded border-none bg-slate-100 px-2 py-2 text-[10px] font-bold text-slate-600" placeholder="0"
                                           />
                                        </td>
                                        <td className="p-2">
@@ -1483,7 +1493,7 @@ const ProductInventory = () => {
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Available Stock</p>
                                 <div className="flex items-center gap-2 text-slate-900">
                                    <Package size={14} className="text-primary-600" />
-                                   <span className="text-[12px] font-black uppercase">{productForm.stockQuantity || 0} Units</span>
+                                   <span className="text-[12px] font-black uppercase">{productForm.stockQuantity || 0} {productForm.unit || 'unit'}</span>
                                 </div>
                              </div>
                              {productForm.brand && (
