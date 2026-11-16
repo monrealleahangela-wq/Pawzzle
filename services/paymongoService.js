@@ -41,12 +41,28 @@ const expireCheckoutSession = async (sessionId) => {
   return response.data.data;
 };
 
+const createRefund = async (attributes, idempotencyKey) => {
+  const response = await axios.post(`${PAYMONGO_BASE_URL}/refunds`, {
+    data: { attributes }
+  }, { headers: headers({ 'Idempotency-Key': idempotencyKey }) });
+  return response.data.data;
+};
+
+const getRefund = async (refundId) => {
+  const response = await axios.get(`${PAYMONGO_BASE_URL}/refunds/${refundId}`, {
+    headers: headers()
+  });
+  return response.data.data;
+};
+
 const getPaidPayment = (session) => session?.attributes?.payments
   ?.find(payment => payment?.attributes?.status === 'paid');
 
 module.exports = {
   createCheckoutSession,
+  createRefund,
   getCheckoutSession,
+  getRefund,
   expireCheckoutSession,
   getPaidPayment,
   buildCheckoutIdempotencyKey

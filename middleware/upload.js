@@ -75,6 +75,20 @@ const attendanceEvidenceStorage = new CloudinaryStorage({
   })
 });
 
+// Return cases may contain condition photos or short videos. They are private
+// authenticated assets; callers receive short-lived links only after an
+// authorization check against the case.
+const returnEvidenceStorage = new CloudinaryStorage({
+  cloudinary,
+  params: (req, file) => ({
+    folder: 'pawzzle/order-return-evidence',
+    type: 'authenticated',
+    resource_type: String(file.mimetype || '').startsWith('video/') ? 'video' : 'image',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'webp', 'mp4', 'mov', 'webm'],
+    context: { owner: String(req.user?._id || '') }
+  })
+});
+
 // multer-storage-cloudinary removes files using the default `upload` type.
 // Override cleanup for this isolated authenticated storage so failed multipart
 // requests do not leave an authenticated asset behind.
@@ -87,6 +101,13 @@ procurementEvidenceStorage._removeFile = (req, file, callback) => {
 };
 
 attendanceEvidenceStorage._removeFile = procurementEvidenceStorage._removeFile;
+returnEvidenceStorage._removeFile = (req, file, callback) => {
+  cloudinary.uploader.destroy(file.filename, {
+    resource_type: String(file.mimetype || '').startsWith('video/') ? 'video' : 'image',
+    type: 'authenticated',
+    invalidate: true
+  }, callback);
+};
 
 // Configure multer upload (single)
 const upload = multer({
@@ -117,6 +138,25 @@ const attendanceEvidenceUpload = multer({
     const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
     if (!allowedExtensions.has(extension) || !allowedMimeTypes.has(String(file.mimetype || '').toLowerCase())) {
       const error = new Error('Evidence must be a JPG, PNG, or WEBP image.');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    return cb(null, true);
+  }
+});
+
+const returnEvidenceUpload = multer({
+  storage: returnEvidenceStorage,
+  limits: { fileSize: 25 * 1024 * 1024, files: 6 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.mp4', '.mov', '.webm']);
+    const allowedMimeTypes = new Set([
+      'image/jpeg', 'image/png', 'image/webp',
+      'video/mp4', 'video/quicktime', 'video/webm'
+    ]);
+    if (!allowedExtensions.has(extension) || !allowedMimeTypes.has(String(file.mimetype || '').toLowerCase())) {
+      const error = new Error('Evidence must be a JPG, PNG, WEBP, MP4, MOV, or WEBM file.');
       error.statusCode = 400;
       return cb(error);
     }
@@ -156,6 +196,7 @@ const uploadSingle = upload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
+const uploadReturnEvidence = returnEvidenceUpload.array('evidence', 6);
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -180,6 +221,7 @@ module.exports = {
   uploadMultiple,
   uploadProcurementEvidence,
   uploadAttendanceEvidence,
+  uploadReturnEvidence,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

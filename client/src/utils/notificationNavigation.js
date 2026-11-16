@@ -24,6 +24,7 @@ export const notificationDestination = (notification, user) => {
     if (!/^[a-f\d]{24}$/i.test(id)) return null;
     const operational = ['admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager', 'delivery_rider'].includes(user?.role);
     if (notification.relatedModel === 'Order') return operational ? `/admin/orders/${id}` : `/orders/${id}`;
+    if (notification.relatedModel === 'OrderReturn') return `/returns/${id}`;
     if (notification.relatedModel === 'Booking') return operational ? `/admin/bookings?id=${id}` : `/bookings?id=${id}`;
     if (notification.type === 'chat_message' || notification.relatedModel === 'Conversation') {
         return operational ? `/admin/chat?conversationId=${id}` : `/messages/${id}`;

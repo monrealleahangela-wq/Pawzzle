@@ -10,6 +10,7 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const ProcurementReceivingReport = require('../models/ProcurementReceivingReport');
 const PaymentWebhookEvent = require('../models/PaymentWebhookEvent');
 const PayMongo = require('../services/paymongoService');
+const { reconcilePayMongoRefund } = require('../services/orderReturnLifecycleService');
 const { prepareForPayment } = require('../services/bookingLifecycleService');
 const {
   amountCentavos,
@@ -839,6 +840,8 @@ const handleWebhook = async (req, res) => {
         await releaseTransactionPetReservations('adoption', failed.record);
       }
       if (failed) emitPaymentDashboardUpdate(req, failed.type, failed.record, 'failed');
+    } else if (eventType === 'payment.refund.updated' && resource?.type === 'refund') {
+      await reconcilePayMongoRefund({ refund: resource, callbackId: event.id });
     }
     receipt.status = 'completed';
     receipt.processedAt = new Date();

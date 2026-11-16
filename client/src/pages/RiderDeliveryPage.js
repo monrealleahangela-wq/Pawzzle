@@ -41,8 +41,8 @@ export default function RiderDeliveryPage() {
     return () => navigator.geolocation.clearWatch(watch);
   }, [deliveryId, delivery?.isLive]);
 
-  const updateStatus = async status => {
-    try { await deliveryService.updateRiderStatus(deliveryId, status); await load(); }
+  const updateStatus = async (status, details = {}) => {
+    try { await deliveryService.updateRiderStatus(deliveryId, status, details); await load(); }
     catch (requestError) { toast.error(requestError.response?.data?.message || 'Unable to update delivery status.'); }
   };
   const sendMessage = content => deliveryService.sendRiderMessage(deliveryId, { content });

@@ -139,9 +139,24 @@ export const orderService = {
 
 export const orderReturnService = {
   listForOrder: (orderId) => api.get(`/order-returns/order/${orderId}`),
-  request: (orderId, data) => api.post(`/order-returns/order/${orderId}`, data),
+  listForStore: () => api.get('/order-returns/store'),
+  listForAdmin: () => api.get('/order-returns/admin'),
+  getById: (id) => api.get(`/order-returns/${id}`),
+  request: (orderId, data) => api.post(`/order-returns/order/${orderId}`, data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  decide: (id, data) => api.post(`/order-returns/${id}/decision`, data),
+  schedulePickup: (id, data) => api.post(`/order-returns/${id}/pickup/schedule`, data),
+  getPickupCode: (id) => api.get(`/order-returns/${id}/pickup-code`),
+  confirmReceived: (id, data) => api.post(`/order-returns/${id}/confirm-received`, data),
   transition: (id, data) => api.post(`/order-returns/${id}/transition`, data),
-  inspect: (id, data) => api.post(`/order-returns/${id}/inspect`, data)
+  inspect: (id, data) => api.post(`/order-returns/${id}/inspect`, data, data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  finalize: (id, data) => api.post(`/order-returns/${id}/final-resolution`, data),
+  prepareReplacement: (id, data) => api.post(`/order-returns/${id}/replacement/prepare`, data),
+  customerConfirm: (id, data) => api.post(`/order-returns/${id}/customer-confirm`, data),
+  dispute: (id, data) => api.post(`/order-returns/${id}/dispute`, data),
+  adminDecision: (id, data) => api.post(`/order-returns/${id}/admin-decision`, data),
+  processRefund: (id) => api.post(`/order-returns/${id}/process-refund`),
+  recordRefundResult: (id, data) => api.post(`/order-returns/${id}/refund-result`, data),
+  getEvidenceAccess: (id, evidenceId) => api.get(`/order-returns/${id}/evidence/${evidenceId}/access`)
 };
 
 // Admin order services (filtered by user's store)
@@ -591,7 +606,7 @@ export const deliveryService = {
   getTrackingForOrder: (orderId) => api.get(`/deliveries/order/${orderId}`),
   getTrackingForBooking: (bookingId) => api.get(`/deliveries/booking/${bookingId}`),
   getRiderDelivery: (deliveryId) => api.get(`/deliveries/rider/${deliveryId}`),
-  updateRiderStatus: (deliveryId, status) => api.patch(`/deliveries/rider/${deliveryId}/status`, { status }),
+  updateRiderStatus: (deliveryId, status, details = {}) => api.patch(`/deliveries/rider/${deliveryId}/status`, { status, ...details }),
   updateRiderLocation: (deliveryId, locationData) => api.patch(`/deliveries/rider/${deliveryId}/location`, locationData),
   sendRiderMessage: (deliveryId, messageData) => api.post(`/deliveries/rider/${deliveryId}/chat`, messageData),
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),

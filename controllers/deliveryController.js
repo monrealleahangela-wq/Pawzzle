@@ -1,5 +1,6 @@
 const Delivery = require('../models/Delivery');
 const Order = require('../models/Order');
+const OrderReturn = require('../models/OrderReturn');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 const crypto = require('crypto');
@@ -19,6 +20,7 @@ const {
 } = require('../utils/deliveryConcerns');
 const mongoose = require('mongoose');
 const { refreshOrderWeightSnapshots } = require('../services/parcelWeightService');
+const { syncReturnMissionStatus } = require('../services/orderReturnLifecycleService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let CLIENT_URL = process.env.CLIENT_URL;
@@ -89,9 +91,15 @@ const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
 
 const notifyDeliveryParties = async (req, delivery, title, message) => {
   try {
-    const source = delivery.order
-      ? await Order.findById(delivery.order).select('customer store').populate('store', 'owner')
-      : await Booking.findById(delivery.booking).select('customer store').populate('store', 'owner');
+    let source;
+    if (delivery.returnCase) {
+      const returnCase = await OrderReturn.findById(delivery.returnCase).select('customer store').populate('store', 'owner');
+      source = returnCase ? { customer: returnCase.customer, store: returnCase.store, returnCase: returnCase._id } : null;
+    } else {
+      source = delivery.order
+        ? await Order.findById(delivery.order).select('customer store').populate('store', 'owner')
+        : await Booking.findById(delivery.booking).select('customer store').populate('store', 'owner');
+    }
     const recipients = [source?.customer, source?.store?.owner].filter(Boolean);
     const io = req.app.get('socketio');
     for (const recipient of new Map(recipients.map(id => [id.toString(), id])).values()) {
@@ -103,9 +111,11 @@ const notifyDeliveryParties = async (req, delivery, title, message) => {
         message,
         relatedId: delivery._id,
         relatedModel: 'Delivery',
-        targetUrl: recipient.toString() === source?.customer?.toString()
-          ? `/track/${delivery.trackingToken}`
-          : `/admin/logistics/${delivery._id}`
+        targetUrl: source?.returnCase
+          ? (recipient.toString() === source?.customer?.toString() ? `/returns/${source.returnCase}` : `/admin/returns?case=${source.returnCase}`)
+          : (recipient.toString() === source?.customer?.toString()
+            ? `/track/${delivery.trackingToken}`
+            : `/admin/logistics/${delivery._id}`)
       });
       if (io) io.to(`user_${recipient}`).emit('newNotification', notification);
     }
@@ -247,6 +257,7 @@ const getAssignedRiderDelivery = async (req, res) => {
       .populate('store', 'name contactInfo address')
       .populate({ path: 'order', populate: [{ path: 'customer', select: 'firstName lastName phone' }, { path: 'store', select: 'name contactInfo address' }] })
       .populate({ path: 'booking', populate: [{ path: 'customer', select: 'firstName lastName phone' }, { path: 'store', select: 'name contactInfo address' }, { path: 'service', select: 'name duration' }] })
+      .populate('returnCase', 'caseId issueType requestedResolution status itemSnapshot requestedQuantity pickup replacement')
       .populate('assignedRider', 'firstName lastName phone riderProfile');
     if (!delivery) return res.status(404).json({ message: 'Assigned delivery not found.' });
     res.json({ delivery: riderDeliveryView(delivery), role: 'rider' });
@@ -441,7 +452,7 @@ const updateDeliveryStatus = async (req, res) => {
     const { status } = req.body;
     if (!isDeliveryRider(req.user)) return res.status(403).json({ message: 'Delivery Rider access only.' });
     const transitions = {
-      pending: ['picked_up'], unassigned: ['assigned'], assigned: ['picked_up'], accepted: ['picked_up'],
+      pending: ['picked_up'], unassigned: ['assigned'], assigned: ['accepted', 'picked_up'], accepted: ['picked_up'],
       picked_up: ['in_transit'], in_transit: ['arrived'], arrived: ['failed_attempt'],
       failed_attempt: ['in_transit', 'returned_to_store']
     };
@@ -456,6 +467,22 @@ const updateDeliveryStatus = async (req, res) => {
       }
 
       const now = new Date();
+      if (delivery.missionType === 'return_pickup' && status === 'picked_up') {
+        const returnCase = await OrderReturn.findById(delivery.returnCase).select('+pickup.verificationCode').session(session);
+        const verificationCode = String(req.body.verificationCode || '').trim();
+        if (!returnCase || !verificationCode || verificationCode !== String(returnCase.pickup?.verificationCode || '')) {
+          throw Object.assign(new Error('The return pickup verification code is incorrect.'), { statusCode: 400 });
+        }
+        returnCase.pickup.verifiedAt = now;
+        if (req.body.photo) returnCase.pickup.photo = String(req.body.photo).trim();
+        returnCase.history.push({
+          action: 'pickup_verified', fromStatus: returnCase.status, toStatus: returnCase.status,
+          actor: req.user._id, actorRole: req.user.staffType || req.user.role,
+          note: `Verification ending in ${returnCase.pickup.verificationCodeLast4}`, at: now
+        });
+        returnCase.revision += 1;
+        await returnCase.save({ session });
+      }
       delivery.status = status;
       if (status === 'picked_up') delivery.pickedUpAt = now;
       if (status === 'arrived') delivery.arrivedAt = now;
@@ -465,6 +492,10 @@ const updateDeliveryStatus = async (req, res) => {
       }
       delivery.statusHistory.push({ status, timestamp: now });
       await delivery.save({ session });
+
+      if (delivery.returnCase) {
+        await syncReturnMissionStatus({ delivery, user: req.user, deliveryStatus: status, session });
+      }
 
       if (delivery.order) {
         const orderStatus = status === 'arrived' ? 'in_transit'
@@ -491,6 +522,9 @@ const updateDeliveryStatus = async (req, res) => {
     }
     await emitAuthoritativeDeliveryUpdate(req, delivery);
     emitDeliveryDashboardUpdate(req, delivery);
+    if (delivery.returnCase) {
+      await notifyDeliveryParties(req, delivery, 'Return mission updated', `The ${delivery.missionType.replace(/_/g, ' ')} is now ${delivery.status.replace(/_/g, ' ')}.`);
+    }
     
     res.json({ success: true, status: delivery.status });
   } catch (error) {
@@ -543,6 +577,9 @@ const completeDelivery = async (req, res) => {
         transactional.statusHistory.push({ status: 'delivered', timestamp: delivery.deliveredAt, notes: req.body.notes?.trim() });
         await releaseRiderCapacity(transactional, session);
         await transactional.save({ session });
+        if (transactional.returnCase) {
+          await syncReturnMissionStatus({ delivery: transactional, user: req.user, deliveryStatus: 'delivered', session });
+        }
         if (transactional.order) {
           const orderResult = await Order.updateOne({ _id: transactional.order }, {
             $set: { status: 'delivered', deliveryDate: transactional.deliveredAt },

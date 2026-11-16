@@ -107,6 +107,7 @@ const getAdminMenu = (user) => {
   const opsChildren = [];
   if (hasAccess(['logistics_staff', 'sales_staff', 'order_staff'])) {
     opsChildren.push({ path: '/admin/orders', label: 'Product Orders', icon: ShoppingCart });
+    opsChildren.push({ path: '/admin/returns', label: 'Returns & Issues', icon: AlertCircle });
   }
   if (hasAccess(['logistics_staff'])) {
     opsChildren.push({ path: '/admin/logistics', label: 'Logistics', icon: Truck });
@@ -187,6 +188,7 @@ const superAdminMenu = [
     label: 'Operations', icon: ShoppingBag, children: [
       { path: '/superadmin/transaction-history', label: 'Transactions', icon: DollarSign },
       { path: '/superadmin/booking-history', label: 'Bookings', icon: Calendar },
+      { path: '/superadmin/returns', label: 'Returns & Refunds', icon: AlertCircle },
       { path: '/admin/pets', label: 'Pet Listings', icon: Heart },
       { path: '/superadmin/payouts', label: 'Payouts', icon: Wallet },
       { path: '/superadmin/archive', label: 'Archive', icon: Archive },
@@ -277,6 +279,7 @@ const getStaffMenu = (user) => {
 
   const opsChildren = [];
   if (can('sales', 'view') || can('sales', 'manage') || can('orders', 'view')) opsChildren.push({ path: '/admin/orders', label: 'Orders', icon: ShoppingCart });
+  if (can('sales', 'view') || can('sales', 'manage') || can('orders', 'view')) opsChildren.push({ path: '/admin/returns', label: 'Returns & Issues', icon: AlertCircle });
   if (can('bookings', 'view') || can('bookings', 'manage') || can('bookings', 'assigned')) opsChildren.push({ path: '/admin/bookings', label: 'Bookings', icon: Calendar });
   if (can('customers', 'manage')) opsChildren.push({ path: '/admin/customers', label: 'Customers', icon: Users });
   if (hasUiPermission(user, 'admin_chat')) opsChildren.push({ path: '/admin/chat', label: 'Chat', icon: MessageSquare });
