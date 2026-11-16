@@ -87,6 +87,7 @@ test('only food and medicine categories enter FDA compliance review', () => {
 test('material content changes require rereview but operational stock changes do not', () => {
   assert.equal(hasReviewedContentUpdate({ name: 'Changed' }), true);
   assert.equal(hasReviewedContentUpdate({ wholesalePrice: 100 }), true);
+  assert.equal(hasReviewedContentUpdate({ weightUnit: 'kg' }), true);
   assert.equal(hasReviewedContentUpdate({ ingredients: 'Chicken' }), true);
   assert.equal(hasReviewedContentUpdate({ fdaRegistrationNumber: 'FDA-123' }), true);
   assert.equal(hasReviewedContentUpdate({ regulatoryDocuments: [] }), true);
