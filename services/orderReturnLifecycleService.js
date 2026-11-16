@@ -5,6 +5,7 @@ const OrderReturn = require('../models/OrderReturn');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const InventoryLedgerService = require('./inventoryLedgerService');
+const PayMongo = require('./paymongoService');
 const { assignDelivery } = require('./deliveryAssignmentService');
 const { createNotification } = require('../controllers/notificationController');
 const { isPlatformAdmin } = require('../config/permissions');
@@ -208,11 +209,16 @@ const applyDecision = async ({ record, user, decision, reason, otherEligibleChar
   } else if (decision === 'approve_refund') {
     const order = await Order.findById(record.order);
     const breakdown = calculateRefundBreakdown(record, order, otherEligibleCharges);
+    const retryingFailedProvider = record.refund?.providerStatus === 'failed';
     record.status = 'refund_processing';
     record.refund = {
       ...record.refund?.toObject?.(), ...breakdown,
       status: 'processing', paymentMethod: order.paymentMethod,
       idempotencyKey: record.refund?.idempotencyKey || `order-return-refund:${record._id}`,
+      providerRefundId: retryingFailedProvider ? undefined : record.refund?.providerRefundId,
+      providerStatus: retryingFailedProvider ? 'not_submitted' : (record.refund?.providerStatus || 'not_submitted'),
+      providerAttempt: retryingFailedProvider ? Number(record.refund?.providerAttempt || 1) + 1 : Number(record.refund?.providerAttempt || 1),
+      reference: retryingFailedProvider ? undefined : record.refund?.reference,
       approvedBy: user._id, updatedAt: new Date()
     };
   } else {
@@ -590,13 +596,7 @@ const confirmCustomerResolution = async ({ user, returnId, resolved, note }) => 
   return record;
 };
 
-const recordRefundResult = async ({ user, returnId, callbackId, status, reference, amount }) => {
-  if (!isPlatformAdmin(user)) throw fail(403, 'REFUND_FORBIDDEN', 'Platform refund authority is required.');
-  if (!['refunded', 'denied'].includes(status) || !String(callbackId || '').trim()) {
-    throw fail(400, 'INVALID_REFUND_RESULT', 'A refund status and provider callback identity are required.');
-  }
-  const record = await OrderReturn.findById(returnId);
-  if (!record) throw fail(404, 'RETURN_NOT_FOUND', 'Return case not found.');
+const applyRefundResult = async ({ user, record, callbackId, status, reference, amount, providerStatus }) => {
   if ((record.refund.callbackIds || []).includes(callbackId)) return { record, idempotent: true };
   if (!['refund_processing', 'refund_pending'].includes(record.status)) throw fail(409, 'REFUND_NOT_READY', 'This case is not awaiting refund processing.');
   const safeAmount = Number(amount ?? record.refund.amount ?? 0);
@@ -610,6 +610,8 @@ const recordRefundResult = async ({ user, returnId, callbackId, status, referenc
   record.refund.reference = safeText(reference, { max: 500 });
   record.refund.amount = safeAmount;
   record.refund.processedBy = user._id;
+  if (providerStatus) record.refund.providerStatus = providerStatus;
+  record.refund.providerUpdatedAt = new Date();
   record.refund.updatedAt = new Date();
   record.refund.callbackIds.addToSet(callbackId);
   if (status === 'refunded') {
@@ -632,8 +634,152 @@ const recordRefundResult = async ({ user, returnId, callbackId, status, referenc
   await record.save();
   await syncOrderItemStatus(record);
   await notifyParticipants(record, user, status === 'refunded' ? 'Refund completed' : 'Refund requires review',
-    `${record.caseId}: ${status === 'refunded' ? `₱${safeAmount.toFixed(2)} was recorded as refunded` : 'refund processing needs administrator review'}.`);
+    `${record.caseId}: ${status === 'refunded' ? `PHP ${safeAmount.toFixed(2)} was refunded through the payment provider` : 'refund processing needs administrator review'}.`);
   return { record, idempotent: false };
+};
+
+const recordRefundResult = async ({ user, returnId, callbackId, status, reference, amount }) => {
+  if (!isPlatformAdmin(user)) throw fail(403, 'REFUND_FORBIDDEN', 'Platform refund authority is required.');
+  if (!['refunded', 'denied'].includes(status) || !String(callbackId || '').trim()) {
+    throw fail(400, 'INVALID_REFUND_RESULT', 'A refund status and provider callback identity are required.');
+  }
+  const record = await OrderReturn.findById(returnId);
+  if (!record) throw fail(404, 'RETURN_NOT_FOUND', 'Return case not found.');
+  if (!record.refund.providerRefundId) record.refund.provider = 'manual';
+  return applyRefundResult({
+    user, record, callbackId, status, reference, amount,
+    providerStatus: status === 'refunded' ? 'succeeded' : 'failed'
+  });
+};
+
+const reconcilePayMongoRefund = async ({ refund, callbackId }) => {
+  if (!refund?.id || refund.type !== 'refund' || !refund.attributes) {
+    throw fail(400, 'INVALID_REFUND_RESOURCE', 'PayMongo refund data is invalid.');
+  }
+  const attributes = refund.attributes;
+  const metadataCaseId = attributes.metadata?.order_return_id;
+  const query = metadataCaseId && mongoose.isValidObjectId(metadataCaseId)
+    ? { $or: [{ _id: metadataCaseId }, { 'refund.providerRefundId': refund.id }] }
+    : { 'refund.providerRefundId': refund.id };
+  const record = await OrderReturn.findOne(query);
+  if (!record) throw fail(404, 'RETURN_NOT_FOUND', 'No return case matches this PayMongo refund.');
+  if (record.refund.providerRefundId && String(record.refund.providerRefundId) !== String(refund.id)) {
+    throw fail(409, 'REFUND_ID_MISMATCH', 'The return case is already linked to another provider refund.');
+  }
+  const order = await Order.findById(record.order).select('paymentDetails.paymentId');
+  if (!order?.paymentDetails?.paymentId || String(order.paymentDetails.paymentId) !== String(attributes.payment_id)) {
+    throw fail(409, 'REFUND_PAYMENT_MISMATCH', 'The refund payment does not match the original order payment.');
+  }
+  const actorId = record.refund.processedBy || record.refund.approvedBy || record.decision?.decidedBy;
+  const actor = actorId ? await User.findById(actorId) : null;
+  if (!actor) throw fail(409, 'REFUND_ACTOR_MISSING', 'The administrator who initiated this refund could not be resolved.');
+  const providerAmount = Number(attributes.amount || 0) / 100;
+  if (!Number.isFinite(providerAmount) || providerAmount <= 0 || providerAmount > Number(record.refund.amount || 0)) {
+    throw fail(409, 'REFUND_AMOUNT_MISMATCH', 'The PayMongo refund exceeds the authorized amount.');
+  }
+  record.refund.provider = 'paymongo';
+  record.refund.providerRefundId = refund.id;
+  record.refund.providerPaymentId = attributes.payment_id;
+  record.refund.providerStatus = attributes.status;
+  record.refund.providerUpdatedAt = new Date();
+  record.refund.reference = refund.id;
+  if (['pending', 'processing'].includes(attributes.status)) {
+    if ((record.refund.callbackIds || []).includes(callbackId)) return { record, idempotent: true };
+    record.refund.status = 'processing';
+    record.refund.callbackIds.addToSet(callbackId);
+    appendHistory(record, {
+      action: 'paymongo_refund_processing', fromStatus: record.status, toStatus: record.status,
+      user: actor, note: `PayMongo refund ${refund.id} is ${attributes.status}.`
+    });
+    record.revision += 1;
+    await record.save();
+    await notifyParticipants(record, actor, 'Refund processing', `${record.caseId}: PayMongo is processing the approved refund.`);
+    return { record, idempotent: false };
+  }
+  if (!['succeeded', 'failed'].includes(attributes.status)) {
+    throw fail(409, 'UNKNOWN_REFUND_STATUS', 'PayMongo returned an unsupported refund status.');
+  }
+  return applyRefundResult({
+    user: actor,
+    record,
+    callbackId,
+    status: attributes.status === 'succeeded' ? 'refunded' : 'denied',
+    reference: refund.id,
+    amount: providerAmount,
+    providerStatus: attributes.status
+  });
+};
+
+const initiatePayMongoRefund = async ({ user, returnId }) => {
+  if (!isPlatformAdmin(user)) throw fail(403, 'REFUND_FORBIDDEN', 'Platform refund authority is required.');
+  const existing = await OrderReturn.findById(returnId);
+  if (!existing) throw fail(404, 'RETURN_NOT_FOUND', 'Return case not found.');
+  if (!['refund_processing', 'refund_pending'].includes(existing.status)) {
+    throw fail(409, 'REFUND_NOT_READY', 'This case is not awaiting refund processing.');
+  }
+  const order = await Order.findById(existing.order).select('paymentMethod paymentDetails.paymentId');
+  if (order?.paymentMethod !== 'paymongo' || !order.paymentDetails?.paymentId) {
+    throw fail(409, 'PAYMONGO_PAYMENT_REQUIRED', 'The original paid order has no refundable PayMongo payment identity.');
+  }
+  const amount = roundMoney(existing.refund.amount);
+  if (!Number.isFinite(amount) || amount < 1) throw fail(409, 'INVALID_REFUND_AMOUNT', 'PayMongo refunds must be at least PHP 1.00.');
+
+  if (existing.refund.providerRefundId) {
+    const refund = await PayMongo.getRefund(existing.refund.providerRefundId);
+    return reconcilePayMongoRefund({
+      refund,
+      callbackId: `paymongo-refresh:${refund.id}:${refund.attributes?.updated_at || refund.attributes?.status}`
+    });
+  }
+
+  const staleAt = new Date(Date.now() - 5 * 60 * 1000);
+  const claimed = await OrderReturn.findOneAndUpdate({
+    _id: existing._id,
+    status: { $in: ['refund_processing', 'refund_pending'] },
+    $or: [
+      { 'refund.providerStatus': { $exists: false } },
+      { 'refund.providerStatus': { $in: ['not_submitted', 'failed'] } },
+      { 'refund.providerStatus': 'submitting', 'refund.providerUpdatedAt': { $lt: staleAt } }
+    ]
+  }, {
+    $set: {
+      'refund.provider': 'paymongo',
+      'refund.providerPaymentId': order.paymentDetails.paymentId,
+      'refund.providerStatus': 'submitting',
+      'refund.providerUpdatedAt': new Date(),
+      'refund.processedBy': user._id,
+      'refund.updatedAt': new Date()
+    },
+    $inc: { revision: 1 },
+    $push: { history: {
+      action: 'paymongo_refund_submitted', fromStatus: existing.status, toStatus: existing.status,
+      actor: user._id, actorRole: actorRole(user), note: `Submitting PHP ${amount.toFixed(2)} to PayMongo.`, at: new Date()
+    } }
+  }, { new: true });
+  if (!claimed) throw fail(409, 'REFUND_ALREADY_PROCESSING', 'This refund is already being submitted to PayMongo.');
+
+  try {
+    const refund = await PayMongo.createRefund({
+      amount: Math.round(amount * 100),
+      payment_id: order.paymentDetails.paymentId,
+      reason: 'requested_by_customer',
+      notes: `${claimed.caseId} approved return/refund`,
+      metadata: { order_return_id: String(claimed._id), case_id: claimed.caseId }
+    }, `${String(claimed.refund.idempotencyKey).replace(/[^A-Za-z0-9_-]/g, '-')}-v${claimed.refund.providerAttempt || 1}`);
+    return reconcilePayMongoRefund({
+      refund,
+      callbackId: `paymongo-create:${refund.id}:${refund.attributes?.updated_at || refund.attributes?.status}`
+    });
+  } catch (error) {
+    await OrderReturn.updateOne({ _id: claimed._id, 'refund.providerStatus': 'submitting' }, {
+      $set: { 'refund.providerStatus': 'not_submitted', 'refund.providerUpdatedAt': new Date() },
+      $push: { history: {
+        action: 'paymongo_refund_submission_error', fromStatus: claimed.status, toStatus: claimed.status,
+        actor: user._id, actorRole: actorRole(user), note: 'PayMongo did not confirm the refund submission; retry uses the same idempotency key.', at: new Date()
+      } }
+    });
+    throw error;
+  }
 };
 
 const listOrderReturns = orderId => OrderReturn.find({ order: orderId }).sort({ createdAt: -1 }).lean();
@@ -677,10 +823,12 @@ module.exports = {
   finalizeInspectionResolution,
   getReturnCase,
   inspectVariantReturn,
+  initiatePayMongoRefund,
   listOrderReturns,
   listStoreReturns,
   openDispute,
   prepareReplacement,
+  reconcilePayMongoRefund,
   recordRefundResult,
   requestVariantReturn,
   scheduleReturnPickup,

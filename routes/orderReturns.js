@@ -17,6 +17,7 @@ const {
   listForStore,
   pickupCode,
   prepareReplacementShipment,
+  processPayMongoRefund,
   refundResult,
   schedulePickup,
   transition
@@ -41,6 +42,7 @@ router.post('/:id/replacement/prepare', prepareReplacementShipment);
 router.post('/:id/customer-confirm', customerConfirm);
 router.post('/:id/dispute', dispute);
 router.post('/:id/admin-decision', adminDecision);
+router.post('/:id/process-refund', processPayMongoRefund);
 router.post('/:id/refund-result', refundResult);
 
 // Compatibility route for existing normalized-variant return clients.

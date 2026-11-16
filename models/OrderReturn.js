@@ -124,6 +124,16 @@ const orderReturnSchema = new mongoose.Schema({
     otherEligibleCharges: { type: Number, min: 0, default: 0 },
     paymentMethod: String,
     reference: { type: String, trim: true },
+    provider: { type: String, enum: ['paymongo', 'manual'] },
+    providerRefundId: { type: String, trim: true },
+    providerPaymentId: { type: String, trim: true },
+    providerStatus: {
+      type: String,
+      enum: ['not_submitted', 'submitting', 'pending', 'processing', 'succeeded', 'failed'],
+      default: 'not_submitted'
+    },
+    providerAttempt: { type: Number, min: 1, default: 1 },
+    providerUpdatedAt: Date,
     idempotencyKey: { type: String, trim: true },
     callbackIds: [{ type: String, trim: true }],
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -175,6 +185,10 @@ orderReturnSchema.index(
 orderReturnSchema.index(
   { 'refund.idempotencyKey': 1 },
   { unique: true, sparse: true, name: 'order_return_refund_idempotency_unique' }
+);
+orderReturnSchema.index(
+  { 'refund.providerRefundId': 1 },
+  { unique: true, sparse: true, name: 'order_return_provider_refund_unique' }
 );
 
 orderReturnSchema.statics.CASE_STATUSES = CASE_STATUSES;

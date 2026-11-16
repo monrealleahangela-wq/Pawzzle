@@ -13,6 +13,7 @@ const {
   finalizeInspectionResolution,
   getReturnCase,
   inspectVariantReturn,
+  initiatePayMongoRefund,
   listOrderReturns,
   listStoreReturns,
   openDispute,
@@ -255,6 +256,13 @@ const refundResult = async (req, res) => {
   } catch (error) { return sendError(res, error); }
 };
 
+const processPayMongoRefund = async (req, res) => {
+  try {
+    const result = await initiatePayMongoRefund({ user: req.user, returnId: req.params.id });
+    return res.json({ return: presentReturn(result.record), idempotent: result.idempotent });
+  } catch (error) { return sendError(res, error); }
+};
+
 const evidenceAccess = async (req, res) => {
   try {
     const record = await getReturnCase({ user: req.user, returnId: req.params.id });
@@ -287,6 +295,7 @@ module.exports = {
   listForStore,
   pickupCode,
   prepareReplacementShipment,
+  processPayMongoRefund,
   refundResult,
   schedulePickup,
   transition

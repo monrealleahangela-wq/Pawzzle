@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const indexDefinitions = [
   ['orderreturns', { caseId: 1 }, { name: 'caseId_1', unique: true }],
   ['orderreturns', { 'refund.idempotencyKey': 1 }, { name: 'order_return_refund_idempotency_unique', unique: true, sparse: true }],
+  ['orderreturns', { 'refund.providerRefundId': 1 }, { name: 'order_return_provider_refund_unique', unique: true, sparse: true }],
   ['deliveries', { returnCase: 1, missionType: 1 }, {
     name: 'return_case_mission_unique', unique: true,
     partialFilterExpression: { returnCase: { $type: 'objectId' }, missionType: { $in: ['return_pickup', 'replacement'] } }

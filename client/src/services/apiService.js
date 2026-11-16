@@ -154,6 +154,7 @@ export const orderReturnService = {
   customerConfirm: (id, data) => api.post(`/order-returns/${id}/customer-confirm`, data),
   dispute: (id, data) => api.post(`/order-returns/${id}/dispute`, data),
   adminDecision: (id, data) => api.post(`/order-returns/${id}/admin-decision`, data),
+  processRefund: (id) => api.post(`/order-returns/${id}/process-refund`),
   recordRefundResult: (id, data) => api.post(`/order-returns/${id}/refund-result`, data),
   getEvidenceAccess: (id, evidenceId) => api.get(`/order-returns/${id}/evidence/${evidenceId}/access`)
 };
