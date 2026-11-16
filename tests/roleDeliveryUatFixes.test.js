@@ -116,9 +116,10 @@ test('backend accepts a valid Store-scoped concern in a reportable state', async
   const originalDeliveryFind = Delivery.findById;
   const originalDeliveryUpdate = Delivery.findOneAndUpdate;
   const originalOrderFind = Order.findById;
+  let capturedUpdate;
   try {
     Delivery.findById = () => ({ select: async () => ({ _id: 'delivery-1', status: 'in_transit', store: 'store-a', order: 'order-1' }) });
-    Delivery.findOneAndUpdate = async query => ({ _id: query._id });
+    Delivery.findOneAndUpdate = async (query, update) => { capturedUpdate = update; return { _id: query._id }; };
     Order.findById = () => ({ select: async () => ({ store: 'store-a' }) });
     const res = responseRecorder();
     await submitStoreConcern({
@@ -128,6 +129,10 @@ test('backend accepts a valid Store-scoped concern in a reportable state', async
     }, res);
     assert.equal(res.result.statusCode, 201);
     assert.equal(res.result.body.success, true);
+    assert.equal(res.result.body.complaint.status, 'pending');
+    assert.match(res.result.body.issueCenterUrl, /^\/admin\/logistics\?tab=issues&issue=/);
+    assert.equal(capturedUpdate.$push.complaints.content, 'Unexpected route');
+    assert.equal(String(capturedUpdate.$push.complaints._id), String(res.result.body.complaint._id));
   } finally {
     Delivery.findById = originalDeliveryFind;
     Delivery.findOneAndUpdate = originalDeliveryUpdate;
@@ -143,6 +148,12 @@ test('Seller live-map and concern UI use authenticated, non-overlapping flows', 
   assert.match(tracking, /user\?\.role === 'customer' && delivery\?\.concernReporting\?\.allowed === true/);
   assert.doesNotMatch(tracking, /complaintOpen&&<div className="fixed inset-0/);
   assert.match(tracking, /<DeliveryConcernForm/);
+  const logisticsDetail = source('client/src/pages/admin/LogisticsDetail.js');
+  const logistics = source('client/src/pages/admin/Logistics.js');
+  assert.match(logisticsDetail, /Pending in Issue Center/);
+  assert.match(logisticsDetail, /tab=issues&issue=/);
+  assert.match(logistics, /delivery-issue-\$\{focusedIssueId\}/);
+  assert.match(logistics, /Just submitted/);
 });
 
 test('affected Order and reassignment actions no longer use native confirmation', () => {

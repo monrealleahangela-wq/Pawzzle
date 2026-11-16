@@ -58,13 +58,14 @@ test('authorized Store Rider discovery returns legacy-active accounts for eligib
     const res = response();
     await getEligibleRiders({
       user: { _id: 'owner-1', role: 'store_owner', store: 'store-1' },
-      query: { weightKg: '2', parcelCount: '1' }
+      query: { weightKg: '2', parcelCount: '1', excludeRiderId: '507f1f77bcf86cd799439011' }
     }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.riders.length, 1);
     assert.equal(res.body.riders[0].eligibility.eligible, true);
     assert.equal(res.body.assignmentReadiness.eligibleCount, 1);
     assert.deepEqual(capturedQuery.store, { $in: ['store-1'] });
+    assert.equal(String(capturedQuery._id.$ne), '507f1f77bcf86cd799439011');
   } finally {
     User.find = originals.find;
     Delivery.aggregate = originals.deliveryAggregate;

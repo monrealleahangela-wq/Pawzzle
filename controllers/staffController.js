@@ -1134,6 +1134,13 @@ const getEligibleRiders = async (req, res) => {
     try {
         const platformScope = ['super_admin', 'platform_admin'].includes(req.user.role);
         let requestedStoreId = req.query.storeId;
+        const excludeRiderId = req.query.excludeRiderId;
+        if (excludeRiderId !== undefined && (
+            typeof excludeRiderId !== 'string'
+            || !mongoose.Types.ObjectId.isValid(excludeRiderId)
+        )) {
+            return res.status(400).json({ message: 'A valid Rider identifier is required for reassignment eligibility.' });
+        }
         let orderWeight;
         if (req.query.orderId !== undefined) {
             if (typeof req.query.orderId !== 'string' || !mongoose.Types.ObjectId.isValid(req.query.orderId)) {
@@ -1193,6 +1200,7 @@ const getEligibleRiders = async (req, res) => {
         }
         const query = buildActiveRiderAccountFilter();
         if (storeIds?.length) query.store = { $in: storeIds };
+        if (excludeRiderId) query._id = { $ne: new mongoose.Types.ObjectId(excludeRiderId) };
         const riders = await User.find(query).select('-password').populate('store', 'name hrSettings.timezone').lean();
         const [counts, ratings] = await Promise.all([Delivery.aggregate([
             { $match: { assignedRider: { $in: riders.map(r => r._id) }, status: { $nin: ['delivered', 'cancelled', 'returned_to_store'] } } },

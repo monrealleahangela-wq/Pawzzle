@@ -65,7 +65,7 @@ test('assignment source eligibility rejects invalid Order lifecycles and fulfill
   assert.equal(validateAssignmentSource({
     orderId: 'order-1', source: { status: 'rider_assigned', deliveryMethod: 'delivery' }
   }), true);
-  for (const status of ['pending_payment', 'cancelled', 'completed', 'delivered']) {
+  for (const status of ['pending_payment', 'cancelled', 'completed', 'delivered', 'delivery_failed']) {
     assert.throws(() => validateAssignmentSource({
       orderId: 'order-1', source: { status, deliveryMethod: 'delivery' }
     }), /not eligible/);
@@ -73,6 +73,26 @@ test('assignment source eligibility rejects invalid Order lifecycles and fulfill
   assert.throws(() => validateAssignmentSource({
     orderId: 'order-1', source: { status: 'ready_for_pickup', deliveryMethod: 'pickup' }
   }), /Only delivery orders/);
+});
+
+test('failed Order recovery requires the exact live failed-attempt Delivery and an explicit reassignment', () => {
+  const source = { _id: 'order-1', status: 'delivery_failed', deliveryMethod: 'delivery' };
+  const delivery = { _id: 'delivery-1', order: 'order-1', status: 'failed_attempt', isLive: true };
+  assert.equal(validateAssignmentSource({
+    orderId: 'order-1', source, delivery, reassign: true
+  }), true);
+  assert.throws(() => validateAssignmentSource({
+    orderId: 'order-1', source, delivery, reassign: false
+  }), /not eligible/);
+  assert.throws(() => validateAssignmentSource({
+    orderId: 'order-1', source, delivery: { ...delivery, order: 'order-2' }, reassign: true
+  }), /not eligible/);
+  assert.throws(() => validateAssignmentSource({
+    orderId: 'order-1', source, delivery: { ...delivery, status: 'returned_to_store' }, reassign: true
+  }), /not eligible/);
+  assert.throws(() => validateAssignmentSource({
+    orderId: 'order-1', source, delivery: { ...delivery, isLive: false }, reassign: true
+  }), /not eligible/);
 });
 
 test('assignment source eligibility permits only paid active home-service Bookings', () => {

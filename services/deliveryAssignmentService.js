@@ -40,10 +40,33 @@ const buildActiveRiderAccountFilter = (extra = {}) => ({
 
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 
-const validateAssignmentSource = ({ source, orderId, bookingId, deliveryId }) => {
+const isFailedAttemptRecovery = ({ source, orderId, bookingId, deliveryId, delivery, reassign }) => {
+  if (reassign !== true || !source?._id || delivery?.status !== 'failed_attempt' || delivery?.isLive === false) return false;
+  if (orderId) {
+    return Boolean(delivery.order)
+      && source.status === 'delivery_failed'
+      && String(delivery.order) === String(source._id);
+  }
+  if (bookingId) {
+    return Boolean(delivery.booking)
+      && ASSIGNABLE_BOOKING_STATUSES.includes(source.status)
+      && String(delivery.booking) === String(source._id);
+  }
+  if (deliveryId) {
+    return source.sourceType === 'manual'
+      && Boolean(source.manualDelivery)
+      && String(delivery._id || '') === String(source._id || '');
+  }
+  return false;
+};
+
+const validateAssignmentSource = ({ source, orderId, bookingId, deliveryId, delivery, reassign = false }) => {
+  const recoveringFailedAttempt = isFailedAttemptRecovery({
+    source, orderId, bookingId, deliveryId, delivery, reassign
+  });
   if (orderId) {
     if (source.deliveryMethod !== 'delivery') throw fail('Only delivery orders can be assigned to a rider.', 409);
-    if (!ASSIGNABLE_ORDER_STATUSES.includes(source.status)) {
+    if (!ASSIGNABLE_ORDER_STATUSES.includes(source.status) && !recoveringFailedAttempt) {
       throw fail(`Order status ${source.status} is not eligible for rider assignment.`, 409);
     }
     return true;
@@ -58,7 +81,7 @@ const validateAssignmentSource = ({ source, orderId, bookingId, deliveryId }) =>
   }
   if (deliveryId) {
     if (source.sourceType !== 'manual' || !source.manualDelivery) throw fail('Only a manual delivery can use a Delivery ID.', 409);
-    if (!ACTIVE_ASSIGNMENT_STATUSES.includes(source.status)) throw fail('This manual delivery is no longer eligible for Rider assignment.', 409);
+    if (!ACTIVE_ASSIGNMENT_STATUSES.includes(source.status) && !recoveringFailedAttempt) throw fail('This manual delivery is no longer eligible for Rider assignment.', 409);
     return true;
   }
   throw fail('Order, Booking, or manual Delivery ID is required.');
@@ -403,7 +426,10 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
       if (!source) throw fail('Delivery source not found.', 404);
       const query = orderId ? { order: source._id } : bookingId ? { booking: source._id } : { _id: source._id, sourceType: 'manual' };
       let delivery = deliveryId ? source : await Delivery.findOne(query).session(session);
-      validateAssignmentSource({ source, orderId, bookingId, deliveryId });
+      const recoveringFailedAttempt = isFailedAttemptRecovery({
+        source, orderId, bookingId, deliveryId, delivery, reassign
+      });
+      validateAssignmentSource({ source, orderId, bookingId, deliveryId, delivery, reassign });
       if (delivery?.assignmentType === 'internal' && delivery.assignedRider && !reassign) {
         if (bookingId && String(source.delivery || '') !== String(delivery._id)) {
           const linked = await Booking.updateOne({
@@ -417,7 +443,7 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
         result = { deliveryId: delivery._id, riderId: delivery.assignedRider, assignmentChanged: false, sourceId: source._id };
         return;
       }
-      if (delivery && !ACTIVE_ASSIGNMENT_STATUSES.includes(delivery.status)) {
+      if (delivery && !ACTIVE_ASSIGNMENT_STATUSES.includes(delivery.status) && !recoveringFailedAttempt) {
         throw fail('An in-progress delivery cannot be reassigned.', 409);
       }
       let parcel;
@@ -509,13 +535,26 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
         delivery.parcel = { ...parcel, recordedAt: now, recordedBy: actorId };
         delivery.capacityReservation = { rider: selected._id, ...parcel, reservedAt: now };
         delivery.assignmentHistory.push({ assignmentType: 'internal', rider: selected._id, assignedBy: actorId, assignedAt: now });
-        delivery.statusHistory.push({ status: 'assigned', timestamp: now, notes: 'System assigned an available internal rider by vehicle capacity.' });
+        delivery.statusHistory.push({
+          status: 'assigned',
+          timestamp: now,
+          notes: recoveringFailedAttempt
+            ? 'System assigned a replacement Rider after a recorded failed delivery attempt.'
+            : 'System assigned an available internal rider by vehicle capacity.'
+        });
         await delivery.save({ session });
       }
       if (orderId) {
         const linked = await Order.updateOne({ _id: source._id, status: source.status, deliveryMethod: 'delivery' }, {
           $set: { delivery: delivery._id, status: 'rider_assigned' },
-          $push: { fulfillmentTimeline: { status: 'rider_assigned', timestamp: now, actor: actorId, description: 'An internal Delivery Rider was assigned automatically.' } }
+          $push: { fulfillmentTimeline: {
+            status: 'rider_assigned',
+            timestamp: now,
+            actor: actorId,
+            description: recoveringFailedAttempt
+              ? 'A replacement Delivery Rider was assigned after the failed delivery attempt.'
+              : 'An internal Delivery Rider was assigned automatically.'
+          } }
         }, { session });
         if (!linked.matchedCount) throw fail('Order state changed. Refresh and try again.', 409);
       } else if (bookingId) {
@@ -527,7 +566,14 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
         }, { $set: { delivery: delivery._id } }, { session });
         if (!linked.matchedCount) throw fail('Booking state changed. Refresh and try again.', 409);
       }
-      result = { deliveryId: delivery._id, riderId: selected._id, previousRiderId: previousRider, assignmentChanged: true, sourceId: source._id };
+      result = {
+        deliveryId: delivery._id,
+        riderId: selected._id,
+        previousRiderId: previousRider,
+        assignmentChanged: true,
+        recoveredFailedAttempt: recoveringFailedAttempt,
+        sourceId: source._id
+      };
     });
   } finally {
     await session.endSession();
@@ -550,6 +596,7 @@ module.exports = {
   evaluateRiderEligibility,
   summarizeRiderEligibility,
   normalizeParcel,
+  isFailedAttemptRecovery,
   validateAssignmentSource,
   validatePickupEligibility,
   ASSIGNABLE_ORDER_STATUSES,
