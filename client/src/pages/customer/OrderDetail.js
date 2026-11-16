@@ -16,6 +16,7 @@ import { formatPeso, orderLineItemRows, orderPaymentSummary, paymentSummaryRows 
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { hasUiActionPermission } from '../../utils/authorization';
 import { buildOrderDeliveryTimeline, getOrderDeliveryStatus } from '../../utils/orderDeliveryStatus';
+import ReturnIssueModal from '../../components/returns/ReturnIssueModal';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -47,6 +48,8 @@ const OrderDetail = () => {
   const [concernSubmitting, setConcernSubmitting] = useState(false);
   const [returnDraft, setReturnDraft] = useState(null);
   const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [issueTarget, setIssueTarget] = useState(null);
+  const [returnCases, setReturnCases] = useState({});
   const [riderReviewEligibility, setRiderReviewEligibility] = useState({ checked: false, isEligible: false, reason: null });
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const checkoutBatchId = order?.checkoutBatch?._id || order?.checkoutBatch;
@@ -182,6 +185,10 @@ const OrderDetail = () => {
       const orderData = response.data.order;
       const weightMissing = orderData.parcelEstimate?.status === 'missing_product_weight';
       setOrder(orderData);
+      try {
+        const returnResponse = await orderReturnService.listForOrder(orderData._id);
+        setReturnCases(Object.fromEntries((returnResponse.data.returns || []).map(returnCase => [String(returnCase.orderItem), returnCase])));
+      } catch { setReturnCases({}); }
       setDeliveryParcel(current => ({
         weightKg: weightMissing
           ? (current.manualException ? current.weightKg : '')
@@ -513,19 +520,9 @@ const OrderDetail = () => {
                     </div>
                   )}
 
-                  {user?.role === 'customer'
-                    && order.variantLifecycle?.returnsEnabled
-                    && ['delivered', 'completed'].includes(order.status)
-                    && item.variantId
-                    && item.returnStatus === 'none' && (
-                    <button
-                      type="button"
-                      onClick={() => setReturnDraft({ orderItemId: item.orderItemId, name: item.name, quantity: 1, max: item.quantity, reason: '' })}
-                      className="mt-3 rounded-lg border border-primary-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary-700 hover:bg-primary-50"
-                    >
-                      Request return
-                    </button>
-                  )}
+                  {user?.role === 'customer' && ['delivered', 'completed', 'finalized'].includes(order.status) && item.itemType === 'product' && (returnCases[String(item.orderItemId)]
+                    ? <Link to={`/returns/${returnCases[String(item.orderItemId)]._id}`} className="mt-3 inline-flex rounded-lg bg-primary-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">View Return/Refund Case</Link>
+                    : <button type="button" onClick={()=>setIssueTarget(item)} className="mt-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary-800">Report an Issue</button>)}
 
                   {user?.role === 'customer' && ['delivered', 'completed'].includes(order.status) && item.itemType === 'product' && (
                     item.reviewStatus?.isRated ? (
@@ -1266,6 +1263,7 @@ const OrderDetail = () => {
           }}
         />
       )}
+      {issueTarget && <ReturnIssueModal orderId={order._id} item={issueTarget} onClose={()=>setIssueTarget(null)} onCreated={fetchOrder}/>}
     </div>
   );
 };

@@ -19,6 +19,8 @@ import PawzzleDialogHost from './components/ui/PawzzleDialogHost';
 import { useTheme } from './contexts/ThemeContext';
 import ChatManagement from './pages/shared/ChatManagement';
 import ChatWindow from './pages/shared/ChatWindow';
+import ReturnCaseDetail from './pages/shared/ReturnCaseDetail';
+import ReturnsManagement from './pages/shared/ReturnsManagement';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -179,6 +181,7 @@ function App() {
                   <Route path="checkout" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Checkout /></ProtectedRoute>} />
                   <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
                   <Route path="orders/:id" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><OrderDetail /></ProtectedRoute>} />
+                  <Route path="returns/:id" element={<ProtectedRoute roles={['customer', 'admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager']}><ReturnCaseDetail /></ProtectedRoute>} />
                   <Route path="bookings" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}>
                     <CustomerPageErrorBoundary pageName="customer bookings" title="Unable to show your bookings" message="Something in a booking record could not be displayed. Please try again." backTo="/services" backLabel="Browse Services">
                       <Bookings />
@@ -207,6 +210,7 @@ function App() {
                   {/* Orders - orders access */}
                   <Route path="admin/orders" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><AdminOrders /></ProtectedRoute>} />
                   <Route path="admin/orders/:id" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['order_staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><OrderDetail /></ProtectedRoute>} />
+                  <Route path="admin/returns" element={<ProtectedRoute roles={['admin', 'store_owner', 'super_admin', 'staff']} requiredPermission={['sales.view', 'sales.manage', 'orders.view']}><ReturnsManagement /></ProtectedRoute>} />
 
                   {/* Bookings - bookings access */}
                   <Route path="admin/bookings" element={<ProtectedRoute roles={['admin', 'super_admin', 'staff']} staffTypes={['service_staff', 'service_management_staff', 'veterinarian', 'veterinary_technician', 'veterinary_assistant', 'veterinary_nurse', 'veterinary_laboratory_technician', 'groomer', 'trainer', 'boarding_specialist']} requiredPermission={['bookings.view', 'bookings.manage', 'bookings.assigned']}><BookingsManagement /></ProtectedRoute>} />
@@ -251,6 +255,7 @@ function App() {
                   <Route path="superadmin/activity-history" element={<ProtectedRoute roles={['super_admin']}><ActivityHistory /></ProtectedRoute>} />
                   <Route path="superadmin/suppliers" element={<ProtectedRoute roles={['super_admin', 'platform_admin']}><SupplierManagement /></ProtectedRoute>} />
                   <Route path="superadmin/staff-verification" element={<ProtectedRoute roles={['super_admin']}><SpecializedStaffVerification /></ProtectedRoute>} />
+                  <Route path="superadmin/returns" element={<ProtectedRoute roles={['super_admin', 'platform_admin']}><ReturnsManagement adminMode /></ProtectedRoute>} />
 
                   {/* Supplier Routes - customers can access to register as supplier */}
                   <Route path="supplier/dashboard" element={<ProtectedRoute roles={['supplier', 'customer']}><SupplierDashboard /></ProtectedRoute>} />

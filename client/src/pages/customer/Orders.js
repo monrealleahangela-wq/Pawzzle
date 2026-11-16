@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { orderService, getImageUrl } from '../../services/apiService';
+import { orderService, orderReturnService, getImageUrl } from '../../services/apiService';
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import OrderReviewModal from '../../components/OrderReviewModal';
@@ -10,6 +10,7 @@ import { normalizeRefundPolicy, refundPolicyLabel } from '../../utils/refundPoli
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
+import ReturnIssueModal from '../../components/returns/ReturnIssueModal';
 
 const STATUS_META = {
   pending_payment: { label: 'Waiting for payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
@@ -32,13 +33,25 @@ const Orders = () => {
   const [ratingProduct, setRatingProduct] = useState(null);
   const [ratingDelivery, setRatingDelivery] = useState(null);
   const [ordersError, setOrdersError] = useState('');
+  const [issueTarget, setIssueTarget] = useState(null);
+  const [returnCases, setReturnCases] = useState({});
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   const fetchOrders = useCallback(async () => {
     try {
       setOrdersError('');
       const response = await orderService.getAllOrders({ page: pagination.currentPage, limit: 10 });
-      setOrders(response.data.orders || []);
+      const nextOrders = response.data.orders || [];
+      setOrders(nextOrders);
+      const caseResponses = await Promise.allSettled(nextOrders.map(order => orderReturnService.listForOrder(order._id)));
+      const nextCases = {};
+      caseResponses.forEach((result, index) => {
+        if (result.status !== 'fulfilled') return;
+        (result.value.data.returns || []).forEach(returnCase => {
+          nextCases[`${nextOrders[index]._id}:${returnCase.orderItem}`] = returnCase;
+        });
+      });
+      setReturnCases(nextCases);
       setPagination(response.data.pagination || pagination);
     } catch (e) {
       console.error('Error fetching orders:', e);
@@ -164,6 +177,9 @@ const Orders = () => {
                               </button>
                             )
                           )}
+                          {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (returnCases[`${order._id}:${item._id}`]
+                            ? <Link to={`/returns/${returnCases[`${order._id}:${item._id}`]._id}`} className="flex min-h-9 items-center rounded-lg bg-primary-700 px-3 text-center text-[9px] font-bold uppercase text-white">View Return/Refund Case</Link>
+                            : <button type="button" onClick={()=>setIssueTarget({order,item})} className="flex min-h-9 items-center rounded-lg border border-primary-200 bg-primary-50 px-3 text-[9px] font-bold uppercase text-primary-800">Report an Issue</button>)}
                         </div>
                       ))}
                     </div>
@@ -260,6 +276,7 @@ const Orders = () => {
           onReviewSubmitted={() => { fetchOrders(); setRatingDelivery(null); }}
         />
       )}
+      {issueTarget && <ReturnIssueModal orderId={issueTarget.order._id} item={{...issueTarget.item,orderItemId:issueTarget.item._id}} onClose={()=>setIssueTarget(null)} onCreated={fetchOrders}/>}
     </div>
   );
 };

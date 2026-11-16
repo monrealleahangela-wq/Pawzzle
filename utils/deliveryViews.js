@@ -117,6 +117,21 @@ const manualDeliveryView = manual => {
   });
 };
 
+const returnCaseView = value => {
+  const source = plain(value);
+  if (!source || typeof source !== 'object') return source;
+  const item = plain(source.itemSnapshot) || {};
+  return compact({
+    _id: source._id,
+    caseId: source.caseId,
+    issueType: source.issueType,
+    requestedResolution: source.requestedResolution,
+    status: source.status,
+    requestedQuantity: source.requestedQuantity,
+    itemSnapshot: compact({ name: item.name, image: item.image, sku: item.sku })
+  });
+};
+
 const riderDeliveryView = delivery => {
   const source = plain(delivery) || {};
   return compact({
@@ -125,6 +140,9 @@ const riderDeliveryView = delivery => {
     order: orderView(source.order),
     booking: bookingView(source.booking),
     sourceType: source.sourceType,
+    missionType: source.missionType,
+    returnCase: returnCaseView(source.returnCase),
+    returnItem: source.returnItem,
     manualDelivery: manualDeliveryView(source.manualDelivery),
     status: source.status,
     isLive: source.isLive,

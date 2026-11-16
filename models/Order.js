@@ -55,7 +55,12 @@ const orderItemSchema = new mongoose.Schema({
   },
   returnStatus: {
     type: String,
-    enum: ['none', 'requested', 'approved', 'rejected', 'received', 'inspected', 'refund_pending', 'refunded', 'closed'],
+    enum: [
+      'none', 'issue_reported', 'requested', 'approved', 'return_in_progress',
+      'received', 'under_inspection', 'inspected', 'refund_pending',
+      'refund_processing', 'refunded', 'replacement_in_progress',
+      'replacement_delivered', 'rejected', 'resolved', 'closed'
+    ],
     default: 'none'
   },
   unitWeightKg: {

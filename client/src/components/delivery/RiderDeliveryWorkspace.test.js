@@ -155,4 +155,24 @@ describe('RiderDeliveryWorkspace responsive action layout', () => {
     expect(screen.getByText('“Use the side entrance.”')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Call customer' })).toHaveAttribute('href', 'tel:09179998888');
   });
+
+  test('requires the customer code before a return pickup can enter rider custody', () => {
+    const delivery = {
+      ...makeDelivery('accepted'),
+      order: undefined,
+      missionType: 'return_pickup',
+      sourceType: 'manual',
+      returnItem: { caseId: 'RET-123', name: 'Dog Food', quantity: 1, issueType: 'damaged' },
+      manualDelivery: {
+        recipientName: 'Alex Rivera', recipientPhone: '09171234567',
+        pickupAddress: { formattedAddress: 'Customer pickup address' },
+        dropoffAddress: { formattedAddress: 'Seller return destination' }
+      }
+    };
+    render(<RiderDeliveryWorkspace delivery={delivery} token="test-token" onStatusUpdate={jest.fn()} onSendMessage={jest.fn()} onRefresh={jest.fn()}/>);
+    expect(screen.getAllByText('Going to Customer').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Verify return pickup' }));
+    expect(screen.getByRole('dialog', { name: 'Verify return pickup' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Return pickup verification code')).toHaveAttribute('maxlength', '6');
+  });
 });

@@ -94,6 +94,25 @@ const deliverySchema = new mongoose.Schema({
     ref: 'Booking',
     default: null
   },
+  returnCase: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'OrderReturn',
+    default: null,
+    index: true
+  },
+  missionType: {
+    type: String,
+    enum: ['standard', 'return_pickup', 'replacement'],
+    default: 'standard',
+    index: true
+  },
+  returnItem: {
+    caseId: String,
+    name: String,
+    quantity: Number,
+    issueType: String,
+    requestedResolution: String
+  },
   sourceType: {
     type: String,
     enum: ['order', 'booking', 'manual'],
@@ -310,6 +329,17 @@ deliverySchema.pre('save', function(next) {
 
 deliverySchema.index({ order: 1 }, { unique: true, partialFilterExpression: { order: { $type: 'objectId' } } });
 deliverySchema.index({ booking: 1 }, { unique: true, partialFilterExpression: { booking: { $type: 'objectId' } } });
+deliverySchema.index(
+  { returnCase: 1, missionType: 1 },
+  {
+    name: 'return_case_mission_unique',
+    unique: true,
+    partialFilterExpression: {
+      returnCase: { $type: 'objectId' },
+      missionType: { $in: ['return_pickup', 'replacement'] }
+    }
+  }
+);
 deliverySchema.index(
   { store: 1, 'manualDelivery.idempotencyKey': 1 },
   {
