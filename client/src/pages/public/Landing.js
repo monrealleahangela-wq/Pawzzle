@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowRight, CalendarDays, Check, Heart, MapPin, Menu, MessageCircle,
-  Package, PawPrint, Search, ShieldCheck, ShoppingBag, Store, Users, X
+  ArrowRight, CalendarDays, Check, ChevronDown, Heart, HelpCircle, MapPin, Menu,
+  MessageCircle, Package, PawPrint, Search, ShieldCheck, ShoppingBag, Store, Users, X
 } from 'lucide-react';
 import { publicService, getImageUrl } from '../../services/apiService';
 import { PageLoader } from '../../components/ui/LoadingSpinner';
@@ -11,6 +11,47 @@ import '../../styles/Landing.css';
 const EMPTY_DATA = {
   pets: [], products: [], services: [], experts: [],
   stats: { stores: 0, pets: 0, experts: 0, products: 0, services: 0 }
+};
+
+export const FAQ_ITEMS = [
+  {
+    question: 'What can I do on Pawzzle?',
+    answer: 'You can discover active pet listings, shop pet products, find participating stores, book available pet-care services, and keep supported orders, bookings, messages, and delivery updates together in your account.'
+  },
+  {
+    question: 'Do I need an account to browse?',
+    answer: 'You can explore public listings without signing in. An account is required when you are ready to purchase, book a service, save account activity, communicate through protected features, or track transactions tied to you.'
+  },
+  {
+    question: 'How do pet purchases work?',
+    answer: 'Open a pet listing to review its details, availability, price, seller information, and fulfillment terms. If the pet is available, Pawzzle shows the applicable checkout and pickup or handover steps before you confirm payment.'
+  },
+  {
+    question: 'How do I book a pet-care service?',
+    answer: 'Browse available services, choose the option that fits your pet, and select from the dates, times, locations, and qualified staff offered by the store. Your booking details and status remain available in your account.'
+  },
+  {
+    question: 'Can I track an order or delivery?',
+    answer: 'Yes, when delivery tracking is available for an order. Pawzzle displays the current fulfillment status and provides delivery updates through the order details or secure tracking experience.'
+  },
+  {
+    question: 'How are prices, fees, and refunds handled?',
+    answer: 'The checkout or booking review shows the applicable item or service price and any supported fees before payment. Refund eligibility depends on the transaction circumstances and the policy displayed for that order or service.'
+  },
+  {
+    question: 'How can a pet store join Pawzzle?',
+    answer: 'Select “For stores” or “Join as a store,” create an account, and complete the store application. Pawzzle reviews the submitted business, location, registration, and supporting information before store features are activated.'
+  }
+];
+
+const FAQ_SCHEMA = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ_ITEMS.map(({ question, answer }) => ({
+    '@type': 'Question',
+    name: question,
+    acceptedAnswer: { '@type': 'Answer', text: answer }
+  }))
 };
 
 const formatPrice = (value) =>
@@ -132,6 +173,7 @@ const Landing = () => {
             <a href="#explore">Explore</a>
             <a href="#features">Features</a>
             <a href="#how-it-works">How it works</a>
+            <a href="#faq">FAQ</a>
             <Link to="/seller-join">For stores</Link>
           </nav>
 
@@ -150,6 +192,7 @@ const Landing = () => {
             <a href="#explore" onClick={closeMobileMenu}>Explore</a>
             <a href="#features" onClick={closeMobileMenu}>Features</a>
             <a href="#how-it-works" onClick={closeMobileMenu}>How it works</a>
+            <a href="#faq" onClick={closeMobileMenu}>FAQ</a>
             <Link to="/seller-join" onClick={closeMobileMenu}>For stores</Link>
             <div className="landing-mobile-actions">
               <Link to="/login" onClick={closeMobileMenu}>Sign in</Link>
@@ -355,6 +398,32 @@ const Landing = () => {
             </div>
           </div>
         </section>
+
+        <section id="faq" className="landing-section landing-faq-section" aria-labelledby="landing-faq-title">
+          <div className="landing-shell landing-faq-grid">
+            <div className="landing-faq-intro">
+              <p className="landing-eyebrow">Questions, answered</p>
+              <h2 id="landing-faq-title">Frequently asked questions.</h2>
+              <p>Quick answers about browsing, purchasing, booking, tracking, payments, and joining Pawzzle as a store.</p>
+              <span className="landing-faq-note"><HelpCircle aria-hidden="true" /> Select a question to view its answer.</span>
+            </div>
+
+            <div className="landing-faq-list">
+              {FAQ_ITEMS.map(({ question, answer }, index) => (
+                <details key={question} open={index === 0}>
+                  <summary>
+                    <span className="landing-faq-number">{String(index + 1).padStart(2, '0')}</span>
+                    <h3>{question}</h3>
+                    <span className="landing-faq-toggle" aria-hidden="true"><ChevronDown /></span>
+                  </summary>
+                  <div className="landing-faq-answer"><p>{answer}</p></div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <script type="application/ld+json">{JSON.stringify(FAQ_SCHEMA).replace(/</g, '\\u003c')}</script>
       </main>
 
       <footer className="landing-footer">
@@ -364,7 +433,7 @@ const Landing = () => {
             <p>Pet marketplace, store discovery, service booking, and account management—all thoughtfully connected.</p>
           </div>
           <nav aria-label="Footer navigation">
-            <span>Explore</span><Link to="/pets">Pets</Link><Link to="/products">Products</Link><Link to="/services">Services</Link>
+            <span>Explore</span><Link to="/pets">Pets</Link><Link to="/products">Products</Link><Link to="/services">Services</Link><a href="#faq">FAQ</a>
           </nav>
           <nav aria-label="Account navigation">
             <span>Join Pawzzle</span><Link to="/login">Sign in</Link><Link to="/register">Create account</Link><Link to="/seller-join">For stores</Link>
