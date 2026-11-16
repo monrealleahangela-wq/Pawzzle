@@ -71,7 +71,8 @@ const validateOrderItemBeforePayment = async (order, item) => {
 const PROCUREMENT_CHECKOUT_BLOCKED_STATUSES = [
   'cancelled', 'returned', 'issue_reported', 'pending_supplier_resolution',
   'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
-  'awaiting_replacement', 'reinspection', 'completed'
+  'awaiting_replacement', 'return_processing', 'return_shipped',
+  'replacement_processing', 'replacement_shipped', 'reinspection', 'completed'
 ];
 const PICKUP_AGREEMENT_EFFECTIVE_AT = new Date('2026-10-25T00:00:00+08:00');
 

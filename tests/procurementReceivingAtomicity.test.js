@@ -76,11 +76,12 @@ test('reinspection has an atomic stale lease and transactional completion', () =
 test('resolution submission, decision, and delivery handoff commit PO and report together', () => {
   const supplier = read('controllers/supplierController.js');
   const purchaseOrders = read('controllers/purchaseOrderController.js');
-  const submission = supplier.match(/const submitOrderResolution[\s\S]*?const markResolutionDelivered/)?.[0] || '';
-  const delivery = supplier.match(/const markResolutionDelivered[\s\S]*?\/\/ [^\n]*PUBLIC/)?.[0] || '';
-  const decision = purchaseOrders.match(/const reviewSupplierResolution[\s\S]*?const authorizeResolutionReinspectionUpload/)?.[0] || '';
+  const submission = supplier.match(/const submitOrderResolution[\s\S]*?const transitionResolutionLogistics/)?.[0] || '';
+  const delivery = supplier.match(/const transitionResolutionLogistics[\s\S]*?const markResolutionDelivered/)?.[0] || '';
+  const decision = purchaseOrders.match(/const reviewSupplierResolution[\s\S]*?const markResolutionReturnShipped/)?.[0] || '';
+  const returnShipment = purchaseOrders.match(/const markResolutionReturnShipped[\s\S]*?const authorizeResolutionReinspectionUpload/)?.[0] || '';
 
-  for (const transition of [submission, delivery, decision]) {
+  for (const transition of [submission, delivery, decision, returnShipment]) {
     assert.match(transition, /mongoose\.connection\.transaction/);
     assert.match(transition, /report\.save\(\{ session \}\)/);
     assert.match(transition, /order\.save\(\{ session \}\)/);

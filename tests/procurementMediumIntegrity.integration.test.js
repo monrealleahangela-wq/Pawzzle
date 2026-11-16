@@ -9,12 +9,13 @@ const Notification = require('../models/Notification');
 const { cloudinary } = require('../middleware/upload');
 const {
   reviewSupplierResolution,
+  markResolutionReturnShipped,
   submitResolutionReinspection,
   getReceivingEvidenceAccess
 } = require('../controllers/purchaseOrderController');
 const {
   submitOrderResolution,
-  markResolutionDelivered,
+  transitionResolutionLogistics,
   adminDeactivateSupplier,
   updateOrderStatus
 } = require('../controllers/supplierController');
@@ -166,9 +167,14 @@ test('real MongoDB guards resolution transitions, lifecycle side effects, and ev
       body: { decision: 'accept' }, query: {},
       user: { _id: storeActor, role: 'platform_admin' }
     })).status, 200);
-    assert.equal((await invoke(markResolutionDelivered, {
+    assert.equal((await invoke(transitionResolutionLogistics, {
       params: { id: fixture.order._id, resolutionId },
-      body: { notes: 'Replacement delivered.' }, query: {},
+      body: { action: 'mark_replacement_shipped', carrier: 'Test Carrier', trackingNumber: `TRACK-${suffix}` }, query: {},
+      user: { _id: supplierUser, role: 'supplier' }
+    })).status, 200);
+    assert.equal((await invoke(transitionResolutionLogistics, {
+      params: { id: fixture.order._id, resolutionId },
+      body: { action: 'mark_replacement_delivered', notes: 'Replacement delivered.' }, query: {},
       user: { _id: supplierUser, role: 'supplier' }
     })).status, 200);
     return { ...fixture, resolutionId };
@@ -231,9 +237,9 @@ test('real MongoDB guards resolution transitions, lifecycle side effects, and ev
       assert.equal(order.status, 'resolution_rejected');
       assert.equal(report.resolutionStatus, 'resolution_rejected');
     } else {
-      assert.equal(submission.status, 'awaiting_replacement');
-      assert.equal(order.status, 'awaiting_replacement');
-      assert.equal(report.resolutionStatus, 'awaiting_replacement');
+      assert.equal(submission.status, 'replacement_processing');
+      assert.equal(order.status, 'replacement_processing');
+      assert.equal(report.resolutionStatus, 'replacement_processing');
     }
   });
 
@@ -247,14 +253,20 @@ test('real MongoDB guards resolution transitions, lifecycle side effects, and ev
       user: { _id: storeActor, role: 'platform_admin' }
     });
     assert.equal(accepted.status, 200);
+    const shipped = await invoke(transitionResolutionLogistics, {
+      params: { id: fixture.order._id, resolutionId },
+      body: { action: 'mark_replacement_shipped', carrier: 'Test Carrier', trackingNumber: 'TRACK-RACE' }, query: {},
+      user: { _id: supplierUser, role: 'supplier' }
+    });
+    assert.equal(shipped.status, 200);
     const request = {
       params: { id: fixture.order._id, resolutionId },
-      body: { notes: 'Replacement delivered.' }, query: {},
+      body: { action: 'mark_replacement_delivered', notes: 'Replacement delivered.' }, query: {},
       user: { _id: supplierUser, role: 'supplier' }
     };
     const results = await Promise.all([
-      invoke(markResolutionDelivered, request),
-      invoke(markResolutionDelivered, request)
+      invoke(transitionResolutionLogistics, request),
+      invoke(transitionResolutionLogistics, request)
     ]);
     assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
     const [order, report] = await Promise.all([
@@ -265,6 +277,55 @@ test('real MongoDB guards resolution transitions, lifecycle side effects, and ev
     assert.equal(report.resolutionStatus, 'reinspection');
     assert.equal(report.resolutionSubmissions.id(resolutionId).status, 'replacement_delivered');
     assert.equal(report.resolutionHistory.filter(row => row.action === 'replacement_delivery_reported').length, 1);
+  });
+
+  await t.test('return/correction follows Store return shipping and supplier correction delivery legs', async () => {
+    const fixture = await createIssueFixture('return-logistics');
+    fixture.report.items[0].receivedQuantity = 10;
+    fixture.report.items[0].damagedQuantity = 2;
+    fixture.report.items[0].missingQuantity = 0;
+    fixture.report.items[0].condition = 'damaged';
+    await fixture.report.save();
+    const request = resolutionRequest(fixture);
+    request.body.type = 'return_correction';
+    request.body.notes = 'Return the damaged units before correction.';
+    const submitted = await invoke(submitOrderResolution, request);
+    assert.equal(submitted.status, 201);
+    const resolutionId = submitted.body.resolution._id;
+    assert.equal((await invoke(reviewSupplierResolution, {
+      params: { id: fixture.order._id, resolutionId }, body: { decision: 'accept' }, query: {},
+      user: { _id: storeActor, role: 'platform_admin' }
+    })).status, 200);
+    assert.equal((await invoke(markResolutionReturnShipped, {
+      params: { id: fixture.order._id, resolutionId },
+      body: { carrier: 'Return Carrier', trackingNumber: 'RETURN-TRACK-1' }, query: {},
+      user: { _id: storeActor, role: 'platform_admin' }
+    })).status, 200);
+    assert.equal((await invoke(transitionResolutionLogistics, {
+      params: { id: fixture.order._id, resolutionId }, body: { action: 'confirm_return_received' }, query: {},
+      user: { _id: supplierUser, role: 'supplier' }
+    })).status, 200);
+    assert.equal((await invoke(transitionResolutionLogistics, {
+      params: { id: fixture.order._id, resolutionId },
+      body: { action: 'mark_replacement_shipped', carrier: 'Correction Carrier', trackingNumber: 'CORRECTION-TRACK-1' }, query: {},
+      user: { _id: supplierUser, role: 'supplier' }
+    })).status, 200);
+    assert.equal((await invoke(transitionResolutionLogistics, {
+      params: { id: fixture.order._id, resolutionId }, body: { action: 'mark_replacement_delivered' }, query: {},
+      user: { _id: supplierUser, role: 'supplier' }
+    })).status, 200);
+
+    const [order, report] = await Promise.all([
+      PurchaseOrder.findById(fixture.order._id),
+      ProcurementReceivingReport.findById(fixture.report._id)
+    ]);
+    const resolution = report.resolutionSubmissions.id(resolutionId);
+    assert.equal(resolution.returnShipment.status, 'received');
+    assert.equal(resolution.returnShipment.trackingNumber, 'RETURN-TRACK-1');
+    assert.equal(resolution.replacementShipment.status, 'delivered');
+    assert.equal(resolution.replacementShipment.trackingNumber, 'CORRECTION-TRACK-1');
+    assert.equal(order.status, 'reinspection');
+    assert.equal(report.resolutionStatus, 'reinspection');
   });
 
   await t.test('reinspection event time is server-authored for absent, forged, old-timezone, and malformed input', async () => {

@@ -1306,7 +1306,7 @@ const cancelOrder = async (req, res) => {
     await mongoose.connection.transaction(async session => {
       order = await PurchaseOrder.findOne({ _id: req.params.id, store }).session(session);
       if (!order) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
-      if (['shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'resolved', 'completed', 'returned', 'cancelled'].includes(order.status)) {
+      if (['shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection', 'resolved', 'completed', 'returned', 'cancelled'].includes(order.status)) {
         throw Object.assign(new Error(`Cannot cancel order in "${order.status}" status.`), { statusCode: 409 });
       }
       if (order.paymentStatus === 'paid') {
@@ -2174,10 +2174,34 @@ const reviewSupplierResolution = async (req, res) => {
         submission.financialAdjustment.status = 'pending_finance_review';
         report.resolutionStatus = 'resolution_accepted';
         order.status = 'resolution_accepted';
+      } else if (decision === 'accept' && submission.type === 'return_correction') {
+        const startedAt = new Date();
+        submission.status = 'return_processing';
+        submission.returnShipment = {
+          status: 'processing',
+          processingStartedBy: req.user._id,
+          processingStartedAt: startedAt,
+          history: [{
+            status: 'processing', actor: req.user._id, actorRole: req.user.role,
+            notes: req.body.notes || 'Store started preparing the damaged or incorrect items for return.'
+          }]
+        };
+        report.resolutionStatus = 'return_processing';
+        order.status = 'return_processing';
       } else if (decision === 'accept') {
-        submission.status = 'awaiting_replacement';
-        report.resolutionStatus = 'awaiting_replacement';
-        order.status = 'awaiting_replacement';
+        const startedAt = new Date();
+        submission.status = 'replacement_processing';
+        submission.replacementShipment = {
+          status: 'processing',
+          processingStartedBy: req.user._id,
+          processingStartedAt: startedAt,
+          history: [{
+            status: 'processing', actor: req.user._id, actorRole: req.user.role,
+            notes: req.body.notes || 'Supplier replacement workflow started after Store acceptance.'
+          }]
+        };
+        report.resolutionStatus = 'replacement_processing';
+        order.status = 'replacement_processing';
       }
       if (decision === 'reject' || report.resolutionStatus !== 'resolution_accepted') {
         report.resolutionHistory.push({
@@ -2229,6 +2253,102 @@ const reviewSupplierResolution = async (req, res) => {
     console.error('Review supplier resolution error:', error);
     res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
       message: error.name === 'CastError' ? 'Invalid resolution.' : (error.message || 'Unable to review the supplier resolution.')
+    });
+  }
+};
+
+const markResolutionReturnShipped = async (req, res) => {
+  let result;
+  try {
+    const carrier = String(req.body.carrier || '').trim();
+    const trackingNumber = String(req.body.trackingNumber || '').trim();
+    const notes = String(req.body.notes || '').trim();
+    if (!carrier || !trackingNumber) {
+      return res.status(400).json({ message: 'Carrier and tracking number are required before marking the return shipped.' });
+    }
+    if (carrier.length > 200 || trackingNumber.length > 200 || notes.length > 2000) {
+      return res.status(400).json({ message: 'Shipment details exceed the allowed length.' });
+    }
+    const accessibleOrder = await PurchaseOrder.findById(req.params.id).select('store');
+    if (!accessibleOrder) return res.status(404).json({ message: 'Purchase order not found.' });
+    if (!(await canOperateStore(req.user, accessibleOrder.store, ['procurement.manage', 'inventory.receive']))) {
+      return res.status(403).json({ message: 'Purchase order belongs to another store.' });
+    }
+
+    await mongoose.connection.transaction(async session => {
+      const order = await PurchaseOrder.findOne({
+        _id: req.params.id, store: accessibleOrder.store, isDeleted: false
+      }).session(session);
+      if (!order) throw Object.assign(new Error('Purchase order not found.'), { statusCode: 404 });
+      const report = await ProcurementReceivingReport.findOne({
+        purchaseOrder: order._id, store: order.store, supplier: order.supplier
+      }).session(session);
+      const submission = report?.resolutionSubmissions?.id(req.params.resolutionId);
+      if (!submission) throw Object.assign(new Error('Supplier resolution not found.'), { statusCode: 404 });
+      if (submission.type !== 'return_correction'
+          || submission.status !== 'return_processing'
+          || report.resolutionStatus !== 'return_processing') {
+        throw Object.assign(new Error('This resolution is not ready for a Store-to-supplier return shipment.'), { statusCode: 409 });
+      }
+
+      const shippedAt = new Date();
+      submission.returnShipment.status = 'shipped';
+      submission.returnShipment.carrier = carrier;
+      submission.returnShipment.trackingNumber = trackingNumber;
+      submission.returnShipment.notes = notes || undefined;
+      submission.returnShipment.shippedBy = req.user._id;
+      submission.returnShipment.shippedAt = shippedAt;
+      submission.returnShipment.history.push({
+        status: 'shipped', actor: req.user._id, actorRole: req.user.role, notes: notes || undefined
+      });
+      submission.status = 'return_shipped';
+      report.resolutionStatus = 'return_shipped';
+      report.resolutionHistory.push({
+        status: 'return_shipped', action: 'store_return_shipped', actor: req.user._id,
+        actorRole: req.user.role, resolutionSubmission: submission._id,
+        notes: notes || `${carrier} tracking ${trackingNumber}`
+      });
+      order.status = 'return_shipped';
+      order.statusHistory.push({
+        status: 'return_shipped', changedBy: req.user._id,
+        notes: notes || `Damaged/incorrect items shipped back via ${carrier} (${trackingNumber}).`
+      });
+      await Promise.all([report.save({ session }), order.save({ session })]);
+      result = { order, report, submission };
+    });
+
+    const supplier = await Supplier.findById(result.order.supplier).select('user');
+    await Promise.allSettled([
+      supplier && createNotification({
+        recipient: supplier.user,
+        sender: req.user._id,
+        type: 'purchase_order',
+        title: 'Procurement Return Shipped',
+        message: `The Store shipped returned items for ${result.order.orderNumber}. Confirm receipt before sending the correction.`,
+        relatedId: result.order._id,
+        relatedModel: 'PurchaseOrder'
+      }),
+      SupplyChainLog.create({
+        action: 'purchase_order_return_shipped',
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'PurchaseOrder', id: result.order._id },
+        description: `Store shipped returned procurement items for ${result.order.orderNumber}.`,
+        store: result.order.store,
+        supplier: result.order.supplier,
+        metadata: {
+          receivingReport: result.report._id,
+          resolutionSubmission: result.submission._id,
+          carrier,
+          trackingNumber
+        }
+      })
+    ].filter(Boolean));
+    return res.json({ order: result.order, receivingReport: sanitizeReceivingReport(result.report) });
+  } catch (error) {
+    console.error('Mark procurement return shipped error:', error);
+    return res.status(error.statusCode || (['CastError', 'ValidationError'].includes(error.name) ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid resolution.' : (error.message || 'Unable to mark the procurement return shipped.')
     });
   }
 };
@@ -2610,6 +2730,7 @@ module.exports = {
   authorizeResolutionReinspectionUpload,
   submitReceivingInspection,
   reviewSupplierResolution,
+  markResolutionReturnShipped,
   submitResolutionReinspection,
   getReceivingInspection,
   getReceivingEvidenceAccess,

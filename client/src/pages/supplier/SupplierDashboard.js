@@ -9,8 +9,9 @@ import {
 import { supplierService, uploadService, getImageUrl } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
+import ResolutionLogisticsTimeline from '../../components/procurement/ResolutionLogisticsTimeline';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
-import { pawzzleConfirm } from '../../utils/pawzzleDialog';
+import { pawzzleConfirm, pawzzlePrompt } from '../../utils/pawzzleDialog';
 import { formatSupplierPackageWeight, normalizeSupplierPackageWeight } from '../../utils/supplierProductDetails';
 import {
   prepareSupplierProductPayload,
@@ -290,6 +291,18 @@ const SupplierDashboard = () => {
     ? 'refund_credit'
     : (resolutionDrafts[order._id]?.type || 'replacement');
 
+  const resolutionItemsFor = order => {
+    const items = unresolvedItemsFor(order);
+    if (resolutionTypeFor(order) !== 'return_correction') return items;
+    return items.map(item => ({
+      ...item,
+      returnableQuantity: Math.min(
+        item.unresolvedQuantity,
+        Number(item.damagedQuantity || 0) + Number(item.incorrectQuantity || 0)
+      )
+    })).filter(item => item.returnableQuantity > 0);
+  };
+
   const updateResolutionDraft = (orderId, patch) => setResolutionDrafts(previous => ({
     ...previous,
     [orderId]: { type: 'replacement', adjustmentType: 'credit', notes: '', quantities: {}, ...(previous[orderId] || {}), ...patch }
@@ -303,9 +316,10 @@ const SupplierDashboard = () => {
         adjustmentType: draft.adjustmentType,
         proposedAmount: draft.type === 'refund_credit' ? Number(draft.proposedAmount) : undefined,
         notes: draft.notes,
-        items: unresolvedItemsFor(order).map(item => ({
+        items: resolutionItemsFor(order).map(item => ({
           purchaseOrderItem: item.purchaseOrderItem,
-          proposedQuantity: Number(draft.quantities?.[String(item.purchaseOrderItem)] ?? item.unresolvedQuantity)
+          proposedQuantity: Number(draft.quantities?.[String(item.purchaseOrderItem)]
+            ?? (draft.type === 'return_correction' ? item.returnableQuantity : item.unresolvedQuantity))
         })).filter(item => item.proposedQuantity > 0)
       });
       toast.success('Resolution submitted for Store review.');
@@ -313,12 +327,40 @@ const SupplierDashboard = () => {
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to submit the resolution.'); }
   };
 
-  const handleResolutionDelivered = async (order, resolution) => {
+  const handleResolutionLogistics = async (order, resolution, action) => {
+    const payload = { action };
+    if (action === 'mark_replacement_shipped') {
+      payload.carrier = await pawzzlePrompt('Enter the carrier handling the replacement or correction.', {
+        title: 'Mark correction as shipped', inputLabel: 'Carrier', required: true, confirmLabel: 'Next'
+      });
+      if (payload.carrier === null) return;
+      payload.trackingNumber = await pawzzlePrompt('Enter the shipment tracking number.', {
+        title: 'Mark correction as shipped', inputLabel: 'Tracking number', required: true, confirmLabel: 'Next'
+      });
+      if (payload.trackingNumber === null) return;
+    } else {
+      const confirmed = await pawzzleConfirm(action === 'confirm_return_received'
+        ? 'Confirm that the returned damaged or incorrect items physically arrived at your facility.'
+        : 'Confirm that the tracked replacement or correction shipment was delivered to the Store.', {
+        title: action === 'confirm_return_received' ? 'Return received?' : 'Correction delivered?',
+        confirmLabel: action === 'confirm_return_received' ? 'Confirm receipt' : 'Mark delivered'
+      });
+      if (!confirmed) return;
+    }
+    payload.notes = await pawzzlePrompt('Add logistics notes, if needed.', {
+      title: 'Update resolution delivery', inputLabel: 'Notes (optional)', multiline: true,
+      confirmLabel: 'Save status'
+    });
+    if (payload.notes === null) return;
     try {
-      await supplierService.markResolutionDelivered(order._id, resolution._id, {});
-      toast.success('Store receiving staff were notified to reinspect the delivery.');
+      await supplierService.transitionResolutionLogistics(order._id, resolution._id, payload);
+      toast.success(action === 'confirm_return_received'
+        ? 'Return receipt confirmed. The correction is now processing.'
+        : action === 'mark_replacement_shipped'
+          ? 'Replacement/correction shipment recorded.'
+          : 'Store receiving staff were notified to reinspect the delivery.');
       await loadData();
-    } catch (error) { toast.error(error.response?.data?.message || 'Unable to report the resolution delivery.'); }
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to update the resolution delivery.'); }
   };
 
   const handleImageUpload = async (e) => {
@@ -392,7 +434,8 @@ const SupplierDashboard = () => {
     submitted: 'amber', confirmed: 'primary', processing: 'primary', shipped: 'primary',
     delivered: 'emerald', completed: 'emerald', resolved: 'emerald', issue_reported: 'rose',
     pending_supplier_resolution: 'amber', resolution_submitted: 'primary', resolution_accepted: 'primary',
-    resolution_rejected: 'rose', awaiting_replacement: 'amber', reinspection: 'primary',
+    resolution_rejected: 'rose', awaiting_replacement: 'amber', return_processing: 'amber',
+    return_shipped: 'primary', replacement_processing: 'primary', replacement_shipped: 'primary', reinspection: 'primary',
     returned: 'amber', cancelled: 'rose'
   }[s] || 'slate');
 
@@ -577,7 +620,7 @@ const SupplierDashboard = () => {
                       <p className="text-[9px] text-slate-400">{order.seller?.firstName} {order.seller?.lastName} • {order.store?.name}</p>
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{String(order.status).replaceAll('_', ' ')}</span>
                       <p className="text-[11px] font-black text-slate-900 mt-1">{formatPeso(order.totalCost)}</p>
                     </div>
                   </div>
@@ -664,7 +707,7 @@ const SupplierDashboard = () => {
                   <p className="text-[9px] text-slate-400">From {order.seller?.firstName} {order.seller?.lastName} • {new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{String(order.status).replaceAll('_', ' ')}</span>
                   <p className="text-sm font-black text-slate-900">{formatPeso(order.totalCost)}</p>
                 </div>
               </div>
@@ -680,15 +723,16 @@ const SupplierDashboard = () => {
                 <div className="mt-2 space-y-1">{order.receivingReport.items?.filter(item => item.missingQuantity || item.damagedQuantity || item.incorrectQuantity).map(item => <p key={item._id} className="text-[9px] text-amber-900">Item discrepancy: {item.missingQuantity || 0} missing · {item.damagedQuantity || 0} damaged · {item.incorrectQuantity || 0} incorrect{item.notes ? ` · ${item.notes}` : ''}</p>)}</div>
                 <ProcurementEvidenceGallery orderId={order._id} evidence={order.receivingReport.evidence} imageClassName="h-16 w-16 rounded-lg object-cover" />
                 <ProcurementReinspectionEvidenceGallery orderId={order._id} reinspections={order.receivingReport.reinspections} imageClassName="h-16 w-16 rounded-lg object-cover" />
+                {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => <ResolutionLogisticsTimeline key={resolution._id} resolution={resolution} />)}
                 {['pending_supplier_resolution', 'resolution_rejected'].includes(order.receivingReport.resolutionStatus) && <div className="mt-3 space-y-3 rounded-xl border border-amber-200 bg-white p-3">
                   <p className="text-[9px] font-black uppercase text-slate-700">Submit a resolution</p>
                   <select value={resolutionTypeFor(order)} onChange={event => updateResolutionDraft(order._id, { type: event.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs">
-                    {!unresolvedItemsFor(order).some(item => item.itemType === 'live_pet') && <><option value="replacement">Replacement</option><option value="return_correction">Return / correction</option></>}
+                    {!unresolvedItemsFor(order).some(item => item.itemType === 'live_pet') && <><option value="replacement">Replacement</option>{unresolvedItemsFor(order).some(item => Number(item.damagedQuantity || 0) + Number(item.incorrectQuantity || 0) > 0) && <option value="return_correction">Return / correction</option>}</>}
                     <option value="refund_credit">Refund / credit proposal</option>
                   </select>
-                  {unresolvedItemsFor(order).map(item => <label key={String(item.purchaseOrderItem)} className="grid grid-cols-[1fr_5rem] items-center gap-2 text-[10px] text-slate-700">
-                    <span>{item.productName} ({item.unresolvedQuantity} unresolved)</span>
-                    <input type="number" min="1" max={item.unresolvedQuantity} value={resolutionDrafts[order._id]?.quantities?.[String(item.purchaseOrderItem)] ?? item.unresolvedQuantity} onChange={event => updateResolutionDraft(order._id, { quantities: { ...(resolutionDrafts[order._id]?.quantities || {}), [String(item.purchaseOrderItem)]: event.target.value } })} className="rounded-lg border border-slate-200 px-2 py-1.5" />
+                  {resolutionItemsFor(order).map(item => <label key={String(item.purchaseOrderItem)} className="grid grid-cols-[1fr_5rem] items-center gap-2 text-[10px] text-slate-700">
+                    <span>{item.productName} ({resolutionTypeFor(order) === 'return_correction' ? item.returnableQuantity : item.unresolvedQuantity} {resolutionTypeFor(order) === 'return_correction' ? 'returnable' : 'unresolved'})</span>
+                    <input type="number" min="1" max={resolutionTypeFor(order) === 'return_correction' ? item.returnableQuantity : item.unresolvedQuantity} value={resolutionDrafts[order._id]?.quantities?.[String(item.purchaseOrderItem)] ?? (resolutionTypeFor(order) === 'return_correction' ? item.returnableQuantity : item.unresolvedQuantity)} onChange={event => updateResolutionDraft(order._id, { quantities: { ...(resolutionDrafts[order._id]?.quantities || {}), [String(item.purchaseOrderItem)]: event.target.value } })} className="rounded-lg border border-slate-200 px-2 py-1.5" />
                   </label>)}
                   {resolutionTypeFor(order) === 'refund_credit' && <div className="grid gap-2 sm:grid-cols-2">
                     <select value={resolutionDrafts[order._id]?.adjustmentType || 'credit'} onChange={event => updateResolutionDraft(order._id, { adjustmentType: event.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-xs"><option value="credit">Credit</option><option value="refund">Refund</option></select>
@@ -697,7 +741,11 @@ const SupplierDashboard = () => {
                   <textarea placeholder="Resolution notes" value={resolutionDrafts[order._id]?.notes || ''} onChange={event => updateResolutionDraft(order._id, { notes: event.target.value })} className="min-h-16 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs" />
                   <button onClick={() => handleSubmitResolution(order)} className="rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Submit resolution</button>
                 </div>}
-                {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => resolution.status === 'awaiting_replacement' && <button key={resolution._id} onClick={() => handleResolutionDelivered(order, resolution)} className="mt-3 rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Mark replacement/correction delivered</button>)}
+                {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => <div key={resolution._id} className="mt-3 flex flex-wrap gap-2">
+                  {resolution.status === 'return_shipped' && <button onClick={() => handleResolutionLogistics(order, resolution, 'confirm_return_received')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[9px] font-black uppercase text-white">Confirm return received</button>}
+                  {['replacement_processing', 'awaiting_replacement'].includes(resolution.status) && <button onClick={() => handleResolutionLogistics(order, resolution, 'mark_replacement_shipped')} className="rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Mark replacement/correction shipped</button>}
+                  {resolution.status === 'replacement_shipped' && <button onClick={() => handleResolutionLogistics(order, resolution, 'mark_replacement_delivered')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[9px] font-black uppercase text-white">Mark replacement/correction delivered</button>}
+                </div>)}
               </div>}
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">

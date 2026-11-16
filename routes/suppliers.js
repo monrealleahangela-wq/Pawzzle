@@ -9,7 +9,7 @@ const {
   updateStoreSupplierAssociation,
   getMySupplierProfile, updateSupplierProfile, getSupplierDashboard,
   addProduct, getMyProducts, updateProduct, deleteProduct,
-  getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered,
+  getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered, transitionResolutionLogistics,
   browseSuppliers, getSupplierCatalog,
   adminGetAllSuppliers, adminGetProductReviews, adminReviewProduct,
   adminVerifySupplier, adminGetSupplierDetails,
@@ -54,6 +54,7 @@ router.get('/orders', authenticate, requirePasswordChangeCompleted, getSupplierO
 router.patch('/orders/:id/status', authenticate, requirePasswordChangeCompleted, updateOrderStatus);
 router.post('/orders/:id/resolutions', authenticate, requirePasswordChangeCompleted, submitOrderResolution);
 router.post('/orders/:id/resolutions/:resolutionId/delivered', authenticate, requirePasswordChangeCompleted, markResolutionDelivered);
+router.patch('/orders/:id/resolutions/:resolutionId/logistics', authenticate, requirePasswordChangeCompleted, transitionResolutionLogistics);
 
 // Store-scoped supplier invitations and lifecycle. The server resolves the
 // caller's store; no client-provided store or owner id is trusted.

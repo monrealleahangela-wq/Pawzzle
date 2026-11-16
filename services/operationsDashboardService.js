@@ -425,7 +425,12 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
 
   if (includeFinancials) {
     response.procurement = {
-      pendingPurchaseOrders: statusCount(purchaseOrders, ['draft', 'submitted', 'confirmed', 'processing', 'shipped']),
+      pendingPurchaseOrders: statusCount(purchaseOrders, [
+        'draft', 'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'issue_reported',
+        'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
+        'awaiting_replacement', 'return_processing', 'return_shipped',
+        'replacement_processing', 'replacement_shipped', 'reinspection'
+      ]),
       deliveredPurchaseOrders: statusCount(purchaseOrders, ['delivered']),
       monthlyCost: procurementCost,
       recordedPayments: procurementPaid,

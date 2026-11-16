@@ -17,6 +17,7 @@ const {
   cancelOrder, confirmDelivery, authorizeReceivingInspectionUpload, authorizeResolutionReinspectionUpload,
   getReceivingProductLinks, linkReceivingStoreProduct, createReceivingStoreProduct,
   submitReceivingInspection, reviewSupplierResolution, submitResolutionReinspection,
+  markResolutionReturnShipped,
   getReceivingInspection, getReceivingEvidenceAccess, adminGetAllOrders
 } = require('../controllers/purchaseOrderController');
 const {
@@ -49,6 +50,7 @@ router.get('/:id/inspection', authenticate, requirePermission('procurement.view'
 router.get('/:id/inspection/evidence/:evidenceId/access', authenticate, getReceivingEvidenceAccess);
 router.post('/:id/inspection', authenticate, requirePermission('procurement.manage', 'inventory.receive'), receivingPlan, authorizeReceivingInspectionUpload, uploadProcurementEvidence, handleUploadError, submitReceivingInspection);
 router.patch('/:id/resolutions/:resolutionId', authenticate, requirePermission('procurement.manage', 'inventory.receive'), reviewSupplierResolution);
+router.patch('/:id/resolutions/:resolutionId/return-shipment', authenticate, requirePermission('procurement.manage', 'inventory.receive'), markResolutionReturnShipped);
 router.post('/:id/resolutions/:resolutionId/reinspection', authenticate, requirePermission('procurement.manage', 'inventory.receive'), receivingPlan, authorizeResolutionReinspectionUpload, uploadProcurementEvidence, handleUploadError, submitResolutionReinspection);
 router.get('/:id', authenticate, getOrderById);
 router.patch('/:id/cancel', authenticate, requirePermission('procurement.manage'), cancelOrder);

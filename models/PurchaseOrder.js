@@ -101,7 +101,7 @@ const purchaseOrderSchema = new mongoose.Schema({
   // ── Status ────────────────────────────────────────────
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'resolved', 'completed', 'cancelled', 'returned'],
+    enum: ['draft', 'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection', 'resolved', 'completed', 'cancelled', 'returned'],
     default: 'draft'
   },
   paymentStatus: {
