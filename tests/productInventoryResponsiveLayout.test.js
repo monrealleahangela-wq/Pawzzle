@@ -35,7 +35,7 @@ test('catalog grid and cards provide five-to-one column density without fixed ca
   assert.match(source, /alt=\{product\.name\}[^>]*object-contain/);
   assert.match(source, /line-clamp-2 break-words/);
   assert.match(source, /role="heading" aria-level="3"[^>]*text-base/);
-  assert.match(source, /\{product\.stockQuantity \|\| 0\} UNITS/);
+  assert.match(source, /\{product\.stockQuantity \|\| 0\} \{product\.unit \|\| 'unit'\}/);
   assert.match(source, /aria-label=\{`Edit \$\{product\.name\}`\}/);
   assert.match(source, /aria-label=\{`Delete \$\{product\.name\}`\}/);
   assert.doesNotMatch(source, /responsive-card-grid \[--card-min:17rem\] sm:\[--card-min:18rem\]/);
@@ -46,6 +46,6 @@ test('Inventory Status keeps compact controls and contains mobile overflow', () 
   assert.match(source, /htmlFor="inventory-search"[^>]*>Search inventory</);
   assert.match(source, /max-w-full overflow-x-auto no-scrollbar/);
   assert.match(source, /min-w-\[720px\] divide-y divide-slate-100/);
-  assert.match(source, /px-5 py-3\.5[^"]*"[^>]*>Stock Quantity</);
+  assert.match(source, /aria-label="Stock Quantity" readOnly/);
   assert.match(source, /h-10[^"]*px-4[^"]*"[^>]*>\s*Adjust Stock/);
 });

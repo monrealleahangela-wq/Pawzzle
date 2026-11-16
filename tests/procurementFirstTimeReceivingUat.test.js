@@ -33,6 +33,7 @@ test('existing product linking enforces Store scope, active lifecycle, supplier 
   assert.match(getStoreProductCompatibilityIssue({ storeProduct: { ...valid, isActive: false }, supplierProduct, storeId: store }), /archived or inactive/);
   assert.match(getStoreProductCompatibilityIssue({ storeProduct: { ...valid, category: 'Pet Health Care' }, supplierProduct, storeId: store }), /incompatible/);
   assert.match(getStoreProductCompatibilityIssue({ storeProduct: { ...valid, supplierProductRef: id() }, supplierProduct, storeId: store }), /different supplier item/);
+  assert.match(getStoreProductCompatibilityIssue({ storeProduct: { ...valid, unit: 'piece' }, supplierProduct, storeId: store, orderedUnit: 'pack' }), /ordered unit "pack"/);
   assert.throws(() => assertStoreProductCompatible({ storeProduct: { ...valid, store: id() }, supplierProduct, storeId: store }), error => error.statusCode === 409);
 });
 
@@ -43,6 +44,7 @@ test('first-time receiving creates a valid zero-stock unpublished draft from exp
     sku: 'SUPPLIER-SKU',
     category: 'accessories',
     description: 'Supplier description',
+    unitOfMeasure: 'pack',
     images: ['https://example.test/supplier-image.jpg'],
     retailPrice: 99,
     brand: 'Supplier Brand'
@@ -73,13 +75,16 @@ test('first-time receiving creates a valid zero-stock unpublished draft from exp
   assert.equal(new Product(productData).validateSync(), undefined);
 });
 
-test('draft creation refuses to infer required Store price, SKU, description, or selling unit', () => {
-  const supplierProduct = { _id: id(), sku: 'SUPPLIER-SKU', retailPrice: 50, description: 'Supplier text', images: [] };
+test('draft creation uses the ordered selling unit and refuses manual unit changes', () => {
+  const supplierProduct = { _id: id(), sku: 'SUPPLIER-SKU', retailPrice: 50, description: 'Supplier text', images: [], unitOfMeasure: 'pack' };
   const base = { supplierProduct, supplierId: id(), storeId: id(), userId: id() };
   assert.throws(() => buildDraftStoreProduct({ ...base, input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', unit: 'piece' } }), /Selling price/);
   assert.throws(() => buildDraftStoreProduct({ ...base, input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', price: 50, unit: 'piece' } }), /Store SKU/);
   assert.throws(() => buildDraftStoreProduct({ ...base, input: { name: 'petsup', category: 'Others', shortDescription: 'Short', price: 50, sku: 'STORE', unit: 'piece' } }), /description/);
-  assert.throws(() => buildDraftStoreProduct({ ...base, input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', price: 50, sku: 'STORE' } }), /selling unit/);
+  const product = buildDraftStoreProduct({ ...base, orderedUnit: 'box', input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', price: 50, sku: 'STORE' } });
+  assert.equal(product.unit, 'box');
+  assert.throws(() => buildDraftStoreProduct({ ...base, orderedUnit: 'box', input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', price: 50, sku: 'STORE', unit: 'pack' } }), /fixed as "box"/);
+  assert.throws(() => buildDraftStoreProduct({ ...base, supplierProduct: { ...supplierProduct, unitOfMeasure: '' }, input: { name: 'petsup', category: 'Others', description: 'Description', shortDescription: 'Short', price: 50, sku: 'STORE' } }), /new order with a valid unit/);
 });
 
 test('receiving quantities continue to accept only verified good units for partial and damaged deliveries', () => {
@@ -138,12 +143,17 @@ test('draft receiving products are excluded from customer discovery, detail, ord
 
 test('inspection UI exposes both receiving paths and keeps the draft in parent state while linking', () => {
   const component = read('client/src/components/procurement/ReceivingInspectionModal.js');
+  const controller = read('controllers/purchaseOrderController.js');
   const page = read('client/src/pages/admin/PurchaseOrders.js');
   const service = read('client/src/services/apiService.js');
   assert.match(component, /Create New Store Product/);
   assert.match(component, /setForm\(previous =>/);
   assert.match(component, /Your inspection draft was preserved/);
   assert.match(component, /unpublished draft/);
+  assert.match(component, /Ordered selling unit/);
+  assert.match(component, /readOnly value=\{creationForm\.unit\}/);
+  assert.match(controller, /getDraftProductSuggestions\(supplierProduct, orderItem\.unitOfMeasureSnapshot\)/);
+  assert.match(controller, /orderedUnit: orderItem\.unitOfMeasureSnapshot/);
   assert.match(page, /<ReceivingInspectionModal/);
   assert.match(service, /getReceivingProductLinks/);
   assert.match(service, /linkReceivingStoreProduct/);

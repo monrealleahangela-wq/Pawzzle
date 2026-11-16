@@ -33,7 +33,8 @@ test('compact product form keeps required fields and existing advanced behavior'
   assert.match(page, /showAdvancedProductEditor/);
   assert.match(page, /shortDescription: productForm\.shortDescription\?\.trim\(\) \|\|/);
   assert.match(page, /sku: productForm\.sku\?\.trim\(\) \|\|/);
-  assert.match(controller, /stockQuantity: initialStock/);
+  assert.match(controller, /const initialStock = 0/);
+  assert.match(controller, /PURCHASE_ORDER_RECEIVING_REQUIRED/);
   assert.ok(Product.schema.path('barcode'));
   assert.ok(Product.schema.path('unit'));
 });

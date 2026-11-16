@@ -26,7 +26,7 @@ const mapSupplierCategoryToStoreCategory = value => (
   normalizeProductCategory(value) || SUPPLIER_CATEGORY_MAP[cleanText(value).toLowerCase()] || null
 );
 
-const getStoreProductCompatibilityIssue = ({ storeProduct, supplierProduct, storeId }) => {
+const getStoreProductCompatibilityIssue = ({ storeProduct, supplierProduct, storeId, orderedUnit }) => {
   if (!storeProduct) return 'The selected Store product was not found.';
   if (idOf(storeProduct.store) !== idOf(storeId)) return 'The selected Store product belongs to another Store.';
   if (storeProduct.isDeleted || storeProduct.isActive === false) return 'The selected Store product is archived or inactive.';
@@ -43,8 +43,9 @@ const getStoreProductCompatibilityIssue = ({ storeProduct, supplierProduct, stor
   if (expectedCategory && actualCategory && expectedCategory !== actualCategory) {
     return `The selected Store product category is incompatible with supplier category "${supplierProduct.category}".`;
   }
-  if (reviewedOffer && storeProduct.unit !== supplierProduct.unitOfMeasure) {
-    return 'The reviewed offer unit no longer matches the Store product unit.';
+  const expectedUnit = cleanText(orderedUnit || supplierProduct?.unitOfMeasure);
+  if (STORE_PRODUCT_UNITS.has(expectedUnit) && storeProduct.unit !== expectedUnit) {
+    return `The ordered unit "${expectedUnit}" does not match the Store product unit "${storeProduct.unit}".`;
   }
   return null;
 };
@@ -76,14 +77,22 @@ const assertStoreProductCompatible = context => {
   return context.storeProduct;
 };
 
-const buildDraftStoreProduct = ({ supplierProduct, supplierId, storeId, userId, input = {} }) => {
+const resolveOrderedUnit = ({ supplierProduct, orderedUnit }) => {
+  const unit = cleanText(orderedUnit || supplierProduct?.unitOfMeasure);
+  if (!STORE_PRODUCT_UNITS.has(unit)) {
+    throw invalid('The purchase order does not contain a supported selling unit. Place a new order with a valid unit before receiving this item.', 409);
+  }
+  return unit;
+};
+
+const buildDraftStoreProduct = ({ supplierProduct, supplierId, storeId, userId, orderedUnit, input = {} }) => {
   const name = cleanText(input.name);
   const description = cleanText(input.description);
   const shortDescription = cleanText(input.shortDescription);
   const sku = cleanText(input.sku);
   const category = normalizeProductCategory(input.category);
   const price = Number(input.price);
-  const unit = cleanText(input.unit);
+  const unit = resolveOrderedUnit({ supplierProduct, orderedUnit });
 
   if (!name) throw invalid('Product name is required.');
   if (!category) throw invalid('Select a valid Store product category.');
@@ -91,7 +100,9 @@ const buildDraftStoreProduct = ({ supplierProduct, supplierId, storeId, userId, 
   if (!shortDescription) throw invalid('Short description is required.');
   if (!Number.isFinite(price) || price <= 0) throw invalid('Selling price must be greater than zero.');
   if (!sku) throw invalid('Enter a Store SKU. Supplier SKUs are not copied automatically.');
-  if (!STORE_PRODUCT_UNITS.has(unit)) throw invalid('Select a valid Store selling unit.');
+  if (input.unit && cleanText(input.unit) !== unit) {
+    throw invalid(`The selling unit is fixed as "${unit}" by this purchase order. Place a new order to use a different unit.`, 409);
+  }
 
   const product = {
     name,
@@ -130,13 +141,14 @@ const buildDraftStoreProduct = ({ supplierProduct, supplierId, storeId, userId, 
   return product;
 };
 
-const getDraftProductSuggestions = supplierProduct => ({
+const getDraftProductSuggestions = (supplierProduct, orderedUnit) => ({
   name: cleanText(supplierProduct?.name),
   category: mapSupplierCategoryToStoreCategory(supplierProduct?.category) || '',
   description: cleanText(supplierProduct?.description),
   supplierSku: cleanText(supplierProduct?.sku),
   supplierRetailPrice: Number(supplierProduct?.retailPrice) > 0 ? Number(supplierProduct.retailPrice) : null,
-  unit: STORE_PRODUCT_UNITS.has(supplierProduct?.unitOfMeasure) ? supplierProduct.unitOfMeasure : '',
+  unit: STORE_PRODUCT_UNITS.has(cleanText(orderedUnit || supplierProduct?.unitOfMeasure))
+    ? cleanText(orderedUnit || supplierProduct.unitOfMeasure) : '',
   supplierImageCount: Array.isArray(supplierProduct?.images) ? supplierProduct.images.length : 0
 });
 
@@ -147,6 +159,7 @@ module.exports = {
   getOfferMatchType,
   getOfferReviewIssue,
   assertStoreProductCompatible,
+  resolveOrderedUnit,
   buildDraftStoreProduct,
   getDraftProductSuggestions
 };
