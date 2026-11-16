@@ -62,6 +62,34 @@ const resolutionItemSchema = new mongoose.Schema({
   proposedQuantity: { type: Number, required: true, min: 1 }
 }, { _id: false });
 
+const resolutionShipmentHistorySchema = new mongoose.Schema({
+  status: { type: String, required: true },
+  actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  actorRole: String,
+  notes: { type: String, trim: true, maxlength: 2000 },
+  timestamp: { type: Date, default: Date.now }
+}, { _id: true });
+
+const resolutionShipmentSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ['not_required', 'processing', 'shipped', 'received', 'delivered'],
+    default: 'not_required'
+  },
+  carrier: { type: String, trim: true, maxlength: 200 },
+  trackingNumber: { type: String, trim: true, maxlength: 200 },
+  notes: { type: String, trim: true, maxlength: 2000 },
+  processingStartedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  processingStartedAt: Date,
+  shippedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  shippedAt: Date,
+  receivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  receivedAt: Date,
+  deliveredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deliveredAt: Date,
+  history: { type: [resolutionShipmentHistorySchema], default: [] }
+}, { _id: false });
+
 const resolutionSubmissionSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -72,7 +100,7 @@ const resolutionSubmissionSchema = new mongoose.Schema({
   notes: { type: String, trim: true, maxlength: 2000 },
   status: {
     type: String,
-    enum: ['submitted', 'accepted', 'rejected', 'awaiting_replacement', 'replacement_delivered', 'resolved'],
+    enum: ['submitted', 'accepted', 'rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'replacement_delivered', 'resolved'],
     default: 'submitted'
   },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -83,6 +111,8 @@ const resolutionSubmissionSchema = new mongoose.Schema({
   replacementDeliveredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   replacementDeliveredAt: Date,
   replacementNotes: { type: String, trim: true, maxlength: 2000 },
+  returnShipment: { type: resolutionShipmentSchema, default: () => ({ status: 'not_required' }) },
+  replacementShipment: { type: resolutionShipmentSchema, default: () => ({ status: 'not_required' }) },
   financialProposal: {
     adjustmentType: { type: String, enum: ['refund', 'credit'] },
     proposedAmount: { type: Number, min: 0.01 }
@@ -162,7 +192,7 @@ const procurementReceivingReportSchema = new mongoose.Schema({
   payableAmount: { type: Number, default: 0, min: 0 },
   resolutionStatus: {
     type: String,
-    enum: ['not_required', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'reinspection_processing', 'resolved'],
+    enum: ['not_required', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection', 'reinspection_processing', 'resolved'],
     default: 'not_required'
   },
   resolutionSubmissions: { type: [resolutionSubmissionSchema], default: [] },

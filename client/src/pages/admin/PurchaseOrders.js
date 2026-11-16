@@ -6,6 +6,7 @@ import { Truck, Package, Plus, ShoppingCart, X, Eye, Minus, TrendingDown, Layers
 import { supplierService, purchaseOrderService, paymentService, getImageUrl } from '../../services/apiService';
 import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import ProcurementEvidenceGallery, { ProcurementReinspectionEvidenceGallery } from '../../components/procurement/ProcurementEvidenceGallery';
+import ResolutionLogisticsTimeline from '../../components/procurement/ResolutionLogisticsTimeline';
 import ReceivingInspectionModal from '../../components/procurement/ReceivingInspectionModal';
 import SupplierOfferComparison from '../../components/procurement/SupplierOfferComparison';
 import { formatPeso, purchaseOrderPaymentSummary } from '../../utils/paymentSummary';
@@ -337,6 +338,27 @@ const PurchaseOrders = () => {
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to review the resolution.'); }
   };
 
+  const markReturnShipped = async (order, resolution) => {
+    const carrier = await pawzzlePrompt('Enter the carrier handling the damaged-item return.', {
+      title: 'Mark return as shipped', inputLabel: 'Carrier', required: true, confirmLabel: 'Next'
+    });
+    if (carrier === null) return;
+    const trackingNumber = await pawzzlePrompt('Enter the return shipment tracking number.', {
+      title: 'Mark return as shipped', inputLabel: 'Tracking number', required: true, confirmLabel: 'Next'
+    });
+    if (trackingNumber === null) return;
+    const notes = await pawzzlePrompt('Add return shipment notes, if needed.', {
+      title: 'Mark return as shipped', inputLabel: 'Notes (optional)', multiline: true,
+      confirmLabel: 'Mark return shipped'
+    });
+    if (notes === null) return;
+    try {
+      await purchaseOrderService.markResolutionReturnShipped(order._id, resolution._id, { carrier, trackingNumber, notes });
+      toast.success('Return shipment recorded. The supplier must confirm receipt.');
+      await fetchData();
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to mark the return shipped.'); }
+  };
+
   const openReinspection = (order, resolution) => {
     setInspectionResolution(resolution);
     const proposal = new Map((resolution.items || []).map(item => [String(item.purchaseOrderItem), item]));
@@ -400,6 +422,7 @@ const PurchaseOrders = () => {
     shipped: 'purple', delivered: 'emerald', completed: 'emerald', resolved: 'emerald',
     issue_reported: 'rose', pending_supplier_resolution: 'amber', resolution_submitted: 'blue',
     resolution_accepted: 'blue', resolution_rejected: 'rose', awaiting_replacement: 'amber',
+    return_processing: 'amber', return_shipped: 'purple', replacement_processing: 'indigo', replacement_shipped: 'purple',
     reinspection: 'blue', returned: 'amber', cancelled: 'rose'
   }[s] || 'slate');
 
@@ -460,7 +483,7 @@ const PurchaseOrders = () => {
                   <p className="text-[9px] text-slate-400">{order.supplier?.businessName} • {new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{order.status}</span>
+                  <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase bg-${statusColor(order.status)}-100 text-${statusColor(order.status)}-700`}>{String(order.status).replaceAll('_', ' ')}</span>
                   <p className="text-sm font-black text-slate-900">{formatPeso(order.totalCost)}</p>
                 </div>
               </div>
@@ -477,15 +500,17 @@ const PurchaseOrders = () => {
                 {order.receivingReport.resolutionSubmissions?.slice(-1).map(resolution => <div key={resolution._id} className="mt-3 rounded-lg border border-amber-200 bg-white p-3">
                   <p className="text-[9px] font-black uppercase text-slate-700">{resolution.type?.replaceAll('_', ' ')} proposal</p>
                   {resolution.notes && <p className="mt-1 text-[10px] text-slate-600">{resolution.notes}</p>}
+                  <ResolutionLogisticsTimeline resolution={resolution} />
                   {resolution.financialProposal?.proposedAmount && <p className="mt-1 text-[10px] text-slate-600">Proposed {resolution.financialProposal.adjustmentType}: {formatPeso(resolution.financialProposal.proposedAmount)}. Finance approval is required.</p>}
                   {resolution.status === 'submitted' && <div className="mt-2 flex gap-2"><button onClick={() => reviewResolution(order, resolution, 'accept')} className="rounded-lg bg-emerald-600 px-3 py-2 text-[9px] font-black uppercase text-white">Accept</button><button onClick={() => reviewResolution(order, resolution, 'reject')} className="rounded-lg bg-rose-100 px-3 py-2 text-[9px] font-black uppercase text-rose-700">Reject</button></div>}
+                  {resolution.status === 'return_processing' && <button onClick={() => markReturnShipped(order, resolution)} className="mt-2 rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Mark return as shipped</button>}
                   {resolution.status === 'replacement_delivered' && <button onClick={() => openReinspection(order, resolution)} className="mt-2 rounded-lg bg-primary-600 px-3 py-2 text-[9px] font-black uppercase text-white">Reinspect replacement</button>}
                   {resolution.financialAdjustment?.status && resolution.financialAdjustment.status !== 'not_required' && <p className="mt-2 text-[9px] font-bold uppercase text-slate-500">Finance: {resolution.financialAdjustment.status.replaceAll('_', ' ')}</p>}
                 </div>)}
               </section>}
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => setSelectedOrder(order)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-[9px] font-black uppercase flex items-center gap-1"><Eye className="h-3 w-3"/> Details</button>
-                {!['shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection', 'resolved', 'completed', 'returned', 'cancelled'].includes(order.status) && (
+                {!['shipped', 'delivered', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection', 'resolved', 'completed', 'returned', 'cancelled'].includes(order.status) && (
                   <button onClick={() => cancelOrder(order._id)}
                     className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-[9px] font-black uppercase hover:bg-rose-600 hover:text-white transition-all">Cancel</button>
                 )}
@@ -493,7 +518,7 @@ const PurchaseOrders = () => {
                   <button onClick={() => openInspection(order)}
                     className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase hover:bg-emerald-700 transition-all">Inspect Delivery</button>
                 )}
-                {!['paid', 'settled'].includes(order.paymentStatus) && !['cancelled','returned','issue_reported','pending_supplier_resolution','resolution_submitted','resolution_accepted','resolution_rejected','awaiting_replacement','reinspection','completed'].includes(order.status) && (order.paymentTiming !== 'after_inspection' || ['accepted', 'resolved'].includes(order.inspectionStatus)) && <button onClick={() => startPayment(order)} className="flex items-center gap-1 rounded-xl bg-primary-600 px-4 py-2 text-[9px] font-black uppercase text-white"><CreditCard className="h-3 w-3" /> Pay with PayMongo</button>}
+                {!['paid', 'settled'].includes(order.paymentStatus) && !['cancelled','returned','issue_reported','pending_supplier_resolution','resolution_submitted','resolution_accepted','resolution_rejected','awaiting_replacement','return_processing','return_shipped','replacement_processing','replacement_shipped','reinspection','completed'].includes(order.status) && (order.paymentTiming !== 'after_inspection' || ['accepted', 'resolved'].includes(order.inspectionStatus)) && <button onClick={() => startPayment(order)} className="flex items-center gap-1 rounded-xl bg-primary-600 px-4 py-2 text-[9px] font-black uppercase text-white"><CreditCard className="h-3 w-3" /> Pay with PayMongo</button>}
               </div>
             </div>
           ))}

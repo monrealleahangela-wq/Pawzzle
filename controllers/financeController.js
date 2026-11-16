@@ -155,7 +155,7 @@ const createProcurementPayment = async (req, res) => {
     await mongoose.connection.transaction(async session => {
       const order = await PurchaseOrder.findOne({ _id: req.body.purchaseOrder, store, isDeleted: false }).session(session);
       if (!order) throw Object.assign(new Error('Purchase order not found for this store.'), { statusCode: 404 });
-      if (['cancelled', 'returned', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'reinspection'].includes(order.status)) {
+      if (['cancelled', 'returned', 'issue_reported', 'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected', 'awaiting_replacement', 'return_processing', 'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection'].includes(order.status)) {
         throw Object.assign(new Error('Payments cannot be recorded for cancelled, returned, or disputed orders.'), { statusCode: 409 });
       }
       if (order.paymentMethod === 'paymongo') {

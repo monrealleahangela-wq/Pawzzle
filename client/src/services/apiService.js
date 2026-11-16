@@ -638,6 +638,7 @@ export const supplierService = {
   updateOrderStatus: (id, data) => api.patch(`/suppliers/orders/${id}/status`, data),
   submitOrderResolution: (id, data) => api.post(`/suppliers/orders/${id}/resolutions`, data),
   markResolutionDelivered: (id, resolutionId, data = {}) => api.post(`/suppliers/orders/${id}/resolutions/${resolutionId}/delivered`, data),
+  transitionResolutionLogistics: (id, resolutionId, data) => api.patch(`/suppliers/orders/${id}/resolutions/${resolutionId}/logistics`, data),
   // Browse (seller side)
   browse: (params) => api.get('/suppliers/browse', { params }),
   getCatalog: (supplierId, params) => api.get(`/suppliers/catalog/${supplierId}`, { params }),
@@ -680,6 +681,7 @@ export const purchaseOrderService = {
   createReceivingStoreProduct: (id, itemId, data) => api.post(`/purchase-orders/${id}/items/${itemId}/store-product`, data),
   submitInspection: (id, formData) => api.post(`/purchase-orders/${id}/inspection`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   reviewResolution: (id, resolutionId, data) => api.patch(`/purchase-orders/${id}/resolutions/${resolutionId}`, data),
+  markResolutionReturnShipped: (id, resolutionId, data) => api.patch(`/purchase-orders/${id}/resolutions/${resolutionId}/return-shipment`, data),
   submitReinspection: (id, resolutionId, formData) => api.post(`/purchase-orders/${id}/resolutions/${resolutionId}/reinspection`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getInspection: (id) => api.get(`/purchase-orders/${id}/inspection`),
   getEvidenceAccess: (id, evidenceId) => api.get(`/purchase-orders/${id}/inspection/evidence/${evidenceId}/access`),

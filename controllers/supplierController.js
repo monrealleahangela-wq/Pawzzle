@@ -1299,6 +1299,13 @@ const submitOrderResolution = async (req, res) => {
         if (orderItem.itemType === 'live_pet' && type !== 'refund_credit') {
           throw createHttpError('Exact live-pet procurement cannot use quantity-based replacement or correction. Submit a refund/credit proposal for authorized review.', 409);
         }
+        if (type === 'return_correction') {
+          const inspectedItem = report.items.find(item => String(item.purchaseOrderItem) === id);
+          const returnableQuantity = Number(inspectedItem?.damagedQuantity || 0) + Number(inspectedItem?.incorrectQuantity || 0);
+          if (proposedQuantity > returnableQuantity) {
+            throw createHttpError('Return/correction quantities cannot exceed the damaged or incorrect units physically held by the Store.', 400);
+          }
+        }
         seen.add(id);
         items.push({ purchaseOrderItem: orderItem._id, unresolvedQuantity: available, proposedQuantity });
       }
@@ -1367,9 +1374,22 @@ const submitOrderResolution = async (req, res) => {
   }
 };
 
-const markResolutionDelivered = async (req, res) => {
+const transitionResolutionLogistics = async (req, res) => {
   let result;
   try {
+    const action = req.body.action;
+    if (!['confirm_return_received', 'mark_replacement_shipped', 'mark_replacement_delivered'].includes(action)) {
+      return res.status(400).json({ message: 'Select a valid return or replacement delivery action.' });
+    }
+    const carrier = String(req.body.carrier || '').trim();
+    const trackingNumber = String(req.body.trackingNumber || '').trim();
+    const notes = String(req.body.notes || '').trim();
+    if (action === 'mark_replacement_shipped' && (!carrier || !trackingNumber)) {
+      return res.status(400).json({ message: 'Carrier and tracking number are required before marking the correction shipped.' });
+    }
+    if (carrier.length > 200 || trackingNumber.length > 200 || notes.length > 2000) {
+      return res.status(400).json({ message: 'Shipment details exceed the allowed length.' });
+    }
     await mongoose.connection.transaction(async session => {
       const supplier = await Supplier.findOne({ user: req.user._id }).session(session);
       if (!supplier) throw createHttpError('Supplier not found.', 404);
@@ -1386,42 +1406,155 @@ const markResolutionDelivered = async (req, res) => {
       }).session(session);
       const submission = report?.resolutionSubmissions?.id(req.params.resolutionId);
       if (!submission) throw createHttpError('Resolution submission not found.', 404);
-      if (!['replacement', 'return_correction'].includes(submission.type)
-          || submission.status !== 'awaiting_replacement'
-          || report.resolutionStatus !== 'awaiting_replacement') {
-        throw createHttpError('This resolution is not awaiting a replacement/corrected delivery.', 409);
+
+      const eventAt = new Date();
+      let historyAction;
+      let historyNotes = notes || undefined;
+      if (action === 'confirm_return_received') {
+        if (submission.type !== 'return_correction'
+            || submission.status !== 'return_shipped'
+            || report.resolutionStatus !== 'return_shipped'
+            || submission.returnShipment?.status !== 'shipped') {
+          throw createHttpError('The Store return must be shipped before the supplier can confirm receipt.', 409);
+        }
+        submission.returnShipment.status = 'received';
+        submission.returnShipment.receivedBy = req.user._id;
+        submission.returnShipment.receivedAt = eventAt;
+        submission.returnShipment.history.push({
+          status: 'received', actor: req.user._id, actorRole: req.user.role, notes: notes || undefined
+        });
+        submission.replacementShipment = {
+          status: 'processing',
+          processingStartedBy: req.user._id,
+          processingStartedAt: eventAt,
+          history: [{
+            status: 'processing', actor: req.user._id, actorRole: req.user.role,
+            notes: notes || 'Returned items received; correction is being prepared.'
+          }]
+        };
+        submission.status = 'replacement_processing';
+        report.resolutionStatus = 'replacement_processing';
+        order.status = 'replacement_processing';
+        historyAction = 'supplier_return_received';
+        historyNotes = notes || 'Supplier confirmed receipt of the returned items and started processing the correction.';
+      } else if (action === 'mark_replacement_shipped') {
+        const legacyAwaitingReplacement = submission.status === 'awaiting_replacement'
+          && report.resolutionStatus === 'awaiting_replacement';
+        if (!['replacement', 'return_correction'].includes(submission.type)
+            || (!legacyAwaitingReplacement && (submission.status !== 'replacement_processing'
+              || report.resolutionStatus !== 'replacement_processing'))) {
+          throw createHttpError('This resolution is not ready for a replacement/correction shipment.', 409);
+        }
+        if (!submission.replacementShipment || legacyAwaitingReplacement) {
+          submission.replacementShipment = {
+            status: 'processing',
+            processingStartedBy: req.user._id,
+            processingStartedAt: eventAt,
+            history: [{
+              status: 'processing', actor: req.user._id, actorRole: req.user.role,
+              notes: 'Legacy replacement workflow continued with shipment tracking.'
+            }]
+          };
+        }
+        submission.replacementShipment.status = 'shipped';
+        submission.replacementShipment.carrier = carrier;
+        submission.replacementShipment.trackingNumber = trackingNumber;
+        submission.replacementShipment.notes = notes || undefined;
+        submission.replacementShipment.shippedBy = req.user._id;
+        submission.replacementShipment.shippedAt = eventAt;
+        submission.replacementShipment.history.push({
+          status: 'shipped', actor: req.user._id, actorRole: req.user.role, notes: notes || undefined
+        });
+        submission.status = 'replacement_shipped';
+        report.resolutionStatus = 'replacement_shipped';
+        order.status = 'replacement_shipped';
+        historyAction = 'replacement_shipped';
+        historyNotes = notes || `Correction shipped via ${carrier} (${trackingNumber}).`;
+      } else {
+        if (!['replacement', 'return_correction'].includes(submission.type)
+            || submission.status !== 'replacement_shipped'
+            || report.resolutionStatus !== 'replacement_shipped'
+            || submission.replacementShipment?.status !== 'shipped') {
+          throw createHttpError('The replacement/correction must be marked shipped before it can be delivered.', 409);
+        }
+        submission.replacementShipment.status = 'delivered';
+        submission.replacementShipment.deliveredBy = req.user._id;
+        submission.replacementShipment.deliveredAt = eventAt;
+        submission.replacementShipment.notes = notes || submission.replacementShipment.notes;
+        submission.replacementShipment.history.push({
+          status: 'delivered', actor: req.user._id, actorRole: req.user.role, notes: notes || undefined
+        });
+        submission.status = 'replacement_delivered';
+        submission.replacementDeliveredBy = req.user._id;
+        submission.replacementDeliveredAt = eventAt;
+        submission.replacementNotes = notes || undefined;
+        report.resolutionStatus = 'reinspection';
+        order.status = 'reinspection';
+        order.inspectionStatus = 'reinspection';
+        historyAction = 'replacement_delivery_reported';
+        historyNotes = notes || 'Supplier reported the tracked replacement/correction shipment delivered.';
       }
-      submission.status = 'replacement_delivered';
-      submission.replacementDeliveredBy = req.user._id;
-      submission.replacementDeliveredAt = new Date();
-      submission.replacementNotes = req.body.notes;
-      report.resolutionStatus = 'reinspection';
       report.resolutionHistory.push({
-        status: 'reinspection', action: 'replacement_delivery_reported', actor: req.user._id,
-        actorRole: req.user.role, resolutionSubmission: submission._id, notes: req.body.notes
+        status: report.resolutionStatus, action: historyAction, actor: req.user._id,
+        actorRole: req.user.role, resolutionSubmission: submission._id, notes: historyNotes
       });
-      order.status = 'reinspection';
-      order.inspectionStatus = 'reinspection';
-      order.statusHistory.push({ status: 'reinspection', changedBy: req.user._id, notes: req.body.notes || 'Supplier reported replacement/correction delivery.' });
+      order.statusHistory.push({
+        status: order.status, changedBy: req.user._id, notes: historyNotes
+      });
       await Promise.all([report.save({ session }), order.save({ session })]);
-      result = { order, report };
+      result = { supplier, order, report, submission, action };
     });
-    await settleSupplierSecondaryEffects('Mark supplier resolution delivered', [createNotification({
-      recipient: result.order.seller,
-      sender: req.user._id,
-      type: 'purchase_order',
-      title: 'Replacement Ready for Reinspection',
-      message: `The supplier reported the resolution delivery for ${result.order.orderNumber}. Store receiving staff must reinspect it.`,
-      relatedId: result.order._id,
-      relatedModel: 'PurchaseOrder'
-    })]);
+    const notifications = {
+      confirm_return_received: {
+        title: 'Procurement Return Received',
+        message: `The supplier received the returned items for ${result.order.orderNumber} and is processing the correction.`
+      },
+      mark_replacement_shipped: {
+        title: 'Correction Shipped',
+        message: `The supplier shipped the replacement/correction for ${result.order.orderNumber}.`
+      },
+      mark_replacement_delivered: {
+        title: 'Replacement Ready for Reinspection',
+        message: `The tracked replacement/correction for ${result.order.orderNumber} was delivered. Store receiving staff must reinspect it.`
+      }
+    };
+    await settleSupplierSecondaryEffects('Transition supplier resolution logistics', [
+      createNotification({
+        recipient: result.order.seller,
+        sender: req.user._id,
+        type: 'purchase_order',
+        ...notifications[result.action],
+        relatedId: result.order._id,
+        relatedModel: 'PurchaseOrder'
+      }),
+      SupplyChainLog.create({
+        action: `purchase_order_${result.action}`,
+        performedBy: req.user._id,
+        userRole: req.user.role,
+        relatedEntity: { type: 'PurchaseOrder', id: result.order._id },
+        description: `${notifications[result.action].title} for ${result.order.orderNumber}.`,
+        store: result.order.store,
+        supplier: result.supplier._id,
+        metadata: {
+          receivingReport: result.report._id,
+          resolutionSubmission: result.submission._id,
+          carrier: carrier || undefined,
+          trackingNumber: trackingNumber || undefined
+        }
+      })
+    ]);
     res.json({ order: result.order, receivingReport: sanitizeReceivingReport(result.report) });
   } catch (error) {
-    console.error('Mark resolution delivered error:', error);
-    res.status(error.statusCode || (error.name === 'CastError' ? 400 : 500)).json({
-      message: error.name === 'CastError' ? 'Invalid resolution.' : (error.message || 'Unable to report the resolution delivery.')
+    console.error('Transition resolution logistics error:', error);
+    res.status(error.statusCode || (['CastError', 'ValidationError'].includes(error.name) ? 400 : 500)).json({
+      message: error.name === 'CastError' ? 'Invalid resolution.' : (error.message || 'Unable to update the resolution delivery workflow.')
     });
   }
+};
+
+const markResolutionDelivered = (req, res) => {
+  req.body = { ...req.body, action: 'mark_replacement_delivered' };
+  return transitionResolutionLogistics(req, res);
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1846,7 +1979,12 @@ const adminDeactivateSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findOne({ _id: req.params.id, isDeleted: false });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found.' });
-    const activeOrders = await PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false, status: { $in: ['submitted', 'confirmed', 'processing', 'shipped'] } });
+    const activeOrders = await PurchaseOrder.countDocuments({ supplier: supplier._id, isDeleted: false, status: { $in: [
+      'submitted', 'confirmed', 'processing', 'shipped', 'delivered', 'issue_reported',
+      'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted', 'resolution_rejected',
+      'awaiting_replacement', 'return_processing', 'return_shipped',
+      'replacement_processing', 'replacement_shipped', 'reinspection'
+    ] } });
     if (activeOrders) return res.status(409).json({ message: `Supplier has ${activeOrders} active purchase order(s). Complete or cancel them first.` });
     const transition = applySupplierLifecycleAction(supplier, 'suspend', {
       actorId: req.user._id,
@@ -1878,7 +2016,7 @@ module.exports = {
   updateSupplierProfile,
   getSupplierDashboard,
   addProduct, getMyProducts, updateProduct, deleteProduct,
-  getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered,
+  getSupplierOrders, updateOrderStatus, submitOrderResolution, markResolutionDelivered, transitionResolutionLogistics,
   browseSuppliers, getSupplierCatalog,
   adminGetAllSuppliers, adminGetProductReviews, adminReviewProduct,
   adminVerifySupplier, adminGetSupplierDetails,
