@@ -209,4 +209,23 @@ test('real MongoDB keeps assignment eligibility, capacity, Delivery, and Order c
   assert.equal(String(reassigned.riderId), String(replacementRider));
   assert.deepEqual((await User.findById(rider).lean()).riderProfile.currentLoad, { weightKg: 0, parcelCount: 0 });
   assert.deepEqual((await User.findById(replacementRider).lean()).riderProfile.currentLoad, { weightKg: 4, parcelCount: 1 });
+
+  await Delivery.updateOne({ _id: reassigned.deliveryId }, {
+    $set: { status: 'failed_attempt' },
+    $push: { statusHistory: { status: 'failed_attempt', timestamp: new Date(), notes: 'Synthetic failed attempt.' } }
+  });
+  await Order.updateOne({ _id: assignedOrderId }, { $set: { status: 'delivery_failed' } });
+  const recovered = await assignDelivery({
+    orderId: assignedOrderId,
+    parcel: { weightKg: 4 },
+    actorId: actor,
+    reassign: true
+  });
+  assert.equal(recovered.recoveredFailedAttempt, true);
+  assert.equal(String(recovered.previousRiderId), String(replacementRider));
+  assert.equal(String(recovered.riderId), String(rider));
+  assert.equal((await Order.findById(assignedOrderId).lean()).status, 'rider_assigned');
+  assert.equal((await Delivery.findById(recovered.deliveryId).lean()).status, 'assigned');
+  assert.deepEqual((await User.findById(replacementRider).lean()).riderProfile.currentLoad, { weightKg: 0, parcelCount: 0 });
+  assert.deepEqual((await User.findById(rider).lean()).riderProfile.currentLoad, { weightKg: 4, parcelCount: 1 });
 });

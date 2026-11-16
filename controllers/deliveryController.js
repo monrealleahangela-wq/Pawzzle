@@ -194,7 +194,9 @@ const assignDeliveryAutomatically = async (req, res) => {
     await emitAuthoritativeDeliveryUpdate(req, delivery, source);
     emitDeliveryDashboardUpdate(req, delivery);
     res.status(result.assignmentChanged ? 201 : 200).json({
-      message: result.assignmentChanged ? 'Delivery Rider assigned automatically.' : 'Delivery already has an active rider assignment.',
+      message: result.recoveredFailedAttempt
+        ? 'Failed delivery recovered and a replacement Rider was assigned.'
+        : result.assignmentChanged ? 'Delivery Rider assigned automatically.' : 'Delivery already has an active rider assignment.',
       customerLink: `${CLIENT_URL}/track/${delivery.trackingToken}`,
       delivery: activeDeliveryView(delivery), assignedRider: rider
     });
@@ -725,13 +727,16 @@ const sendRiderDeliveryMessage = async (req, res) => {
   }
 };
 
+const buildDeliveryConcern = concern => ({
+  _id: new mongoose.Types.ObjectId(),
+  ...concern,
+  status: 'pending',
+  createdAt: new Date()
+});
+
 const concernMutation = concern => ({
   $push: {
-    complaints: {
-      ...concern,
-      status: 'pending',
-      createdAt: new Date()
-    }
+    complaints: concern
   }
 });
 
@@ -753,9 +758,10 @@ const submitComplaint = async (req, res) => {
     if (!isDeliveryConcernReportable(existing.status)) {
       return res.status(409).json({ message: 'A concern can be reported after the Rider has picked up the delivery.' });
     }
+    const concern = buildDeliveryConcern(validation.value);
     const delivery = await Delivery.findOneAndUpdate(
       { trackingToken: token, status: { $in: REPORTABLE_DELIVERY_STATUSES } },
-      concernMutation(validation.value),
+      concernMutation(concern),
       { new: true }
     );
     if (!delivery) return res.status(409).json({ message: 'Delivery status changed. Refresh before reporting a concern.' });
@@ -783,13 +789,23 @@ const submitStoreConcern = async (req, res) => {
     if (!isDeliveryConcernReportable(existing.status)) {
       return res.status(409).json({ message: 'A concern can be reported after the Rider has picked up the delivery.' });
     }
+    const concern = buildDeliveryConcern(validation.value);
     const delivery = await Delivery.findOneAndUpdate(
       { _id: existing._id, status: { $in: REPORTABLE_DELIVERY_STATUSES } },
-      concernMutation(validation.value),
+      concernMutation(concern),
       { new: true }
     );
     if (!delivery) return res.status(409).json({ message: 'Delivery status changed. Refresh before reporting a concern.' });
-    res.status(201).json({ success: true, message: 'Concern submitted.' });
+    if (req.app?.get) {
+      await emitAuthoritativeDeliveryUpdate(req, delivery);
+      emitDeliveryDashboardUpdate(req, delivery);
+    }
+    res.status(201).json({
+      success: true,
+      message: 'Concern submitted to the Delivery Issue Center.',
+      complaint: concern,
+      issueCenterUrl: `/admin/logistics?tab=issues&issue=${concern._id}`
+    });
   } catch (error) {
     res.status(500).json({ message: 'Unable to submit the delivery concern.' });
   }
@@ -860,5 +876,5 @@ module.exports = {
   internalCreateDelivery,
   completeDelivery,
   reportFailedDelivery,
-  __test: { buildProofOfDelivery, concernMutation }
+  __test: { buildProofOfDelivery, buildDeliveryConcern, concernMutation }
 };
