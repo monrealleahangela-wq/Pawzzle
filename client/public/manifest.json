@@ -1,13 +1,14 @@
 {
   "short_name": "Pawzzle",
   "name": "Pawzzle: Pet Shop & Care Platform",
-  "description": "Premium platform for pet care, products, and community connections.",
+  "id": "/",
+  "description": "Pet marketplace, care services, store discovery, orders, bookings, and delivery updates in one installable web app.",
   "icons": [
     {
       "src": "images/icons/logo-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "images/icons/logo-512.png",
@@ -16,10 +17,14 @@
       "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#8B4513",
-  "background_color": "#F8FAFC",
+  "display_override": ["standalone", "minimal-ui"],
+  "theme_color": "#533114",
+  "background_color": "#F6EFE4",
   "orientation": "portrait-primary",
-  "scope": "/"
+  "scope": "/",
+  "lang": "en-PH",
+  "categories": ["shopping", "lifestyle", "medical"],
+  "prefer_related_applications": false
 }

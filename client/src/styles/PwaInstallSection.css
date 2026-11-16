@@ -1,0 +1,53 @@
+.landing-install-section { padding: 0 0 6rem; background: var(--landing-paper); }
+.landing-install-card { position: relative; min-height: 31rem; padding: clamp(1.5rem, 4vw, 4rem); display: grid; grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr); align-items: center; gap: clamp(2rem, 6vw, 6rem); overflow: hidden; border: 1px solid var(--landing-line); border-radius: 4rem 1.25rem 4rem 1.25rem; background: var(--landing-tan); box-shadow: 0 28px 65px rgba(74, 45, 29, 0.1); }
+.landing-install-visual { position: relative; min-height: 24rem; display: grid; place-items: center; }
+.landing-install-orbit { position: absolute; border: 1px solid rgba(111, 59, 31, 0.18); border-radius: 50%; }
+.landing-install-orbit-one { width: 23rem; height: 23rem; }
+.landing-install-orbit-two { width: 17rem; height: 17rem; border-style: dashed; }
+.landing-install-phone { position: relative; z-index: 1; width: 12.5rem; min-height: 23rem; padding: 3.8rem 1rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 0.45rem solid var(--landing-brown-dark); border-radius: 2.5rem; background: var(--landing-paper); color: var(--landing-brown-dark); box-shadow: 0 28px 55px rgba(47, 27, 17, 0.2); transform: rotate(-3deg); }
+.landing-install-phone-speaker { position: absolute; top: 0.9rem; width: 3.5rem; height: 0.34rem; border-radius: 999px; background: var(--landing-brown-dark); opacity: 0.75; }
+.landing-install-phone img { width: 5.5rem; height: 5.5rem; object-fit: contain; }
+.landing-install-phone strong { margin-top: 1rem; font-family: 'Outfit', sans-serif; font-size: 1.35rem; letter-spacing: -0.04em; }
+.landing-install-phone small { margin-top: 0.25rem; color: var(--landing-muted); font-size: 0.64rem; }
+.landing-install-copy { position: relative; z-index: 2; }
+.landing-install-copy h2 { max-width: 650px; margin-top: 0.7rem; color: var(--landing-brown-dark); font-size: clamp(2.5rem, 4.5vw, 5rem); font-weight: 650; letter-spacing: -0.06em; line-height: 0.95; }
+.landing-install-intro { max-width: 42rem; margin-top: 1.25rem !important; color: #67554a; font-size: 0.92rem; line-height: 1.75; }
+.landing-install-benefits { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.55rem; }
+.landing-install-benefits span { min-height: 2.35rem; padding: 0.55rem 0.75rem; display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid rgba(111, 59, 31, 0.18); border-radius: 999px; background: rgba(255, 250, 242, 0.62); color: var(--landing-brown); font-size: 0.68rem; font-weight: 800; }
+.landing-install-benefits svg { width: 0.9rem; height: 0.9rem; }
+.landing-install-action { margin-top: 1.7rem; }
+.landing-install-button { min-height: 3.35rem; padding: 0.85rem 1.35rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem; border: 0; border-radius: 999px; background: var(--landing-brown-dark); color: white; font-size: 0.78rem; font-weight: 850; box-shadow: 0 14px 30px rgba(47, 27, 17, 0.2); transition: transform 180ms ease, background 180ms ease; }
+.landing-install-button:hover:not(:disabled) { transform: translateY(-2px); background: var(--landing-brown); }
+.landing-install-button:disabled { cursor: wait; opacity: 0.65; }
+.landing-install-button svg { width: 1rem; height: 1rem; }
+.landing-install-success { width: fit-content; padding: 0.85rem 1rem; display: flex; align-items: center; gap: 0.7rem; border: 1px solid rgba(22, 101, 52, 0.2); border-radius: 1rem; background: rgba(240, 253, 244, 0.82); color: #166534; }
+.landing-install-success > svg { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
+.landing-install-success strong, .landing-install-success small, .landing-install-manual strong, .landing-install-manual small { display: block; }
+.landing-install-success strong, .landing-install-manual strong { font-size: 0.76rem; }
+.landing-install-success small, .landing-install-manual small { margin-top: 0.15rem; font-size: 0.65rem; line-height: 1.45; opacity: 0.78; }
+.landing-install-manual { max-width: 44rem; padding: 1.1rem; border: 1px solid rgba(111, 59, 31, 0.18); border-radius: 1.2rem; background: rgba(255, 250, 242, 0.72); color: var(--landing-brown-dark); }
+.landing-install-manual-heading { display: flex; align-items: center; gap: 0.7rem; }
+.landing-install-manual-heading > svg { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; color: var(--landing-brown); }
+.landing-install-manual ol { margin: 0.9rem 0 0; padding: 0; display: grid; gap: 0.5rem; list-style: none; counter-reset: install-step; }
+.landing-install-manual li { position: relative; min-height: 1.8rem; padding-left: 2.15rem; color: var(--landing-muted); font-size: 0.73rem; line-height: 1.5; counter-increment: install-step; }
+.landing-install-manual li::before { position: absolute; left: 0; top: -0.1rem; width: 1.55rem; height: 1.55rem; display: grid; place-items: center; border-radius: 50%; background: var(--landing-brown); color: white; content: counter(install-step); font-size: 0.62rem; font-weight: 900; }
+
+@media (max-width: 900px) {
+  .landing-install-card { grid-template-columns: 1fr; }
+  .landing-install-visual { min-height: 21rem; }
+  .landing-install-phone { min-height: 20rem; }
+}
+
+@media (max-width: 640px) {
+  .landing-install-section { padding-bottom: 4rem; }
+  .landing-install-card { padding: 1.5rem 1rem 1.25rem; gap: 1.5rem; border-radius: 2.5rem 1rem 2.5rem 1rem; }
+  .landing-install-visual { min-height: 18rem; }
+  .landing-install-orbit-one { width: 18rem; height: 18rem; }
+  .landing-install-orbit-two { width: 14rem; height: 14rem; }
+  .landing-install-phone { width: 10rem; min-height: 17rem; border-width: 0.35rem; border-radius: 2rem; }
+  .landing-install-phone img { width: 4.25rem; height: 4.25rem; }
+  .landing-install-copy h2 { font-size: clamp(2.5rem, 12vw, 3.65rem); }
+  .landing-install-benefits { display: grid; grid-template-columns: 1fr; }
+  .landing-install-benefits span { justify-content: center; }
+  .landing-install-button { width: 100%; }
+}

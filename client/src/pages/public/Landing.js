@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { publicService, getImageUrl } from '../../services/apiService';
 import { PageLoader } from '../../components/ui/LoadingSpinner';
+import PwaInstallSection from '../../components/public/PwaInstallSection';
 import '../../styles/Landing.css';
 
 const EMPTY_DATA = {
@@ -337,6 +338,8 @@ const Landing = () => {
             </div>
           </div>
         </section>
+
+        <PwaInstallSection />
 
         <section className="landing-cta-section">
           <div className="landing-shell">

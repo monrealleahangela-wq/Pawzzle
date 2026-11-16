@@ -210,6 +210,17 @@ let buildPath = buildPaths.find(p => require('fs').existsSync(p));
 const isProduction = process.env.NODE_ENV && process.env.NODE_ENV.toLowerCase() === 'production';
 
 if (isProduction && buildPath) {
+  app.get('/sw.js', (req, res) => {
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Service-Worker-Allowed': '/'
+    });
+    res.sendFile(path.join(buildPath, 'sw.js'));
+  });
+  app.get('/manifest.json', (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile(path.join(buildPath, 'manifest.json'));
+  });
   app.use(express.static(buildPath));
   app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
 } else {
