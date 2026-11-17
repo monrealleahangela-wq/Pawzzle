@@ -1018,6 +1018,16 @@ p { line-height: 1.6; color: var(--neutral-800); }
 .super-admin-interface input:not([type="checkbox"]):not([type="radio"]),
 .super-admin-interface select { max-height: 2.5rem; }
 
+/* Native selects need their vertical padding removed when using the shared
+   `.input` class inside the compact super-admin controls. Otherwise the
+   padding exceeds the capped control height and clips the selected label. */
+.super-admin-interface select.tax-verification-select {
+  height: 2.5rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.25rem;
+}
+
 .super-admin-interface textarea { min-height: 5rem; }
 
 .super-admin-interface [class~="text-6xl"],
