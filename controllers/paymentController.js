@@ -27,6 +27,7 @@ const { canAccessStore, canOperateStore } = require('../utils/authorizationPolic
 const { requiresAcknowledgment, snapshotRefundPolicy } = require('../utils/refundPolicy');
 const { hasCurrentPickupAgreement } = require('../utils/petPickupPolicy');
 const { describePetSaleUnit } = require('../utils/petSaleUnit');
+const { buildPayMongoBilling } = require('../utils/paymongoBilling');
 const { assertStoreTransactionEligible } = require('../services/storeComplianceService');
 const { revalidatePendingOrderDelivery } = require('../services/orderPricingService');
 const { resolveCustomerProductSelection } = require('../services/customerProductVariantService');
@@ -413,6 +414,7 @@ const createCheckoutSession = async (req, res) => {
         record: order,
         type: 'order',
         attributes: {
+        billing: buildPayMongoBilling(order.customer, { phone: order.phoneNumber }),
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
@@ -508,6 +510,7 @@ const createOrderBatchCheckoutSession = async (req, res) => {
         record: batch,
         type: 'order_batch',
         attributes: {
+          billing: buildPayMongoBilling(firstOrder.customer, { phone: firstOrder.phoneNumber }),
           send_email_receipt: true,
           show_description: true,
           show_line_items: true,
@@ -624,6 +627,7 @@ const createBookingCheckoutSession = async (req, res) => {
       record: booking,
       type: 'booking',
       attributes: {
+        billing: buildPayMongoBilling(booking.customer),
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
@@ -707,6 +711,7 @@ const createAdoptionCheckoutSession = async (req, res) => {
         record: adoption,
         type: 'adoption',
         attributes: {
+        billing: buildPayMongoBilling(adoption.customer),
         send_email_receipt: true,
         show_description: true,
         show_line_items: true,
