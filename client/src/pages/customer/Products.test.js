@@ -66,3 +66,20 @@ test('Customer Product API failures render an error state instead of the empty c
   expect(screen.queryByText("We couldn't find any products")).not.toBeInTheDocument();
   consoleError.mockRestore();
 });
+
+test('Customer marketplace never renders a zero-stock product returned by the API', async () => {
+  productService.getAllProducts.mockResolvedValue({
+    data: {
+      products: [
+        { _id: 'available', name: 'Available Food', category: 'Pet Food', price: 120, stockQuantity: 2, images: [], store: { _id: 'store-1', name: 'Pawzzle' } },
+        { _id: 'depleted', name: 'Depleted Food', category: 'Pet Food', price: 95, stockQuantity: 0, images: [], store: { _id: 'store-1', name: 'Pawzzle' } }
+      ],
+      pagination: { currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false }
+    }
+  });
+
+  renderProducts();
+
+  expect(await screen.findByText('Available Food')).toBeInTheDocument();
+  expect(screen.queryByText('Depleted Food')).not.toBeInTheDocument();
+});

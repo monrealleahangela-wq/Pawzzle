@@ -42,7 +42,6 @@ const Products = () => {
     suitableFor: '',
     minPrice: '',
     maxPrice: '',
-    inStock: false,
     city: '',
     nearMe: false
   });
@@ -61,7 +60,7 @@ const Products = () => {
       fetchProducts();
     }, 350);
     return () => clearTimeout(debounce);
-  }, [filters.category, filters.brand, filters.suitableFor, filters.minPrice, filters.maxPrice, filters.inStock, filters.city, pagination.currentPage, searchTerm]);
+  }, [filters.category, filters.brand, filters.suitableFor, filters.minPrice, filters.maxPrice, filters.city, pagination.currentPage, searchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -80,7 +79,8 @@ const Products = () => {
       }
 
       const response = await productService.getAllProducts(params);
-      let fetchedProducts = response.data.products || [];
+      let fetchedProducts = (response.data.products || [])
+        .filter(product => Number(product.stockQuantity || 0) > 0);
 
       // SECURITY: Professional Sellers should only see their own context.
       // If the user is a seller, we filter the marketplace to keep them focused on their business.
@@ -320,7 +320,7 @@ const Products = () => {
                 onClick={() => {
                   setFilters({
                     category: '', brand: '', suitableFor: '',
-                    minPrice: '', maxPrice: '', inStock: false,
+                    minPrice: '', maxPrice: '',
                     city: '', nearMe: false
                   });
                   setShowMobileFilters(false);
@@ -388,19 +388,9 @@ const Products = () => {
                 </select>
               </div>
 
-              <div className="pt-2 border-t border-slate-50">
-                <label className="flex items-center gap-2 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="peer sr-only"
-                      checked={filters.inStock}
-                      onChange={(e) => handleFilterChange('inStock', e.target.checked)}
-                    />
-                    <div className="w-8 h-4.5 bg-slate-200 rounded-full peer peer-checked:bg-primary-600 transition-all after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:after:translate-x-3.5"></div>
-                  </div>
-                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Only In Stock</span>
-                </label>
+              <div className="flex items-center gap-2 border-t border-slate-50 pt-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Available products only</span>
               </div>
 
               {showMobileFilters && (
@@ -432,7 +422,7 @@ const Products = () => {
               <button
                 onClick={() => setFilters({
                   category: '', brand: '', suitableFor: '',
-                  minPrice: '', maxPrice: '', inStock: false
+                  minPrice: '', maxPrice: ''
                 })}
                 className="text-[10px] font-black text-primary-600 uppercase tracking-widest underline"
               >

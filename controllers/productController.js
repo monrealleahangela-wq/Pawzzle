@@ -15,6 +15,10 @@ const {
 const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
 const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
 const { listCustomerVariants } = require('../services/customerProductVariantService');
+const {
+  buildCustomerProductStockFilter,
+  hasCustomerAvailableStock
+} = require('../services/customerProductAvailabilityService');
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { getPublicProductRegulatoryVerification } = require('../services/productRegulatoryVerificationService');
 const { assertCanActivateListing } = require('../services/storeSubscriptionService');
@@ -134,6 +138,12 @@ const getAllProducts = async (req, res) => {
       const extra = city ? { 'contactInfo.address.city': { $regex: new RegExp(city, 'i') } } : {};
       const visibleStores = await Store.find(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(ownerIds, extra))).select('_id');
       filter.store = { $in: visibleStores.map(store => store._id) };
+      const visibleStoreIds = filter.store.$in;
+      filter.$and = filter.$and || [];
+      filter.$and.push(await buildCustomerProductStockFilter({
+        storeIds: visibleStoreIds,
+        variantBrowsingEnabled: customerVariantBrowsingEnabled
+      }));
     }
 
     const categoryFilter = buildProductCategoryFilter(category);
@@ -145,16 +155,8 @@ const getAllProducts = async (req, res) => {
       if (minPrice) filter.price.$gte = parseFloat(minPrice);
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
     }
-    if (inStock === 'true' || inStock === true) {
-      if (!isAdminRoute && customerVariantBrowsingEnabled) {
-        filter.$and = filter.$and || [];
-        filter.$and.push({ $or: [
-          { productMode: { $ne: 'variant' }, stockQuantity: { $gt: 0 } },
-          { productMode: 'variant' }
-        ] });
-      } else {
-        filter.stockQuantity = { $gt: 0 };
-      }
+    if (isAdminRoute && (inStock === 'true' || inStock === true)) {
+      filter.stockQuantity = { $gt: 0 };
     }
 
     if (search && search !== '') {
@@ -178,11 +180,12 @@ const getAllProducts = async (req, res) => {
 
     const total = await Product.countDocuments(filter);
 
-    const customerProducts = isAdminRoute ? products : await Promise.all(products.map(async product => {
-      if (product.productMode !== 'variant') return product;
+    const customerProducts = isAdminRoute ? products : (await Promise.all(products.map(async product => {
+      if (product.productMode !== 'variant') return hasCustomerAvailableStock(product) ? product : null;
       const catalog = await listCustomerVariants(product);
       const object = product.toObject();
       const inStockVariants = catalog.variants.filter(variant => variant.inStock);
+      if (!hasCustomerAvailableStock(product, catalog.variants)) return null;
       return {
         ...object,
         normalizedVariants: catalog.variants,
@@ -191,7 +194,7 @@ const getAllProducts = async (req, res) => {
         stockQuantity: catalog.variants.reduce((sum, variant) => sum + Number(variant.availableQuantity || 0), 0),
         images: inStockVariants[0]?.images?.length ? inStockVariants[0].images : object.images
       };
-    }));
+    }))).filter(Boolean);
 
     res.json({
       products: customerProducts,
@@ -230,6 +233,9 @@ const getProductById = async (req, res) => {
       if (!visibleStore || !product.isActive || ['draft', 'hidden'].includes(product.visibility)) {
         return res.status(404).json({ message: 'Product not found or unavailable' });
       }
+      if (product.productMode !== 'variant' && !hasCustomerAvailableStock(product)) {
+        return res.status(404).json({ message: 'Product not found or unavailable' });
+      }
     }
 
     const regulatoryVerification = !req.baseUrl?.includes('/admin')
@@ -238,7 +244,9 @@ const getProductById = async (req, res) => {
 
     if (!req.baseUrl?.includes('/admin') && product.productMode === 'variant') {
       const catalog = await listCustomerVariants(product);
-      if (!catalog.browsingEnabled) return res.status(404).json({ message: 'Product not found or unavailable' });
+      if (!catalog.browsingEnabled || !hasCustomerAvailableStock(product, catalog.variants)) {
+        return res.status(404).json({ message: 'Product not found or unavailable' });
+      }
       return res.json({
         product,
         regulatoryVerification,
