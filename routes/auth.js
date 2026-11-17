@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const passport = require('../config/passport');
+const User = require('../models/User');
 const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
 
 const {
@@ -19,6 +20,7 @@ const {
   resendPasswordResetOTP,
   toggle2FA,
   verify2FA,
+  verifyCurrentUserIdentity,
   logout
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
@@ -122,6 +124,11 @@ const otpVerificationValidation = [
   body('otp').matches(/^\d{6}$/).withMessage('OTP must be 6 digits')
 ];
 
+const identityVerificationValidation = [
+  body('governmentIdType').custom(isGovernmentIdType).withMessage('Select a valid government ID type'),
+  body('biometricConsent').equals('true').withMessage('Consent to face matching is required')
+];
+
 // ─── Registration with OTP ────────────────────────────────────────────────────
 router.post('/register/send-otp', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, sendRegisterOTP);
 router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, uploadRegistrationIdentity, handleUploadError, otpVerificationValidation, verifyRegisterOTP);
@@ -140,6 +147,7 @@ router.post('/resend-password-reset', authRateLimits.authIp, authRateLimits.otpS
 
 // ─── Authenticated routes ─────────────────────────────────────────────────────
 router.get('/me', authenticate, getCurrentUser);
+router.post('/identity/verify', authenticate, authRateLimits.identityVerification, uploadRegistrationIdentity, handleUploadError, identityVerificationValidation, verifyCurrentUserIdentity);
 router.put('/profile', authenticate, updateProfileValidation, updateProfile);
 router.put('/change-password', authenticate, changePasswordValidation, changePassword);
 router.post('/logout', authenticate, logout);
@@ -154,7 +162,8 @@ const getFrontendUrl = () => process.env.FRONTEND_URL
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────
 const issueTokenAndRedirect = async (req, res) => {
   try {
-    const user = req.user;
+    const user = await User.findById(req.user._id).select('+identityVerification.status').populate('store');
+    if (!user) return res.redirect(`${getFrontendUrl()}/login?error=oauth_failed`);
     await attachStoreRolePolicy(user);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     const userData = JSON.stringify({
@@ -167,7 +176,8 @@ const issueTokenAndRedirect = async (req, res) => {
       store: user.store,
       permissions: serializeEffectivePermissionMap(user),
       avatar: user.avatar || '',
-      authProvider: user.authProvider
+      authProvider: user.authProvider,
+      identityVerificationStatus: user.identityVerification?.status || null
     });
 
     res.redirect(`${getFrontendUrl()}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);

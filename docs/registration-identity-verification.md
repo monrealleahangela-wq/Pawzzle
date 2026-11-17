@@ -2,6 +2,8 @@
 
 New public accounts require complete legal-name, contact, address, government-ID, email-OTP, consent, and face-match verification. The government-ID image is encrypted with AES-256-GCM before it is stored. The live selfie is held in memory for AWS Rekognition `CompareFaces` and is discarded after the request.
 
+Existing accounts without a verified identity are restricted at the shared HTTP authentication middleware and authenticated Socket.IO handshake. They may access only the current-user endpoint, password recovery/change, logout, and `POST /api/auth/identity/verify` until a government ID and new live-camera selfie pass the same face-match policy. Public read-only pages and delivery tracking capabilities remain available without an account.
+
 Required server configuration:
 
 - `IDENTITY_DOCUMENT_ENCRYPTION_KEY`: a dedicated 32-byte key encoded as 64 hexadecimal characters or Base64. Do not reuse `JWT_SECRET`.

@@ -73,6 +73,9 @@ export const professionalVerificationStatus = user => user?.professionalVerifica
 export const isProfessionalVerificationPending = user => requiresProfessionalVerification(user)
   && professionalVerificationStatus(user) !== 'verified';
 
+export const isIdentityVerificationRequired = user => Boolean(user)
+  && user.identityVerificationStatus !== 'verified';
+
 export const hasUiPermission = (user, resource) => {
   if (!user || !resource) return false;
   if (effectiveStaffType(user) === 'retired_delivery_dispatcher') return false;

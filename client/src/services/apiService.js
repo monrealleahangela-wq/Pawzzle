@@ -77,6 +77,12 @@ api.interceptors.response.use(
       }
     }
 
+    if (error.response?.status === 403
+      && error.response?.data?.code === 'IDENTITY_VERIFICATION_REQUIRED'
+      && window.location.pathname !== '/identity-verification') {
+      window.location.assign('/identity-verification');
+    }
+
     return Promise.reject(error);
   }
 );

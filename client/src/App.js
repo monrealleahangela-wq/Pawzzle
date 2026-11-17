@@ -27,6 +27,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import OAuthCallback from './pages/auth/OAuthCallback';
+import IdentityVerification from './pages/auth/IdentityVerification';
 
 // Public Pages
 import SellerJoin from './pages/public/SellerJoin';
@@ -148,6 +149,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth-callback" element={<OAuthCallback />} />
+                <Route path="/identity-verification" element={<IdentityVerification />} />
                 <Route path="/seller-join" element={<SellerJoin />} />
                 <Route path="/supplier/activate/:token" element={<SupplierActivation />} />
                 <Route path="/track/:token" element={<DeliveryTracking isRider={false} />} />

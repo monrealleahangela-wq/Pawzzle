@@ -49,6 +49,7 @@ const userSummary = user => ({
 
 const withProfessionalVerificationState = (safeUser, sourceUser) => ({
   ...safeUser,
+  identityVerificationStatus: sourceUser.identityVerification?.status || null,
   professionalVerificationRequired: requiresPlatformVerification(sourceUser),
   professionalVerificationStatus: getProfessionalVerificationStatus(sourceUser)
 });
@@ -257,7 +258,7 @@ const login = async (req, res) => {
         { username: identifier.toLowerCase() }
       ],
       isDeleted: false
-    }).select('+password').populate('store');
+    }).select('+password +identityVerification.status').populate('store');
 
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     if (!user.isActive) {
@@ -322,7 +323,7 @@ const verify2FA = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, isDeleted: false }).populate('store');
+    const user = await User.findOne({ email, isDeleted: false }).select('+identityVerification.status').populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
@@ -401,7 +402,7 @@ const resendPasswordResetOTP = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).populate('store');
+    const user = await User.findById(req.user._id).select('+identityVerification.status').populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
     await attachStoreRolePolicy(user);
     const safe = withProfessionalVerificationState(sanitizeUser(user), user);
@@ -413,12 +414,96 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+const verifyCurrentUserIdentity = async (req, res) => {
+  const governmentIdImage = req.files?.governmentIdImage?.[0];
+  const selfieImage = req.files?.selfieImage?.[0];
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!governmentIdImage || !selfieImage) {
+      return res.status(400).json({
+        code: 'IDENTITY_IMAGES_REQUIRED',
+        message: 'A government ID image and a new live-camera selfie are required.'
+      });
+    }
+    if (!matchesImageSignature(governmentIdImage.buffer, governmentIdImage.mimetype)
+      || !matchesImageSignature(selfieImage.buffer, selfieImage.mimetype)) {
+      return res.status(400).json({
+        code: 'IDENTITY_IMAGE_INVALID',
+        message: 'One or more identity images are not valid JPG or PNG files.'
+      });
+    }
+    if (!isGovernmentIdType(req.body.governmentIdType) || req.body.biometricConsent !== 'true') {
+      return res.status(400).json({
+        code: 'IDENTITY_CONSENT_REQUIRED',
+        message: 'Select a valid government ID and consent to the face comparison.'
+      });
+    }
+
+    const user = await User.findById(req.user._id).select('+identityVerification');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.identityVerification?.status === 'verified') {
+      return res.status(409).json({ code: 'IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified.' });
+    }
+
+    getEncryptionKey();
+    const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
+    if (!faceMatch.matched) {
+      return res.status(400).json({
+        code: 'FACE_MATCH_FAILED',
+        message: 'Your live selfie did not match the face on the government ID. Retake both images in clear lighting and try again.'
+      });
+    }
+
+    user.identityVerification = {
+      status: 'verified',
+      governmentId: {
+        documentType: req.body.governmentIdType,
+        encryptedImage: encryptIdentityDocument(governmentIdImage.buffer),
+        mimeType: governmentIdImage.mimetype,
+        size: governmentIdImage.size
+      },
+      faceMatch: {
+        provider: faceMatch.provider,
+        similarity: faceMatch.similarity,
+        threshold: faceMatch.threshold,
+        sourceFaceConfidence: faceMatch.sourceFaceConfidence
+      },
+      consent: { acceptedAt: new Date(), policyVersion: 'identity-access-v1' },
+      verifiedAt: new Date()
+    };
+    await user.save();
+    await user.populate('store');
+    await attachStoreRolePolicy(user);
+    await ActivityLog.create({
+      user: user._id,
+      action: 'identity_verified',
+      details: 'Existing account completed government ID and live face-match verification',
+      ipAddress: req.ip
+    }).catch(() => {});
+
+    const safe = withProfessionalVerificationState(sanitizeUser(user), user);
+    safe.permissions = serializeEffectivePermissionMap(user);
+    return res.json({ success: true, message: 'Identity verification completed.', user: safe });
+  } catch (error) {
+    if (error?.statusCode && error?.code) {
+      return res.status(error.statusCode).json({ code: error.code, message: error.message });
+    }
+    console.error('Existing account identity verification failed');
+    return res.status(500).json({ message: 'Identity verification failed.' });
+  } finally {
+    for (const file of [governmentIdImage, selfieImage]) {
+      if (Buffer.isBuffer(file?.buffer)) file.buffer.fill(0);
+    }
+  }
+};
+
 const updateProfile = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('+identityVerification.status');
     if (!user) return res.status(404).json({ message: 'User not found' });
     applyProfileUpdates(user, pickProfileUpdates(req.body));
     await user.save();
@@ -487,6 +572,7 @@ module.exports = {
   resendPasswordResetOTP,
   toggle2FA,
   verify2FA,
+  verifyCurrentUserIdentity,
   logout,
   __test: { generateToken, userSummary }
 };
