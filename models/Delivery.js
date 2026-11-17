@@ -288,7 +288,9 @@ const deliverySchema = new mongoose.Schema({
     recipientName: { type: String, trim: true },
     // Legacy captured-signature reference retained for historical deliveries.
     signature: { type: String },
-    method: { type: String, enum: ['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes'] },
+    method: { type: String, enum: ['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes', 'live_camera'] },
+    captureSource: { type: String, enum: ['live_camera'] },
+    capturedAt: { type: Date },
     otpVerified: { type: Boolean, default: false },
     notes: String,
     location: { lat: Number, lng: Number },

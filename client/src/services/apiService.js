@@ -615,6 +615,7 @@ export const deliveryService = {
   submitStoreConcern: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/concerns`, data),
   completeDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/complete`, data),
   reportFailedDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/failed`, data),
+  uploadLiveDeliveryProof: (deliveryId, formData) => api.post(`/deliveries/rider/${deliveryId}/live-proof-upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   uploadDeliveryProof: (deliveryId, formData) => api.post(`/deliveries/rider/${deliveryId}/proof-upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   resolveComplaint: (deliveryId, complaintId) => api.patch(`/deliveries/resolve-complaint/${deliveryId}/${complaintId}`),
   calculateFee: (data) => api.post('/deliveries/calculate-fee', data)

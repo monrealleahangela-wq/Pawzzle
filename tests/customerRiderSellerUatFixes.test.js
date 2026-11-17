@@ -35,14 +35,20 @@ test('order and delivery schemas retain authoritative weight and confirmation pr
   assert.ok(Delivery.schema.path('proofOfDelivery.recipientName'));
 });
 
-test('proof contract stores recipient acknowledgment without fabricating signature evidence', () => {
+test('proof contract stores recipient acknowledgment alongside live-camera evidence without fabricating a signature', () => {
   const delivery = new Delivery({
     status: 'arrived', assignmentType: 'internal',
     assignedRider: new mongoose.Types.ObjectId(), riderName: 'Rider Test'
   });
-  const proof = deliveryTest.buildProofOfDelivery({ recipientName: 'Jamie Recipient' }, delivery);
+  const proof = deliveryTest.buildProofOfDelivery(
+    { recipientName: 'Jamie Recipient' },
+    delivery,
+    false,
+    { photo: 'https://example.test/live-proof.jpg', capturedAt: new Date('2026-11-17T08:00:00.000Z') }
+  );
   assert.equal(proof.recipientName, 'Jamie Recipient');
-  assert.equal(proof.method, 'recipient_acknowledgment');
+  assert.equal(proof.method, 'live_camera');
+  assert.equal(proof.captureSource, 'live_camera');
   assert.equal(proof.signature, undefined);
 });
 
