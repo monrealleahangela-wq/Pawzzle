@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, HeartPulse, Scissors, School, Shield, UserRound } from 'lucide-react';
-import { SERVICE_BOOKING_KINDS, calculateBoardingNights, resolveServiceBookingKind, serviceIntakeSummary } from '../../utils/serviceBookingForm';
+import { SERVICE_BOOKING_KINDS, calculateBoardingNights, getLocalDateKey, resolveServiceBookingKind, serviceIntakeSummary } from '../../utils/serviceBookingForm';
 
 const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500';
 
@@ -55,6 +55,7 @@ const SelectInput = ({ label, name, value, onChange, error, required, options })
 const ServiceSpecificBookingFields = ({ service, details, onChange, errors = {}, pet }) => {
   const kind = resolveServiceBookingKind(service);
   const boardingNights = calculateBoardingNights(details.checkInDate, details.checkOutDate);
+  const today = getLocalDateKey();
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
@@ -99,8 +100,8 @@ const ServiceSpecificBookingFields = ({ service, details, onChange, errors = {},
       {kind === SERVICE_BOOKING_KINDS.BOARDING && <>
         <SectionHeader icon={CalendarDays} eyebrow="Boarding" title="Plan your pet's stay" />
         <div className="grid gap-4 sm:grid-cols-2">
-          <TextInput label="Check-in date" name="checkInDate" type="date" min={new Date().toISOString().slice(0, 10)} value={details.checkInDate} onChange={onChange} error={errors.checkInDate} required />
-          <TextInput label="Check-out date" name="checkOutDate" type="date" min={details.checkInDate || new Date().toISOString().slice(0, 10)} value={details.checkOutDate} onChange={onChange} error={errors.checkOutDate} required />
+          <TextInput label="Check-in date" name="checkInDate" type="date" min={today} value={details.checkInDate} onChange={onChange} error={errors.checkInDate} required />
+          <TextInput label="Check-out date" name="checkOutDate" type="date" min={details.checkInDate && details.checkInDate > today ? details.checkInDate : today} value={details.checkOutDate} onChange={onChange} error={errors.checkOutDate} required />
           {boardingNights > 0 && <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Stay duration: {boardingNights} night{boardingNights === 1 ? '' : 's'}</div>}
           <TextArea label="Feeding schedule" name="feedingSchedule" value={details.feedingSchedule} onChange={onChange} error={errors.feedingSchedule} required placeholder="Times, portions, and food instructions" />
           <Choice label="Will you provide your pet's food?" value={details.foodProvided} onChange={value => onChange('foodProvided', value)} error={errors.foodProvided} />
