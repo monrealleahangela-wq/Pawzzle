@@ -109,7 +109,12 @@ describe('customer booking history', () => {
     expect(await screen.findByText('Awaiting Schedule')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Reservation verification QR code' })).toBeInTheDocument();
     expect(screen.getByText('Your QR is ready. Check-in will open at the scheduled appointment time.')).toBeInTheDocument();
-    expect(screen.getByText('Present this QR code to your assigned staff during your scheduled appointment.')).toBeInTheDocument();
+    expect(screen.getByText('Show this QR to your assigned groomer')).toBeInTheDocument();
+    expect(screen.getByText('Present this QR code to your assigned groomer or specialist during your scheduled appointment.')).toBeInTheDocument();
+
+    const checkinPanel = screen.getByTestId('reservation-checkin-panel');
+    const statusTracker = screen.getByTestId('booking-status-tracker');
+    expect(checkinPanel.compareDocumentPosition(statusTracker) & 4).toBeTruthy();
   });
 
   test('offers a focused retry after a temporary credential service failure', async () => {

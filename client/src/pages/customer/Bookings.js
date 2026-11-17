@@ -48,6 +48,67 @@ const RESERVATION_STATUS_LABELS = {
 
 const reservationStatusLabel = state => RESERVATION_STATUS_LABELS[state] || 'Not Yet Available';
 
+const ReservationCheckinPanel = ({ booking, reservationCredential, onRetry }) => (
+  <section
+    aria-label="Reservation check-in verification"
+    data-testid="reservation-checkin-panel"
+    className="overflow-hidden rounded-2xl border-2 border-primary-200 bg-primary-50/50 shadow-sm"
+  >
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-primary-100 bg-primary-600 px-4 py-3 text-white sm:px-5">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary-100">Required at check-in</p>
+        <h3 className="mt-1 text-base font-black leading-tight">Show this QR to your assigned groomer</h3>
+        <p className="mt-1 text-xs text-primary-50">Keep it ready so your groomer or specialist can scan it when you arrive.</p>
+      </div>
+      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black text-primary-700 shadow-sm">
+        {reservationStatusLabel(reservationCredential?.state || 'loading')}
+      </span>
+    </div>
+
+    <div className="p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-primary-700">Reservation check-in</p>
+          <p className="mt-1 text-sm font-black text-slate-900">Booking #{formatRecordId(booking._id)}</p>
+          <p className="mt-1 text-xs text-slate-600">{booking.service?.name || 'Service'} · {booking.pet?.name || 'Pet'} · {booking.store?.name || 'Store'}</p>
+          <p className="mt-1 text-xs text-slate-600">{formatSafeDate(booking.bookingDate, { month: 'long', day: 'numeric', year: 'numeric' })} · {formatTime12h(booking.startTime)}–{formatTime12h(booking.endTime)}</p>
+          {booking.staff && <p className="mt-1 text-xs font-semibold text-slate-700">Assigned groomer/specialist: {`${booking.staff.firstName || ''} ${booking.staff.lastName || ''}`.trim() || 'Assigned'}</p>}
+        </div>
+      </div>
+
+      {reservationCredential?.credential?.qrToken ? (
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-primary-100 bg-white p-4 sm:flex-row sm:items-center sm:p-5">
+          <ReservationQrCode value={reservationCredential.credential.qrToken} className="h-44 w-44 shrink-0" />
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="text-sm font-black text-slate-900">Present this QR code to your assigned groomer or specialist during your scheduled appointment.</p>
+            {reservationCredential.state === 'too_early' && <p role="status" className="mt-2 text-xs font-semibold text-amber-700">Your QR is ready. Check-in will open at the scheduled appointment time.</p>}
+            {reservationCredential.state === 'available' && <p role="status" className="mt-2 text-xs font-semibold text-emerald-700">Your appointment is ready for check-in.</p>}
+            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Backup code</p>
+            <code className="mt-1 block select-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-lg font-black tracking-widest text-slate-900" aria-label="Reservation backup code">{reservationCredential.credential.backupCode}</code>
+            <p className="mt-2 text-[10px] text-slate-500">Keep this code private. It can be used instead of the QR code.</p>
+            {reservationCredential.rotated && <p role="status" className="mt-2 text-[10px] font-bold text-amber-700">The schedule or assignment changed. This is your new credential; the previous code is no longer valid.</p>}
+          </div>
+        </div>
+      ) : (
+        <p role="status" className="rounded-xl border border-primary-100 bg-white p-3 text-xs text-slate-600">
+          {reservationCredential?.state === 'checked_in' ? 'Your pet has already been checked in.'
+            : reservationCredential?.state === 'cancelled' ? 'This booking is cancelled; its verification credential is no longer valid.'
+              : reservationCredential?.state === 'too_early' ? 'Your check-in window has not opened yet. Your QR and backup code will remain available here.'
+                : reservationCredential?.state === 'expired' ? 'The check-in window has expired. Contact the Store for assistance.'
+                  : reservationCredential?.state === 'loading' ? 'Loading your secure reservation credential…'
+                    : reservationCredential?.state === 'temporarily_unavailable' ? (reservationCredential.errorMessage || 'Secure verification is temporarily unavailable. Refresh later or contact the Store.')
+                      : 'A check-in QR code and backup code become available after the booking is confirmed and payment is verified.'}
+        </p>
+      )}
+      {reservationCredential?.state === 'temporarily_unavailable' && (
+        <button type="button" onClick={onRetry} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-white px-4 py-2 text-xs font-black text-primary-700 transition hover:bg-primary-50">
+          <RefreshCw className="h-4 w-4" /> Retry secure QR
+        </button>
+      )}
+    </div>
+  </section>
+);
+
 const StoreHoursHint = ({ bookingDate, businessHours }) => {
   const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
   const [yr, mo, dy] = bookingDate.split('-').map(Number);
@@ -2339,8 +2400,14 @@ const Bookings = ({ isSubcomponent = false }) => {
             </header>
 
             <div data-testid="customer-booking-modal-content" className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 scroll-smooth sm:p-5">
+              <ReservationCheckinPanel
+                booking={selectedBooking}
+                reservationCredential={reservationCredential}
+                onRetry={loadReservationCredential}
+              />
+
               {/* Status Tracker */}
-              <div className="relative pb-10 pt-2">
+              <div data-testid="booking-status-tracker" className="relative pb-10 pt-2">
                 <div className="absolute left-[5%] right-[5%] top-1/2 -translate-y-1/2 h-1 bg-slate-100 rounded-full" />
                 <div
                   className="absolute left-[5%] top-1/2 -translate-y-1/2 h-1 bg-primary-600 rounded-full transition-all duration-1000 ease-in-out shadow-[0_0_20px_rgba(217,119,6,0.5)]"
@@ -2635,48 +2702,6 @@ const Bookings = ({ isSubcomponent = false }) => {
                   </div>
                 </div>
               )}
-
-              <section aria-label="Reservation check-in verification" className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary-700">Reservation check-in</p>
-                    <h3 className="mt-1 text-sm font-black text-slate-900">Booking #{formatRecordId(selectedBooking._id)}</h3>
-                    <p className="mt-1 text-xs text-slate-600">{selectedBooking.service?.name || 'Service'} · {selectedBooking.pet?.name || 'Pet'} · {selectedBooking.store?.name || 'Store'}</p>
-                    <p className="mt-1 text-xs text-slate-600">{formatSafeDate(selectedBooking.bookingDate, { month: 'long', day: 'numeric', year: 'numeric' })} · {formatTime12h(selectedBooking.startTime)}–{formatTime12h(selectedBooking.endTime)}</p>
-                    {selectedBooking.staff && <p className="mt-1 text-xs text-slate-600">Assigned staff: {`${selectedBooking.staff.firstName || ''} ${selectedBooking.staff.lastName || ''}`.trim() || 'Assigned'}</p>}
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-slate-700">{reservationStatusLabel(reservationCredential?.state || 'loading')}</span>
-                </div>
-                {reservationCredential?.credential?.qrToken ? (
-                  <div className="mt-4 flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
-                    <ReservationQrCode value={reservationCredential.credential.qrToken} className="h-40 w-40 shrink-0" />
-                    <div className="min-w-0 text-center sm:text-left">
-                      <p className="text-xs font-bold text-slate-800">Present this QR code to your assigned staff during your scheduled appointment.</p>
-                      {reservationCredential.state === 'too_early' && <p role="status" className="mt-2 text-xs text-amber-700">Your QR is ready. Check-in will open at the scheduled appointment time.</p>}
-                      {reservationCredential.state === 'available' && <p role="status" className="mt-2 text-xs text-emerald-700">Your appointment is ready for check-in.</p>}
-                      <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Backup code</p>
-                      <code className="mt-1 block select-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-lg font-black tracking-widest text-slate-900" aria-label="Reservation backup code">{reservationCredential.credential.backupCode}</code>
-                      <p className="mt-2 text-[10px] text-slate-500">Keep this code private. It can be used instead of the QR code.</p>
-                      {reservationCredential.rotated && <p role="status" className="mt-2 text-[10px] font-bold text-amber-700">The schedule or assignment changed. This is your new credential; the previous code is no longer valid.</p>}
-                    </div>
-                  </div>
-                ) : (
-                  <p role="status" className="mt-3 rounded-xl bg-white p-3 text-xs text-slate-600">
-                    {reservationCredential?.state === 'checked_in' ? 'Your pet has already been checked in.'
-                      : reservationCredential?.state === 'cancelled' ? 'This booking is cancelled; its verification credential is no longer valid.'
-                        : reservationCredential?.state === 'too_early' ? 'Your check-in window has not opened yet. Your QR and backup code will remain available here.'
-                          : reservationCredential?.state === 'expired' ? 'The check-in window has expired. Contact the Store for assistance.'
-                            : reservationCredential?.state === 'loading' ? 'Loading your secure reservation credential…'
-                              : reservationCredential?.state === 'temporarily_unavailable' ? (reservationCredential.errorMessage || 'Secure verification is temporarily unavailable. Refresh later or contact the Store.')
-                                : 'A check-in QR code and backup code become available after the booking is confirmed and payment is verified.'}
-                  </p>
-                )}
-                {reservationCredential?.state === 'temporarily_unavailable' && (
-                  <button type="button" onClick={loadReservationCredential} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-primary-200 bg-white px-4 py-2 text-xs font-black text-primary-700 transition hover:bg-primary-50">
-                    <RefreshCw className="h-4 w-4" /> Retry secure QR
-                  </button>
-                )}
-              </section>
 
               <ServiceCommunicationPanel booking={selectedBooking} compact />
             </div>
