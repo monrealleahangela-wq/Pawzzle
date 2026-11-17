@@ -39,6 +39,15 @@ export const createEmptyServiceDetails = () => ({
   serviceNeeds: '', specialInstructions: ''
 });
 
+export const getLocalDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isDateKey = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+
 export const resolveServiceBookingKind = (service = {}) => {
   service = service && typeof service === 'object' ? service : {};
   const category = String(service.category || '').toLowerCase();
@@ -59,7 +68,7 @@ export const calculateBoardingNights = (checkInDate, checkOutDate) => {
   return Number.isFinite(difference) ? Math.max(0, Math.ceil(difference / 86400000)) : 0;
 };
 
-export const validateServiceDetails = (kind, details = {}) => {
+export const validateServiceDetails = (kind, details = {}, { today = getLocalDateKey() } = {}) => {
   const errors = {};
   const required = (key, message) => {
     if (!String(details[key] ?? '').trim()) errors[key] = message;
@@ -82,7 +91,12 @@ export const validateServiceDetails = (kind, details = {}) => {
   } else if (kind === SERVICE_BOOKING_KINDS.BOARDING) {
     required('checkInDate', 'Please choose a check-in date.');
     required('checkOutDate', 'Please choose a check-out date.');
-    if (details.checkInDate && details.checkOutDate && calculateBoardingNights(details.checkInDate, details.checkOutDate) < 1) {
+    if (isDateKey(details.checkInDate) && details.checkInDate < today) {
+      errors.checkInDate = 'Check-in date cannot be in the past.';
+    }
+    if (isDateKey(details.checkOutDate) && details.checkOutDate < today) {
+      errors.checkOutDate = 'Check-out date cannot be in the past.';
+    } else if (details.checkInDate && details.checkOutDate && calculateBoardingNights(details.checkInDate, details.checkOutDate) < 1) {
       errors.checkOutDate = 'Please select check-out after check-in.';
     }
     required('feedingSchedule', 'Please enter a feeding schedule.');

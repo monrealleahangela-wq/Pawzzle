@@ -23,3 +23,19 @@ test('Full Groom displays the selected package once and keeps safety questions r
   expect(screen.getByRole('button', { name: 'Nail trimming preference: Yes' })).not.toHaveClass('col-span-2');
   expect(screen.getByText('Can your pet become aggressive or anxious?')).toBeInTheDocument();
 });
+
+test('boarding date inputs prevent dates before the customer local date', () => {
+  jest.useFakeTimers().setSystemTime(new Date(2026, 10, 17, 12));
+
+  render(<ServiceSpecificBookingFields
+    service={{ name: 'Pet Boarding', category: 'boarding_hotel', assignedStaff: [] }}
+    details={{ checkInDate: '2026-11-18', checkOutDate: '' }}
+    onChange={jest.fn()}
+    errors={{}}
+    pet={{}}
+  />);
+
+  expect(screen.getByLabelText(/Check-in date/)).toHaveAttribute('min', '2026-11-17');
+  expect(screen.getByLabelText(/Check-out date/)).toHaveAttribute('min', '2026-11-18');
+  jest.useRealTimers();
+});

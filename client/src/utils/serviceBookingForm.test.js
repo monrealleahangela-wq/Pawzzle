@@ -28,3 +28,32 @@ describe('grooming booking applicability', () => {
     expect(calculateServicePrice(service, {}, {}, ['nail-art']).breakdown.finalPrice).toBe(800);
   });
 });
+
+describe('boarding booking dates', () => {
+  const completeDetails = {
+    checkInDate: '2026-11-18',
+    checkOutDate: '2026-11-20',
+    feedingSchedule: 'Morning and evening',
+    foodProvided: 'yes',
+    takesMedication: 'no',
+    specialCareInstructions: 'None',
+    emergencyContact: 'Owner 09170000000'
+  };
+
+  test('allows today or future dates and rejects past stay dates', () => {
+    expect(validateServiceDetails(SERVICE_BOOKING_KINDS.BOARDING, completeDetails, { today: '2026-11-17' })).toEqual({});
+    expect(validateServiceDetails(SERVICE_BOOKING_KINDS.BOARDING, {
+      ...completeDetails,
+      checkInDate: '2026-11-16'
+    }, { today: '2026-11-17' })).toEqual(expect.objectContaining({
+      checkInDate: 'Check-in date cannot be in the past.'
+    }));
+    expect(validateServiceDetails(SERVICE_BOOKING_KINDS.BOARDING, {
+      ...completeDetails,
+      checkInDate: '2026-11-15',
+      checkOutDate: '2026-11-16'
+    }, { today: '2026-11-17' })).toEqual(expect.objectContaining({
+      checkOutDate: 'Check-out date cannot be in the past.'
+    }));
+  });
+});
