@@ -148,7 +148,7 @@ test('Rider and seller workspaces render authoritative capacity and safe readine
   assert.match(workspace, /Parcel count/);
   assert.match(workspace, /Remaining capacity/);
   assert.match(seller, /assignmentReadiness/);
-  assert.match(seller, /Assign Automatically|Reassign Automatically/);
+  assert.match(seller, /Assign Rider|Assign Selected Rider/);
   assert.match(orderDetail, /assignmentReadiness/);
-  assert.match(orderDetail, /Assign Rider Automatically|Reassign Rider Automatically/);
+  assert.match(orderDetail, /Assign Rider|Assign Selected Rider/);
 });

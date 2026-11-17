@@ -35,6 +35,7 @@ export default function LogisticsDetail() {
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [riders, setRiders] = useState([]);
+  const [selectedRiderId, setSelectedRiderId] = useState('');
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [parcel, setParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, manualException: false, manualExceptionReason: '' });
@@ -68,7 +69,9 @@ export default function LogisticsDetail() {
       else if (Number(parcelFacts.weightKg) > 0) Object.assign(eligibilityParams, { weightKg: parcelFacts.weightKg, parcelCount: parcelFacts.parcelCount });
       try {
         const riderResponse = await staffService.getEligibleRiders(eligibilityParams);
-        setRiders(riderResponse.data.riders || []);
+        const riderRows = riderResponse.data.riders || [];
+        setRiders(riderRows);
+        setSelectedRiderId(current => riderRows.some(rider => String(rider._id) === String(current) && rider.eligibility?.eligible) ? current : '');
         setAssignmentReadiness(riderResponse.data.assignmentReadiness || null);
       } catch (error) {
         setRiders([]);
@@ -98,10 +101,12 @@ export default function LogisticsDetail() {
           ...(delivery.assignedRider ? { excludeRiderId: entityId(delivery.assignedRider) } : {}),
           parcelCount: Number(parcel.parcelCount)
         };
-        if (delivery.order?._id && !delivery.parcel?.weightKg) params.orderId = delivery.order._id;
+        if (delivery.order?._id && !delivery.parcel?.weightKg && delivery.order?.parcelEstimate?.status !== 'missing_product_weight') params.orderId = delivery.order._id;
         else if (Number(parcel.weightKg) > 0) params.weightKg = Number(parcel.weightKg);
         const response = await staffService.getEligibleRiders(params);
-        setRiders(response.data.riders || []);
+        const riderRows = response.data.riders || [];
+        setRiders(riderRows);
+        setSelectedRiderId(current => riderRows.some(rider => String(rider._id) === String(current) && rider.eligibility?.eligible) ? current : '');
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       } catch (error) {
         setAssignmentReadiness({ loadError: true, message: error.response?.data?.message || 'Unable to check Rider eligibility.' });
@@ -138,11 +143,12 @@ export default function LogisticsDetail() {
         deliveryId: manual ? delivery._id : undefined,
         orderId: delivery.order?._id,
         bookingId: delivery.booking?._id,
+        riderId: selectedRiderId,
         parcel,
         reassign: delivery.assignmentType !== 'unassigned'
       });
       toast.success(response.data?.message || (delivery.assignmentType === 'unassigned' ? 'Rider assigned.' : 'Delivery reassigned.'));
-      setShowAssignment(false); setReassignConfirmationOpen(false); await load();
+      setSelectedRiderId(''); setShowAssignment(false); setReassignConfirmationOpen(false); await load();
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to assign rider.'); }
     finally { setSaving(false); }
   };
@@ -150,6 +156,7 @@ export default function LogisticsDetail() {
   const assign = () => {
     if (!Number(parcel.weightKg)) return toast.error(delivery.order?.parcelEstimate?.status === 'missing_product_weight' ? 'Correct missing product weights or enter a documented estimate.' : 'Enter the parcel weight.');
     if (delivery.order?.parcelEstimate?.status === 'missing_product_weight' && !parcel.confirmed) return toast.error('Confirm the documented parcel-weight exception.');
+    if (!selectedRiderId) return toast.error('Select an available Delivery Rider.');
     if (delivery.assignmentType !== 'unassigned') return setReassignConfirmationOpen(true);
     return performAssignment();
   };
@@ -194,7 +201,7 @@ export default function LogisticsDetail() {
 
     {assignmentReadiness?.loadError&&<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Delivery details loaded, but Rider eligibility could not be refreshed: {assignmentReadiness.message}</div>}
 
-    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4">{isFailedAttempt&&<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><b>Recover failed delivery</b><p className="mt-1 text-[10px]">Pawzzle will preserve the failed attempt, return the order to Rider Assigned, and select a different eligible Rider.</p></div>}<DeliveryAssignmentFields riders={riders} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel} weightSummary={delivery.order?.parcelEstimate} onRecalculate={delivery.order?._id && !delivery.parcel?.weightKg ? recalculateWeight : undefined} recalculating={recalculatingWeight}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg)} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Automatically':isFailedAttempt?'Assign Replacement':'Reassign Automatically'}</button></div></section>}
+    {showAssignment && <section className="bg-white border rounded-2xl p-4 space-y-4">{isFailedAttempt&&<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><b>Recover failed delivery</b><p className="mt-1 text-[10px]">Pawzzle will preserve the failed attempt and let you select a different eligible Rider.</p></div>}<DeliveryAssignmentFields riders={riders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId} assignmentReadiness={assignmentReadiness} parcel={parcel} onParcelChange={setParcel} weightSummary={delivery.order?.parcelEstimate} onRecalculate={delivery.order?._id && !delivery.parcel?.weightKg ? recalculateWeight : undefined} recalculating={recalculatingWeight}/><div className="flex justify-end gap-2"><button onClick={()=>setShowAssignment(false)} className="h-9 px-4 text-xs font-bold">Cancel</button><button onClick={assign} disabled={saving || !Number(parcel.weightKg) || !selectedRiderId} className="h-9 px-4 rounded-lg bg-orange-600 text-white text-[10px] font-black uppercase disabled:opacity-50">{saving?'Saving…':delivery.assignmentType==='unassigned'?'Assign Rider':isFailedAttempt?'Assign Replacement':'Assign Selected Rider'}</button></div></section>}
 
     <section className="grid grid-cols-2 md:grid-cols-4 gap-2.5">{[[Truck,'Status',delivery.statusLabel],[User,'Rider',fullName(currentRider)],[Package,'Parcel',delivery.parcel?.weightKg?`${delivery.parcel.weightKg} kg · ${delivery.parcel.parcelCount} parcel(s)`:delivery.order?.parcelEstimate?.weightKg?`${delivery.order.parcelEstimate.weightKg} kg estimated`:'Weight unavailable'],[Wallet,cod?'COD Amount':'Payment',manual?'Not recorded':cod?money(source?.totalAmount||source?.totalPrice):(source?.paymentStatus||'pending')]].map(([Icon,label,value])=><div key={label} className="bg-white border rounded-xl p-3"><Icon size={15} className="text-orange-600 mb-2"/><p className="text-[8px] text-slate-400 font-black uppercase">{label}</p><p className="text-xs font-black text-slate-900 mt-1 capitalize">{value}</p></div>)}</section>
 
@@ -217,8 +224,8 @@ export default function LogisticsDetail() {
     <ConfirmationDialog
       isOpen={reassignConfirmationOpen}
       title={isFailedAttempt ? 'Retry failed delivery?' : 'Reassign delivery?'}
-      description={isFailedAttempt ? 'Pawzzle will preserve the failed attempt, return the order to Rider Assigned, and select a different eligible Rider.' : 'Pawzzle will automatically select another eligible Rider and preserve assignment history.'}
-      confirmLabel={isFailedAttempt ? 'Assign replacement Rider' : 'Reassign automatically'}
+      description={isFailedAttempt ? 'Pawzzle will preserve the failed attempt and assign the replacement Rider you selected.' : 'Pawzzle will assign the selected Rider and preserve assignment history.'}
+      confirmLabel={isFailedAttempt ? 'Assign replacement Rider' : 'Assign selected Rider'}
       busy={saving}
       onCancel={() => setReassignConfirmationOpen(false)}
       onConfirm={performAssignment}

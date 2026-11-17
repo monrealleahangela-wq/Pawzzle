@@ -95,13 +95,14 @@ test('Service staff validation accepts a same-Store active direct-role Veterinar
   }
 });
 
-test('discovery UIs distinguish API errors and preserve automatic Rider assignment', () => {
+test('discovery UIs distinguish API errors and require manual Rider selection', () => {
   const services = source('client/src/pages/admin/ServiceManagement.js');
   const bookings = source('client/src/pages/admin/BookingsManagement.js');
   assert.match(services, /staffError/);
   assert.match(services, /role="alert"/);
   assert.match(bookings, /setAssignmentReadiness\(\{ error: true, message:/);
   assert.match(bookings, /assignmentReadiness=\{assignmentReadiness\}/);
-  assert.match(bookings, /Assign Rider Automatically|Reassign Automatically/);
-  assert.doesNotMatch(bookings, /selectedRiderId|riderId:\s*selected/);
+  assert.match(bookings, /Assign Rider|Assign Selected Rider/);
+  assert.match(bookings, /selectedRiderId/);
+  assert.match(bookings, /riderId:\s*selectedRiderId/);
 });

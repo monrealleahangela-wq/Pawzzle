@@ -37,6 +37,7 @@ const OrderDetail = () => {
   const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(user?.role !== 'customer');
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [eligibleRiders, setEligibleRiders] = useState([]);
+  const [selectedRiderId, setSelectedRiderId] = useState('');
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false, manualException: false, manualExceptionReason: '' });
   const [recalculatingWeight, setRecalculatingWeight] = useState(false);
@@ -116,11 +117,20 @@ const OrderDetail = () => {
     const timer = setTimeout(() => {
       const params = {
         ...(order.store?._id || order.store ? { storeId: order.store?._id || order.store } : {}),
-        orderId: order._id,
         parcelCount: Number(deliveryParcel.parcelCount || 1)
       };
+      if (deliveryAssignment?.assignedRider?._id || deliveryAssignment?.assignedRider) {
+        params.excludeRiderId = deliveryAssignment.assignedRider?._id || deliveryAssignment.assignedRider;
+      }
+      if (order.parcelEstimate?.status === 'missing_product_weight' && Number(deliveryParcel.weightKg) > 0) {
+        params.weightKg = Number(deliveryParcel.weightKg);
+      } else {
+        params.orderId = order._id;
+      }
       staffService.getEligibleRiders(params).then(response => {
-        setEligibleRiders(response.data.riders || []);
+        const riders = response.data.riders || [];
+        setEligibleRiders(riders);
+        setSelectedRiderId(current => riders.some(rider => String(rider._id) === String(current) && rider.eligibility?.eligible) ? current : '');
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       }).catch(error => {
         setEligibleRiders([]);
@@ -128,7 +138,7 @@ const OrderDetail = () => {
       });
     }, 250);
     return () => clearTimeout(timer);
-  }, [canManageOrders, order, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
+  }, [canManageOrders, order, deliveryAssignment?.assignedRider, deliveryParcel.weightKg, deliveryParcel.parcelCount]);
 
   useEffect(() => {
     if (order && !hasAutoReviewed && new URLSearchParams(location.search).get('review') === 'true') {
@@ -317,9 +327,11 @@ const OrderDetail = () => {
     try {
       if (!Number(deliveryParcel.weightKg)) return toast.error(order?.parcelEstimate?.status === 'missing_product_weight' ? 'Correct missing product weights or enter a documented estimate.' : 'Parcel weight is unavailable.');
       if (order?.parcelEstimate?.status === 'missing_product_weight' && !deliveryParcel.confirmed) return toast.error('Confirm the documented parcel-weight exception first.');
-      const response = await deliveryService.assignRider({ orderId: id, parcel: deliveryParcel });
+      if (!selectedRiderId) return toast.error('Select an available Delivery Rider.');
+      const response = await deliveryService.assignRider({ orderId: id, riderId: selectedRiderId, parcel: deliveryParcel, reassign: Boolean(deliveryAssignment?.assignedRider) });
       setDeliveryAssignment(response.data.delivery || null);
-      toast.success('Delivery Rider assigned automatically.');
+      setSelectedRiderId('');
+      toast.success(response.data?.message || 'Delivery Rider assigned.');
       fetchOrder(); // Refresh to show delivery status if needed
     } catch (error) {
       toast.error(error.response?.data?.message || 'We could not prepare this delivery. Please try again.');
@@ -1151,16 +1163,17 @@ const OrderDetail = () => {
               </h2>
               <div className="space-y-4">
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-                  Pawzzle assigns an active internal rider. Navigation and proof tools stay inside the rider's authenticated workspace.
+                  Select an available internal Rider. Navigation and proof tools stay inside the Rider's authenticated workspace.
                 </p>
-                <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel} weightSummary={order.parcelEstimate} onRecalculate={handleRecalculateWeight} recalculating={recalculatingWeight}/>
+                <DeliveryAssignmentFields riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel} weightSummary={order.parcelEstimate} onRecalculate={handleRecalculateWeight} recalculating={recalculatingWeight}/>
                 {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                 <button
                   onClick={handleAssignRider}
+                  disabled={!selectedRiderId}
                   className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg flex items-center justify-center gap-2 group ${order.delivery ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
                 >
                   <Truck className="h-4 w-4" />
-                  {order.delivery ? 'Reassign Rider Automatically' : 'Assign Rider Automatically'}
+                  {order.delivery ? 'Assign Selected Rider' : 'Assign Rider'}
                 </button>
                 {order.delivery && (
                   <>

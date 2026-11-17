@@ -132,17 +132,6 @@ const normalizeParcel = (source, input = {}) => {
   };
 };
 
-const riderSort = (left, right) => {
-  const ratio = rider => Math.max(
-    Number(rider.riderProfile?.currentLoad?.weightKg || 0) / Number(rider.riderProfile?.vehicleCapacity?.maxWeightKg || 1),
-    Number(rider.riderProfile?.currentLoad?.parcelCount || 0) / Number(rider.riderProfile?.vehicleCapacity?.maxParcelCount || 1)
-  );
-  return ratio(left) - ratio(right)
-    || Number(left.activeDeliveryCount || 0) - Number(right.activeDeliveryCount || 0)
-    || new Date(left.riderProfile?.lastAssignedAt || 0) - new Date(right.riderProfile?.lastAssignedAt || 0)
-    || String(left._id).localeCompare(String(right._id));
-};
-
 const evaluateRiderEligibility = (rider, parcel, now = new Date(), timezone = rider?.store?.hrSettings?.timezone || 'Asia/Manila') => {
   const capacity = getRiderCapacitySummary(rider?.riderProfile);
   if (!capacity.configured) return { eligible: false, reason: 'vehicle_setup_required', capacity };
@@ -153,7 +142,7 @@ const evaluateRiderEligibility = (rider, parcel, now = new Date(), timezone = ri
 };
 
 const ASSIGNMENT_MESSAGES = {
-  eligible: 'An eligible internal Delivery Rider is available for automatic assignment.',
+  eligible: 'Eligible internal Delivery Riders are available for manual assignment.',
   no_active_riders: 'No active internal Delivery Riders are available for this Store.',
   vehicle_setup_required: 'Active Delivery Riders require a supported vehicle type, maximum weight, and maximum parcel count before assignment.',
   off_duty_or_unavailable: 'Configured Delivery Riders are currently off duty or unavailable.',
@@ -413,7 +402,10 @@ const completePickupOrder = async ({ orderId, customerId, session: callerSession
   return { ...outcome, order: await Order.findById(outcome.orderId) };
 };
 
-const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelInput, actorId, reassign = false }) => {
+const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelInput, actorId, riderId, reassign = false }) => {
+  if (!riderId || !mongoose.Types.ObjectId.isValid(riderId)) {
+    throw fail('Select a valid Delivery Rider.', 400);
+  }
   const session = await mongoose.startSession();
   let result;
   try {
@@ -474,14 +466,24 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
       const storeSettings = await Store.findById(source.store).select('hrSettings.timezone').session(session).lean();
       const storeTimezone = storeSettings?.hrSettings?.timezone || 'Asia/Manila';
       const previousRider = delivery?.assignedRider || null;
+      if (riderId && reassign && previousRider && String(riderId) === String(previousRider)) {
+        throw fail('Select a different available Rider for reassignment.', 409);
+      }
       if (delivery && previousRider) await releaseRiderCapacity(delivery, session);
 
       const riders = await User.find(buildActiveRiderAccountFilter({
         store: source.store,
-        ...(reassign && previousRider ? { _id: { $ne: previousRider } } : {})
+        _id: riderId
       })).session(session).lean();
       const evaluations = riders.map(rider => ({ rider, ...evaluateRiderEligibility(rider, parcel, new Date(), storeTimezone) }));
-      const available = evaluations.filter(row => row.eligible).map(row => row.rider).sort(riderSort);
+      const available = evaluations.filter(row => row.eligible).map(row => row.rider);
+      if (!riders.length) {
+        throw fail('The selected Rider is not an active Rider for this Store or is already assigned to this delivery.', 409);
+      }
+      if (!available.length) {
+        const evaluation = evaluations[0];
+        throw fail(evaluation ? ASSIGNMENT_MESSAGES[evaluation.reason] : ASSIGNMENT_MESSAGES.no_eligible_rider, 409);
+      }
       let selected;
       for (const candidate of available) {
         selected = await User.findOneAndUpdate({
@@ -522,7 +524,7 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
           parcel: { ...parcel, recordedAt: now, recordedBy: actorId },
           capacityReservation: { rider: selected._id, ...parcel, reservedAt: now },
           assignmentHistory: [{ assignmentType: 'internal', rider: selected._id, assignedBy: actorId, assignedAt: now }],
-          statusHistory: [{ status: 'assigned', timestamp: now, notes: 'System assigned an available internal rider by vehicle capacity.' }]
+          statusHistory: [{ status: 'assigned', timestamp: now, notes: 'Store staff selected an available internal Rider.' }]
         }], { session });
       } else {
         const activeHistory = delivery.assignmentHistory?.find(entry => !entry.endedAt);
@@ -539,8 +541,8 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
           status: 'assigned',
           timestamp: now,
           notes: recoveringFailedAttempt
-            ? 'System assigned a replacement Rider after a recorded failed delivery attempt.'
-            : 'System assigned an available internal rider by vehicle capacity.'
+            ? 'Store staff selected a replacement Rider after a recorded failed delivery attempt.'
+            : 'Store staff selected an available internal Rider.'
         });
         await delivery.save({ session });
       }
@@ -553,7 +555,7 @@ const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelIn
             actor: actorId,
             description: recoveringFailedAttempt
               ? 'A replacement Delivery Rider was assigned after the failed delivery attempt.'
-              : 'An internal Delivery Rider was assigned automatically.'
+              : 'An internal Delivery Rider was selected by the Store.'
           } }
         }, { session });
         if (!linked.matchedCount) throw fail('Order state changed. Refresh and try again.', 409);

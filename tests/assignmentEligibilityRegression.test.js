@@ -177,6 +177,7 @@ test('Booking readiness distinguishes service setup, Store scope, and schedule e
 
 test('Rider capacity reservation rechecks lifecycle and Store scope atomically', () => {
   const assignment = source('services/deliveryAssignmentService.js');
+  assert.match(assignment, /store: source\.store,\s*_id: riderId/);
   assert.match(assignment, /findOneAndUpdate\(\{\s*\.\.\.buildActiveRiderAccountFilter\(\{ _id: candidate\._id, store: source\.store \}\)/);
   assert.match(assignment, /\$expr:[\s\S]*currentLoad\.weightKg[\s\S]*currentLoad\.parcelCount/);
 });

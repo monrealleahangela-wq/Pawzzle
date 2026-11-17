@@ -39,11 +39,13 @@ test('courier-provider integration is retired while internal rider assignment re
   assert.doesNotMatch(controller, /DeliveryProviderService/);
   assert.match(routes, /post\('\/assign', authenticate, requirePermission\('logistics\.manage'\)/);
   assert.doesNotMatch(routes, /\/generate|\/verify\/:token|\/status\/:token|\/location\/:token/);
-  assert.match(controller, /assignDeliveryAutomatically/);
-  assert.doesNotMatch(controller, /riderId } = req\.body|generateDeliveryLinks|verifyRider/);
+  assert.match(controller, /assignDeliveryManually/);
+  assert.match(controller, /riderId, parcel, reassign/);
+  assert.match(controller, /Select an available Delivery Rider/);
+  assert.doesNotMatch(controller, /generateDeliveryLinks|verifyRider/);
   assert.doesNotMatch(api, /getProviders|quoteProvider|requestProvider|refreshProvider|cancelProvider/);
-  assert.match(assignmentFields, /System Rider Assignment/);
-  assert.doesNotMatch(assignmentFields, /selectedRiderId|onRiderChange/);
+  assert.match(assignmentFields, /Manual Rider Assignment/);
+  assert.match(assignmentFields, /selectedRiderId|onRiderChange/);
   assert.doesNotMatch(assignmentFields, /Courier Provider/);
 });
 

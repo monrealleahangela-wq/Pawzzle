@@ -20,7 +20,7 @@ const {
 } = require('../utils/deliveryConcerns');
 const mongoose = require('mongoose');
 const { refreshOrderWeightSnapshots } = require('../services/parcelWeightService');
-const { syncReturnMissionStatus } = require('../services/orderReturnLifecycleService');
+const { syncReturnMissionAssignment, syncReturnMissionStatus } = require('../services/orderReturnLifecycleService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 let CLIENT_URL = process.env.CLIENT_URL;
@@ -157,11 +157,12 @@ const assignedRiderQuery = req => ({
   assignedRider: req.user._id
 });
 
-const assignDeliveryAutomatically = async (req, res) => {
+const assignDeliveryManually = async (req, res) => {
   try {
-    const { orderId, bookingId, deliveryId, parcel, reassign } = req.body;
+    const { orderId, bookingId, deliveryId, riderId, parcel, reassign } = req.body;
     if (![orderId, bookingId, deliveryId].filter(Boolean).length) return res.status(400).json({ message: 'Order, Booking, or manual Delivery ID is required.' });
     if ([orderId, bookingId, deliveryId].filter(Boolean).length > 1) return res.status(400).json({ message: 'Select only one delivery source.' });
+    if (typeof riderId !== 'string' || !mongoose.Types.ObjectId.isValid(riderId)) return res.status(400).json({ message: 'Select an available Delivery Rider.' });
     if (!orderId && parcel?.confirmed !== true) return res.status(400).json({ message: 'Confirm the packaged parcel weight and parcel count before Rider assignment.' });
     if (orderId && parcel?.manualException === true && parcel?.confirmed !== true) {
       return res.status(400).json({ message: 'Confirm the documented parcel-weight exception before Rider assignment.' });
@@ -175,12 +176,13 @@ const assignDeliveryAutomatically = async (req, res) => {
     if (!isPlatformAdmin(req.user) && !(await canOperateStore(req.user, source.store, ['logistics.manage']))) {
       return res.status(403).json({ message: 'You cannot assign deliveries for this store.' });
     }
-    const result = await assignDelivery({ orderId, bookingId, deliveryId, parcel, actorId: req.user._id, reassign: Boolean(reassign) });
+    const result = await assignDelivery({ orderId, bookingId, deliveryId, riderId, parcel, actorId: req.user._id, reassign: Boolean(reassign) });
     const { delivery, rider } = result;
     const io = req.app.get('socketio');
     if (result.previousRiderId && String(result.previousRiderId) !== String(rider._id)) {
       await revokeDeliveryRoomForUser(io, delivery._id, result.previousRiderId);
     }
+    await syncReturnMissionAssignment({ delivery, user: req.user });
     if (result.assignmentChanged) {
       const notifications = [];
       if (result.previousRiderId && String(result.previousRiderId) !== String(rider._id)) notifications.push(Notification.create({
@@ -206,12 +208,12 @@ const assignDeliveryAutomatically = async (req, res) => {
     res.status(result.assignmentChanged ? 201 : 200).json({
       message: result.recoveredFailedAttempt
         ? 'Failed delivery recovered and a replacement Rider was assigned.'
-        : result.assignmentChanged ? 'Delivery Rider assigned automatically.' : 'Delivery already has an active rider assignment.',
+        : result.assignmentChanged ? 'Delivery Rider assigned.' : 'Delivery already has an active Rider assignment.',
       customerLink: `${CLIENT_URL}/track/${delivery.trackingToken}`,
       delivery: activeDeliveryView(delivery), assignedRider: rider
     });
   } catch (error) {
-    console.error('Automatic rider assignment error:', error);
+    console.error('Manual rider assignment error:', error);
     res.status(error.statusCode || 500).json({ message: error.message || 'Unable to assign a Delivery Rider.' });
   }
 };
@@ -896,7 +898,7 @@ const calculateDeliveryFee = async (req, res) => {
 };
 
 module.exports = {
-  assignDeliveryAutomatically,
+  assignDeliveryManually,
   recalculateOrderParcelWeight,
   getAssignedRiderDelivery,
   getDeliveryByToken,

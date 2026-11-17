@@ -54,6 +54,7 @@ const BookingsManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [user, setUser] = useState(null);
   const [eligibleRiders, setEligibleRiders] = useState([]);
+  const [selectedRiderId, setSelectedRiderId] = useState('');
   const [assignmentReadiness, setAssignmentReadiness] = useState(null);
   const [deliveryParcel, setDeliveryParcel] = useState({ weightKg: '', parcelCount: 1, confirmed: false, estimated: false });
   const [deliveryAssignment, setDeliveryAssignment] = useState(null);
@@ -69,6 +70,7 @@ const BookingsManagement = () => {
 
   useEffect(() => {
     setBookingModalStep('details');
+    setSelectedRiderId('');
   }, [selectedBooking?._id]);
 
   useEffect(() => {
@@ -145,6 +147,9 @@ const BookingsManagement = () => {
     }
     const timer = setTimeout(() => {
       const params = { storeId: selectedStoreId };
+      if (deliveryAssignment?.assignedRider?._id || deliveryAssignment?.assignedRider) {
+        params.excludeRiderId = deliveryAssignment.assignedRider?._id || deliveryAssignment.assignedRider;
+      }
       if (Number(deliveryParcel.weightKg) > 0 && Number(deliveryParcel.parcelCount) > 0) {
         Object.assign(params, {
           weightKg: Number(deliveryParcel.weightKg),
@@ -152,7 +157,9 @@ const BookingsManagement = () => {
         });
       }
       staffService.getEligibleRiders(params).then(response => {
-        setEligibleRiders(response.data.riders || []);
+        const riders = response.data.riders || [];
+        setEligibleRiders(riders);
+        setSelectedRiderId(current => riders.some(rider => String(rider._id) === String(current) && rider.eligibility?.eligible) ? current : '');
         setAssignmentReadiness(response.data.assignmentReadiness || null);
       }).catch(error => {
         setEligibleRiders([]);
@@ -165,6 +172,7 @@ const BookingsManagement = () => {
     staffType,
     selectedBooking?._id,
     selectedStoreId,
+    deliveryAssignment?.assignedRider,
     deliveryParcel.weightKg,
     deliveryParcel.parcelCount
   ]);
@@ -259,9 +267,11 @@ const BookingsManagement = () => {
     try {
       if (!Number(deliveryParcel.weightKg)) return toast.error('Enter the measured parcel weight first.');
       if (!deliveryParcel.confirmed) return toast.error('Confirm the packaged weight and parcel count first.');
-      const response = await deliveryService.assignRider({ bookingId, parcel: deliveryParcel, reassign: Boolean(deliveryAssignment) });
+      if (!selectedRiderId) return toast.error('Select an available Delivery Rider.');
+      const response = await deliveryService.assignRider({ bookingId, riderId: selectedRiderId, parcel: deliveryParcel, reassign: Boolean(deliveryAssignment?.assignedRider) });
       setDeliveryAssignment(response.data.delivery || null);
-      toast.success('Delivery Rider assigned automatically.');
+      setSelectedRiderId('');
+      toast.success(response.data?.message || 'Delivery Rider assigned.');
       fetchBookings();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Unable to prepare this delivery.');
@@ -821,16 +831,17 @@ const BookingsManagement = () => {
                     </div>
                   </div>
                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
-                    Pawzzle assigns an active internal rider. The rider opens navigation and proof tools from their authenticated workspace.
+                    Select an available internal Rider. The Rider opens navigation and proof tools from their authenticated workspace.
                   </p>
-                  <DeliveryAssignmentFields riders={eligibleRiders} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
+                  <DeliveryAssignmentFields riders={eligibleRiders} selectedRiderId={selectedRiderId} onRiderChange={setSelectedRiderId} assignmentReadiness={assignmentReadiness} parcel={deliveryParcel} onParcelChange={setDeliveryParcel}/>
                   {deliveryAssignment?.assignmentType === 'internal' && <div className="p-3 rounded-xl bg-white border text-xs"><p className="text-[9px] font-black uppercase text-slate-400">Current Delivery Method</p><p className="font-black text-slate-800">Pawzzle Rider</p><p className="text-slate-500">{deliveryAssignment.assignedRider?.firstName} {deliveryAssignment.assignedRider?.lastName} · {deliveryAssignment.assignedRider?.riderProfile?.staffId}</p></div>}
                   <button
                     onClick={() => handleAssignRider(selectedBooking._id)}
+                    disabled={!selectedRiderId}
                     className={`w-full py-3.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 group ${deliveryAssignment ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-primary-600'}`}
                   >
                     <Truck className="h-4 w-4" />
-                    {deliveryAssignment ? 'Reassign Automatically' : 'Assign Rider Automatically'}
+                    {deliveryAssignment ? 'Assign Selected Rider' : 'Assign Rider'}
                   </button>
 
                   {deliveryAssignment && (

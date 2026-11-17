@@ -1188,7 +1188,7 @@ const getEligibleRiders = async (req, res) => {
                         riders: [],
                         assignmentReadiness: {
                             reason: 'missing_product_weight',
-                            message: 'Automatic Rider assignment is blocked until the listed product weights are corrected or a documented estimate is approved.',
+                            message: 'Rider assignment is blocked until the listed product weights are corrected or a documented estimate is approved.',
                             eligibleCount: 0,
                             missingItems: orderWeight.missingItems || []
                         }
