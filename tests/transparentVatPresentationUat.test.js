@@ -43,7 +43,7 @@ test('authoritative quote returns server-priced line items and checkout renders 
   const checkout = read('client/src/pages/customer/Checkout.js');
 
   assert.match(controller, /items: pricing\.processedItems/);
-  assert.match(checkout, /pricingQuote\?\.items\?\.length \? pricingQuote\.items : checkoutItems/);
+  assert.match(checkout, /currentPricingQuote\?\.items\?\.length \? currentPricingQuote\.items : checkoutItems/);
   assert.match(checkout, /formatPeso\(item\.unitPrice\)\} × \{item\.quantity\}/);
   assert.match(checkout, /Line total/);
   assert.match(checkout, /formatPeso\(item\.lineTotal\)/);

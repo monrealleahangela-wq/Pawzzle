@@ -7,6 +7,7 @@ const PaymentBreakdown = ({
   loading = false,
   error = '',
   compact = false,
+  divided = false,
   showZeroFees = false,
   className = ''
 }) => {
@@ -30,14 +31,22 @@ const PaymentBreakdown = ({
   const rows = paymentSummaryRows(summary, { showZeroFees });
 
   return (
-    <div className={`${compact ? 'space-y-1.5 text-[10px]' : 'space-y-3 text-xs'} ${className}`}>
-      {rows.map((row) => (
-        <div key={row.key} className={`${row.key === 'historical-tax' ? 'rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-950/30' : 'flex items-start justify-between gap-4'} text-secondary`}>
-          <span className={row.key === 'historical-tax' ? 'block font-bold text-amber-800 dark:text-amber-300' : ''}>{row.label}</span>
-          <span className={`${row.key === 'historical-tax' ? 'mt-1 block font-medium text-amber-700 dark:text-amber-200' : 'text-right font-bold text-default'}`}>{row.displayValue}</span>
-        </div>
-      ))}
-      <div className={`${compact ? 'pt-2' : 'pt-3'} flex items-end justify-between gap-4 border-t border-slate-200 dark:border-slate-700`}>
+    <div className={`${compact ? 'text-[10px]' : 'text-xs'} ${className}`}>
+      <div className={divided ? 'divide-y divide-slate-200 dark:divide-slate-700' : (compact ? 'space-y-1.5' : 'space-y-3')}>
+        {rows.map((row) => (
+          <div
+            key={row.key}
+            className={`${row.key === 'historical-tax'
+              ? `rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-800 dark:bg-amber-950/30 ${divided ? 'my-2' : ''}`
+              : `flex items-start justify-between gap-4 ${divided ? 'py-2.5 first:pt-0' : ''}`
+            } text-secondary`}
+          >
+            <span className={row.key === 'historical-tax' ? 'block font-bold text-amber-800 dark:text-amber-300' : ''}>{row.label}</span>
+            <span className={`${row.key === 'historical-tax' ? 'mt-1 block font-medium text-amber-700 dark:text-amber-200' : 'text-right font-bold text-default'}`}>{row.displayValue}</span>
+          </div>
+        ))}
+      </div>
+      <div className={`${divided ? 'mt-1 border-t-2 border-slate-300 pt-3 dark:border-slate-600' : `${compact ? 'mt-1.5 pt-2' : 'mt-3 pt-3'} border-t border-slate-200 dark:border-slate-700`} flex items-end justify-between gap-4`}>
         <span className="font-black text-default">Total to Pay</span>
         <span className={`${compact ? 'text-base' : 'text-xl'} font-black text-primary-700 dark:text-primary-300`}>{formatPeso(summary.finalTotal)}</span>
       </div>

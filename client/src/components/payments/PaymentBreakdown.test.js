@@ -52,6 +52,24 @@ describe('context-aware payment breakdown', () => {
     expect(screen.queryByText('Booking fee')).not.toBeInTheDocument();
   });
 
+  test('divided mode visually separates price rows and emphasizes the total', () => {
+    const summary = orderPaymentSummary({
+      deliveryMethod: 'delivery',
+      pricingBreakdown: {
+        calculationVersion: 1,
+        subtotal: 200,
+        taxStatus: 'non_vat',
+        deliveryFee: 36,
+        finalTotal: 236
+      }
+    });
+
+    render(<PaymentBreakdown summary={summary} divided />);
+
+    expect(screen.getByText('Product subtotal').closest('div')).toHaveClass('py-2.5');
+    expect(screen.getByText('Total to Pay').closest('div')).toHaveClass('border-t-2');
+  });
+
   test('non-VAT product orders show a semantic status rather than a zero VAT charge', () => {
     const summary = orderPaymentSummary({
       deliveryMethod: 'pickup',

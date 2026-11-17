@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Checkout from './Checkout';
 import { useCart } from '../../contexts/CartContext';
 import { orderService, paymentService, voucherService } from '../../services/apiService';
@@ -50,6 +50,10 @@ const renderCheckout = () => render(
   </MemoryRouter>
 );
 const payButton = () => screen.getByRole('button', { name: /pay now/i });
+const confirmAddressWhenNeeded = () => {
+  const confirmationButton = screen.queryByRole('button', { name: /use this address/i });
+  if (confirmationButton) fireEvent.click(confirmationButton);
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -62,7 +66,7 @@ test('backend coverage error blocks payment and Retry obtains a fresh authoritat
     .mockRejectedValueOnce({ response: { data: { code: 'OUTSIDE_DELIVERY_RANGE', message: 'Internal distance details' } } })
     .mockResolvedValueOnce({ data: quote() });
   renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   expect(await screen.findByText("This address is outside the Store's delivery coverage.")).toBeInTheDocument();
   expect(payButton()).toBeDisabled();
   expect(screen.queryByText('Internal distance details')).not.toBeInTheDocument();
@@ -72,11 +76,25 @@ test('backend coverage error blocks payment and Retry obtains a fresh authoritat
   expect(orderService.quoteOrder.mock.calls[1][0].shippingAddress.coordinates).toEqual({ lat: 14.32, lng: 120.92 });
 });
 
+test('order summary uses the full grid and identifies each product and quantity', async () => {
+  orderService.quoteOrder.mockResolvedValue({ data: quote() });
+  renderCheckout();
+  confirmAddressWhenNeeded();
+  await waitFor(() => expect(payButton()).toBeEnabled());
+
+  const summaryHeading = screen.getByRole('heading', { name: 'Order Summary' });
+  expect(summaryHeading.closest('.card')).toHaveClass('lg:col-span-12');
+  const summaryItems = screen.getByLabelText('Order summary items');
+  expect(within(summaryItems).getByText('Synthetic Supply')).toBeInTheDocument();
+  expect(within(summaryItems).getByText('Qty 1')).toBeInTheDocument();
+  expect(within(summaryItems).getByText('1 item')).toBeInTheDocument();
+});
+
 test('changing the selected address invalidates an in-flight quote and rejects its stale response', async () => {
   const pending = deferred();
   orderService.quoteOrder.mockReturnValueOnce(pending.promise).mockResolvedValueOnce({ data: quote() });
   renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   await waitFor(() => expect(orderService.quoteOrder).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole('button', { name: /change address/i }));
   expect(payButton()).toBeDisabled();
@@ -91,7 +109,7 @@ test('cart change invalidates a prior quote before the replacement request resol
   const pending = deferred();
   orderService.quoteOrder.mockResolvedValueOnce({ data: quote() }).mockReturnValueOnce(pending.promise);
   const view = renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   await waitFor(() => expect(payButton()).toBeEnabled());
   const changedItems = [product('product-1', 2)];
   useCart.mockReturnValue({ items: changedItems, getSelectedItems: () => changedItems, clearSelectedItems: jest.fn() });
@@ -105,7 +123,7 @@ test('cart change invalidates a prior quote before the replacement request resol
 test('an incomplete or manipulated quote never enables payment', async () => {
   orderService.quoteOrder.mockResolvedValue({ data: { ...quote(), deliveryFeeCalculation: null } });
   renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   expect(await screen.findByText("We couldn't calculate delivery right now. Please retry in a moment.")).toBeInTheDocument();
   expect(payButton()).toBeDisabled();
   expect(orderService.createOrder).not.toHaveBeenCalled();
@@ -137,7 +155,7 @@ test('products from different Stores create one combined PayMongo checkout', asy
   paymentService.createOrderBatchCheckoutSession.mockResolvedValue({ data: {} });
 
   renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   await waitFor(() => expect(payButton()).toBeEnabled());
   expect(screen.getByText('One payment, 2 Store orders')).toBeInTheDocument();
   fireEvent.click(payButton());
@@ -170,7 +188,7 @@ test('a failed combined payment session preserves every cart item', async () => 
   paymentService.createOrderBatchCheckoutSession.mockRejectedValue(new Error('PayMongo unavailable'));
 
   renderCheckout();
-  fireEvent.click(screen.getByRole('button', { name: /use this address/i }));
+  confirmAddressWhenNeeded();
   await waitFor(() => expect(payButton()).toBeEnabled());
   fireEvent.click(payButton());
 

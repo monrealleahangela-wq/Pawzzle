@@ -614,6 +614,7 @@ const Checkout = () => {
     items: currentPricingQuote?.items || checkoutItems
   }) : null;
   const checkoutLineItems = orderLineItemRows(currentPricingQuote?.items?.length ? currentPricingQuote.items : checkoutItems);
+  const checkoutTotalQuantity = checkoutLineItems.reduce((total, item) => total + item.quantity, 0);
 
   if (checkoutItems.length === 0) {
     const hasItemsInCart = items && items.length > 0;
@@ -642,7 +643,7 @@ const Checkout = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
         <p className="text-gray-600">Review your order and complete your purchase</p>
@@ -658,9 +659,9 @@ const Checkout = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
         {/* Order Items */}
-        <div className="space-y-6">
+        <div className="space-y-5 lg:col-span-7">
           <div className="card p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Items</h2>
             <div className="space-y-4">
@@ -1031,7 +1032,7 @@ const Checkout = () => {
         </div>
 
         {/* Payment & Order Summary */}
-        <div className="space-y-6">
+        <div className="space-y-5 lg:col-span-5">
           {/* Payment Method Selection - Standardized Compact HUD */}
           <div className="card p-6 border-2 border-slate-50/50">
             <div className="flex items-center justify-between mb-4">
@@ -1212,26 +1213,58 @@ const Checkout = () => {
             />
           </div>
 
-          {/* Order Summary */}
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Order Summary</h2>
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-gray-600">
-                <span>Delivery Method</span>
-                <span className="capitalize">{deliveryMethod === 'delivery' ? 'Home Delivery' : 'Store Pickup'}</span>
-              </div>
-              {deliveryMethod === 'delivery' && destinationConfirmed && (
-                <div className="flex items-start justify-between gap-4 text-gray-600">
-                  <span className="shrink-0">Delivering to</span>
-                  <span className="text-right font-semibold text-gray-900">
-                    {formatDeliveryAddress(shippingAddress)}
+        </div>
+
+        {/* Order Summary */}
+        <div className="card p-5 sm:p-6 lg:col-span-12" aria-labelledby="checkout-order-summary-title">
+          <h2 id="checkout-order-summary-title" className="mb-5 text-xl font-semibold text-gray-900">Order Summary</h2>
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]">
+            <div className="space-y-4">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="grid gap-3 text-sm sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                  <div className="flex items-center justify-between gap-4 sm:block">
+                    <span className="text-gray-500">Delivery Method</span>
+                    <p className="font-semibold text-gray-900 sm:mt-1">{deliveryMethod === 'delivery' ? 'Home Delivery' : 'Store Pickup'}</p>
+                  </div>
+                  {deliveryMethod === 'delivery' && destinationConfirmed && (
+                    <div className="min-w-0 sm:border-l sm:border-slate-200 sm:pl-4">
+                      <span className="text-gray-500">Delivering to</span>
+                      <p className="mt-1 font-semibold leading-relaxed text-gray-900">
+                        {formatDeliveryAddress(shippingAddress)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white" aria-label="Order summary items">
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
+                  <h3 className="text-sm font-black text-slate-900">Products</h3>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {checkoutTotalQuantity} item{checkoutTotalQuantity === 1 ? '' : 's'}
                   </span>
                 </div>
-              )}
+                <div className="divide-y divide-slate-200">
+                  {checkoutLineItems.map((item) => (
+                    <div key={`summary-${item.key}`} className="flex items-center justify-between gap-4 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold leading-snug text-slate-900">{item.name}</p>
+                        <p className="mt-0.5 text-xs font-medium text-slate-500">Qty {item.quantity}</p>
+                      </div>
+                      <span className="shrink-0 text-sm font-black text-slate-900">{formatPeso(item.lineTotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+              <h3 className="mb-3 text-sm font-black text-slate-900">Price details</h3>
               <PaymentBreakdown
                 summary={quoteSummary}
                 loading={isPricingQuoteLoading}
                 error={pricingQuoteError}
+                divided
               />
               {pricingQuoteError && quoteItemsSignature
                 && (deliveryMethod === 'pickup' || (destinationConfirmed && hasValidAddressCoordinates(shippingAddress))) && (
@@ -1243,11 +1276,10 @@ const Checkout = () => {
                   Retry delivery quote
                 </button>
               )}
-            </div>
 
-            {/* Store refund policy */}
-            <div className="mt-6 mb-4">
-              <div className={`flex items-start gap-3 p-4 rounded-2xl border ${refundAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
+              {/* Store refund policy */}
+              <div className="mb-4 mt-5">
+                <div className={`flex items-start gap-3 p-4 rounded-2xl border ${refundAcknowledgmentRequired ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-200'}`}>
                 {refundAcknowledgmentRequired && <div className="relative flex items-center mt-0.5">
                   <input
                     type="checkbox"
@@ -1272,11 +1304,11 @@ const Checkout = () => {
                   </>}
                   {refundAcknowledgmentRequired && <p className="text-[9px] font-bold text-rose-700">Check the box to acknowledge this policy before PayMongo payment.</p>}
                 </div>
+                </div>
               </div>
-            </div>
 
-            <form onSubmit={handleSubmit}>
-              <button
+              <form onSubmit={handleSubmit}>
+                <button
                 type="submit"
                 disabled={isLoading
                   || isPricingQuoteLoading
@@ -1299,8 +1331,9 @@ const Checkout = () => {
                     Pay now
                   </>
                 )}
-              </button>
-            </form>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>
