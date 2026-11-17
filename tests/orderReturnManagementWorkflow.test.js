@@ -111,6 +111,15 @@ test('return notifications and role dashboards navigate to the shared authoritat
   assert.match(source('client/src/pages/shared/ReturnsManagement.js'), /Returns & Refunds/);
 });
 
+test('return case actions use the branded Pawzzle dialog instead of browser prompts', () => {
+  const detail = source('client/src/pages/shared/ReturnCaseDetail.js');
+  assert.match(detail, /import \{ pawzzlePrompt \} from '\.\.\/\.\.\/utils\/pawzzleDialog'/);
+  assert.doesNotMatch(detail, /window\.prompt|\bprompt\s*\(/);
+  assert.match(detail, /inputLabel: isRejection \? 'Rejection reason' : 'Decision note \(optional\)'/);
+  assert.match(detail, /inputType: 'datetime-local'/);
+  assert.match(detail, /if \(reason === null\) return/);
+});
+
 test('migration is guarded and declares production-critical indexes', () => {
   const migration = source('scripts/migrateOrderReturnManagement.js');
   assert.match(migration, /ORDER_RETURN_MIGRATION_APPROVED/);
