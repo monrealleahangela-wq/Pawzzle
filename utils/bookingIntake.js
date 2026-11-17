@@ -1,3 +1,5 @@
+const { dateKeyInTimezone } = require('./hrPolicy');
+
 const SERVICE_INTAKE_FIELDS = Object.freeze({
   veterinary: ['reasonForVisit', 'symptoms', 'symptomDuration', 'emergency', 'currentMedications', 'allergies', 'preferredSpecialistId'],
   grooming: ['groomingPackage', 'preferredStyle', 'coatCondition', 'nailTrimming', 'earCleaning', 'sensitiveAreas', 'behaviorConcern'],
@@ -34,7 +36,7 @@ const calculateBoardingNights = (checkInDate, checkOutDate) => {
   return Math.max(0, Math.ceil((Date.UTC(outYear, outMonth - 1, outDay) - Date.UTC(inYear, inMonth - 1, inDay)) / 86400000));
 };
 
-const prepareServiceIntake = (service, rawIntake, { allowLegacyMissing = true } = {}) => {
+const prepareServiceIntake = (service, rawIntake, { allowLegacyMissing = true, today } = {}) => {
   if (!rawIntake || typeof rawIntake !== 'object') {
     return allowLegacyMissing ? { value: undefined, error: null } : { value: undefined, error: 'Service details are required.' };
   }
@@ -56,6 +58,9 @@ const prepareServiceIntake = (service, rawIntake, { allowLegacyMissing = true } 
   if (kind === 'boarding') {
     const nights = calculateBoardingNights(details.checkInDate, details.checkOutDate);
     if (nights < 1) return { value: undefined, error: 'Please select check-out after check-in.' };
+    const currentDate = today || dateKeyInTimezone(new Date(), service.store?.hrSettings?.timezone || 'Asia/Manila');
+    if (details.checkInDate < currentDate) return { value: undefined, error: 'Check-in date cannot be in the past.' };
+    if (details.checkOutDate < currentDate) return { value: undefined, error: 'Check-out date cannot be in the past.' };
     if (details.takesMedication === 'yes' && !details.medicationSchedule) return { value: undefined, error: 'Please enter the medication schedule.' };
     details.boardingNights = String(nights);
   }

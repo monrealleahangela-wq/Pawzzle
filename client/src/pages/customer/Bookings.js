@@ -14,7 +14,7 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { bookingPaymentSummary, formatPeso } from '../../utils/paymentSummary';
 import { pawzzleConfirm } from '../../utils/pawzzleDialog';
 import ServiceSpecificBookingFields, { ServiceIntakeSummary } from '../../components/booking/ServiceSpecificBookingFields';
-import { buildServiceIntake, createEmptyServiceDetails, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
+import { buildServiceIntake, createEmptyServiceDetails, getLocalDateKey, resolveServiceBookingKind, validateServiceDetails } from '../../utils/serviceBookingForm';
 import { formatRecordId, formatSafeDate, normalizeBookingCollection, normalizeBookingRecord, normalizeServiceDetail } from '../../utils/customerServiceData';
 import ModalViewport from '../../components/ui/ModalViewport';
 import ReservationQrCode from '../../components/booking/ReservationQrCode';
@@ -327,9 +327,21 @@ const Bookings = ({ isSubcomponent = false }) => {
   };
 
   const handleServiceDetailChange = (name, value) => {
+    const today = getLocalDateKey();
+    if (['checkInDate', 'checkOutDate'].includes(name) && value && value < today) {
+      setServiceDetailErrors(previous => ({
+        ...previous,
+        [name]: `${name === 'checkInDate' ? 'Check-in' : 'Check-out'} date cannot be in the past.`
+      }));
+      return;
+    }
+
     setBookingForm(previous => {
       const serviceDetails = { ...previous.serviceDetails, [name]: value };
       if (name === 'takesMedication' && value !== 'yes') serviceDetails.medicationSchedule = '';
+      if (name === 'checkInDate' && serviceDetails.checkOutDate && serviceDetails.checkOutDate <= value) {
+        serviceDetails.checkOutDate = '';
+      }
       return {
         ...previous,
         bookingDate: name === 'checkInDate' ? value : previous.bookingDate,
@@ -337,7 +349,11 @@ const Bookings = ({ isSubcomponent = false }) => {
         serviceDetails
       };
     });
-    setServiceDetailErrors(previous => ({ ...previous, [name]: undefined }));
+    setServiceDetailErrors(previous => ({
+      ...previous,
+      [name]: undefined,
+      ...(name === 'checkInDate' ? { checkOutDate: undefined } : {})
+    }));
   };
 
   useEffect(() => {

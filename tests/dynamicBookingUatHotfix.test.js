@@ -27,6 +27,16 @@ test('boarding duration and date validation use the submitted stay dates', () =>
     } }
   );
   assert.match(invalid.error, /after check-in/i);
+
+  const past = prepareServiceIntake(
+    { category: 'boarding_hotel' },
+    { kind: 'boarding', details: {
+      checkInDate: '2026-11-15', checkOutDate: '2026-11-18', feedingSchedule: 'Twice daily',
+      foodProvided: 'yes', takesMedication: 'no', specialCareInstructions: 'None', emergencyContact: 'Owner 09170000000'
+    } },
+    { today: '2026-11-17' }
+  );
+  assert.match(past.error, /check-in date cannot be in the past/i);
 });
 
 test('service intake only stores allowed service-specific fields', () => {
