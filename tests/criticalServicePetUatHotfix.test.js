@@ -91,11 +91,12 @@ test('proposal, qualified specialist assignment, customer confirmation, and PayM
   assert.match(read('controllers/paymentController.js'), /createBookingCheckoutSession/);
 });
 
-test('booking creation preserves store-derived tenant scope and does not require preselected staff', () => {
+test('booking creation preserves store-derived tenant scope and reserves an eligible specialist', () => {
   const controller = read('controllers/bookingController.js');
   assert.match(controller, /const storeId = service\.store\?\._id \|\| service\.store/);
   assert.match(controller, /store: storeId/);
-  assert.match(controller, /staff: null/);
+  assert.match(controller, /staff: selectedSpecialist\.staff\._id/);
+  assert.match(controller, /getEligibleStaff\([\s\S]*scheduleCheck\.endTime/);
   assert.match(read('services/bookingLifecycleService.js'), /getEligibleForBooking/);
 });
 

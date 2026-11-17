@@ -13,6 +13,7 @@ const {
   validateBookingQR,
   getBookingById,
   getEligibleBookingStaff,
+  getAvailableServiceStaff,
   selectBookingStaff,
   confirmBookingForPayment,
   getBookingStaffProfile,
@@ -25,6 +26,7 @@ const { authRateLimits } = require('../middleware/authRateLimit');
 // Validation rules
 const createBookingValidation = [
   body('serviceId').isMongoId().withMessage('Valid service ID is required'),
+  body('staffId').optional({ checkFalsy: true }).isMongoId().withMessage('Valid specialist ID is required'),
   body('petProfileId').optional({ checkFalsy: true }).isMongoId().withMessage('Valid pet profile ID is required'),
   body('pet.name').optional({ checkFalsy: true }).trim().isLength({ max: 120 }).withMessage('Pet name is too long'),
   body('pet.type').optional({ checkFalsy: true }).trim().isLength({ max: 80 }).withMessage('Pet type is too long'),
@@ -33,6 +35,8 @@ const createBookingValidation = [
   body('pet.weight').optional({ nullable: true, checkFalsy: true }).isFloat({ min: 0, max: 200 }).withMessage('Pet weight must be between 0 and 200'),
   body('bookingDate').isISO8601().withMessage('Valid booking date is required'),
   body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Start time must be in HH:MM format'),
+  body('selectedAddOns').optional().isArray({ max: 50 }).withMessage('Selected add-ons must be a list'),
+  body('selectedAddOns.*').optional().isMongoId().withMessage('Selected add-on IDs must be valid'),
   body('endTime').optional({ checkFalsy: true }).matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('End time must be in HH:MM format'),
   body('isHomeService').optional().isBoolean().withMessage('Home service must be boolean'),
   body('serviceAddress.street').custom((value, { req }) => !req.body.isHomeService || Boolean(String(value || '').trim())).withMessage('Street address is required for home service'),
@@ -46,6 +50,13 @@ const updateStatusValidation = [
 ];
 
 // Customer routes
+router.post('/available-specialists', authenticate, [
+  body('serviceId').isMongoId().withMessage('Valid service ID is required'),
+  body('bookingDate').isISO8601().withMessage('Valid booking date is required'),
+  body('startTime').matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Start time must be in HH:MM format'),
+  body('selectedAddOns').optional().isArray({ max: 50 }).withMessage('Selected add-ons must be a list'),
+  body('selectedAddOns.*').optional().isMongoId().withMessage('Selected add-on IDs must be valid')
+], getAvailableServiceStaff);
 router.post('/', authenticate, createBookingValidation, createBooking);
 router.get('/my-bookings', authenticate, getCustomerBookings);
 router.get('/calendar', authenticate, getCalendarBookings);

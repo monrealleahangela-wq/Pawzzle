@@ -32,6 +32,7 @@ jest.mock('../../services/apiService', () => ({
   bookingService: {
     getCustomerBookings: jest.fn(),
     getEligibleStaff: jest.fn(),
+    getAvailableSpecialists: jest.fn(),
     getBookingById: jest.fn(),
     getVerificationCredential: jest.fn().mockResolvedValue({ data: { state: 'unconfirmed', credential: null } }),
     getAllBookings: jest.fn()

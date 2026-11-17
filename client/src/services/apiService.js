@@ -285,6 +285,7 @@ export const adminServiceService = {
 // Booking services
 export const bookingService = {
   createBooking: (bookingData) => api.post('/bookings', bookingData),
+  getAvailableSpecialists: (bookingData) => api.post('/bookings/available-specialists', bookingData),
   getCustomerBookings: (params) => api.get('/bookings/my-bookings', { params }),
   getBookingById: (id) => api.get(`/bookings/${id}`),
   getVerificationCredential: (id) => api.get(`/bookings/${id}/verification-credential`, { headers: { 'Cache-Control': 'no-store' } }),

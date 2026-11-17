@@ -27,6 +27,7 @@ const createInitialBookingForm = () => ({
     vaccinationStatus: 'Pending', specialNotes: '', allergies: 'None', medicalConditions: 'None', groomingPreferences: 'None', behaviorNotes: 'Normal'
   },
   serviceDetails: createEmptyServiceDetails(),
+  preferredStaffId: '',
   isHomeService: false,
   serviceAddress: { street: '', city: '', province: '' },
   notes: '',
@@ -129,6 +130,10 @@ const Bookings = ({ isSubcomponent = false }) => {
   const [eligibleStaffLoading, setEligibleStaffLoading] = useState(false);
   const [eligibleStaffError, setEligibleStaffError] = useState('');
   const [staffAssignmentReadiness, setStaffAssignmentReadiness] = useState(null);
+  const [availableSpecialists, setAvailableSpecialists] = useState([]);
+  const [availableSpecialistsLoading, setAvailableSpecialistsLoading] = useState(false);
+  const [availableSpecialistsError, setAvailableSpecialistsError] = useState('');
+  const specialistAvailabilityRequest = useRef(0);
   const [staffProfileId, setStaffProfileId] = useState(null);
   const [bookingActionLoading, setBookingActionLoading] = useState(false);
 
@@ -209,27 +214,14 @@ const Bookings = ({ isSubcomponent = false }) => {
       const slotDateTime = new Date(year, month - 1, day, h, m);
       const isPast = slotDateTime <= now;
 
-      // Check conflicts
-      const isBooked = existingBookings.some(b => {
-        const bDate = new Date(b.bookingDate);
-        const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth()+1).padStart(2,'0')}-${String(bDate.getDate()).padStart(2,'0')}`;
-        if (bDateStr !== dateString) return false;
-        if (!['confirmed','pending','processing'].includes(b.status)) return false;
-        
-        const [bStartH, bStartM] = b.startTime.split(':').map(Number);
-        const [bEndH, bEndM] = b.endTime.split(':').map(Number);
-        const bStartMins = bStartH * 60 + bStartM;
-        const bEndMins = bEndH * 60 + bEndM;
-        const selEndMins = currentMins + duration;
-        
-        return currentMins < bEndMins && selEndMins > bStartMins;
-      });
-
       // ONLY add slot if it's NOT in the past (requirement: "Only show slots that are current or future")
       if (!isPast) {
         slots.push({
           time: timeStr,
-          available: !isBooked
+          // Availability is specialist-specific and is verified by the server
+          // after selection. One groomer's booking must not hide this slot when
+          // another qualified groomer is free.
+          available: true
         });
       }
 
@@ -277,7 +269,10 @@ const Bookings = ({ isSubcomponent = false }) => {
     }
     if (step === 4) {
       if (!bookingForm.bookingDate || !bookingForm.startTime) return false;
-      return validateBookingTime(bookingForm.bookingDate, bookingForm.startTime);
+      return validateBookingTime(bookingForm.bookingDate, bookingForm.startTime)
+        && !availableSpecialistsLoading
+        && !availableSpecialistsError
+        && availableSpecialists.length > 0;
     }
     return true;
   };
@@ -296,7 +291,8 @@ const Bookings = ({ isSubcomponent = false }) => {
     } else {
       setBookingForm(prev => ({
         ...prev,
-        [name]: type === 'checkbox' ? checked : value
+        [name]: type === 'checkbox' ? checked : value,
+        ...(['bookingDate', 'startTime'].includes(name) ? { preferredStaffId: '' } : {})
       }));
     }
   };
@@ -421,6 +417,59 @@ const Bookings = ({ isSubcomponent = false }) => {
       })
       .finally(() => setEligibleStaffLoading(false));
   }, [selectedBooking?._id, selectedBooking?.status, selectedBooking?.staff]);
+
+  useEffect(() => {
+    const requestId = specialistAvailabilityRequest.current + 1;
+    specialistAvailabilityRequest.current = requestId;
+    if (!selectedService?._id || !bookingForm.bookingDate || !bookingForm.startTime) {
+      setAvailableSpecialists([]);
+      setAvailableSpecialistsLoading(false);
+      setAvailableSpecialistsError('');
+      return;
+    }
+
+    setAvailableSpecialistsLoading(true);
+    setAvailableSpecialistsError('');
+    bookingService.getAvailableSpecialists({
+      serviceId: selectedService._id,
+      bookingDate: bookingForm.bookingDate,
+      startTime: bookingForm.startTime,
+      selectedAddOns: bookingForm.selectedAddOns
+    }).then(response => {
+      if (specialistAvailabilityRequest.current !== requestId) return;
+      const staff = response.data?.staff || [];
+      setAvailableSpecialists(staff);
+      setBookingForm(previous => {
+        const selectedStillAvailable = staff.some(item => String(item._id) === String(previous.preferredStaffId));
+        return {
+          ...previous,
+          preferredStaffId: staff.length === 1
+            ? staff[0]._id
+            : selectedStillAvailable ? previous.preferredStaffId : ''
+        };
+      });
+      if (!staff.length) {
+        setAvailableSpecialistsError(
+          response.data?.assignmentReadiness?.message || 'No qualified specialist is available for this time.'
+        );
+      }
+    }).catch(error => {
+      if (specialistAvailabilityRequest.current !== requestId) return;
+      setAvailableSpecialists([]);
+      setAvailableSpecialistsError(
+        error.response?.data?.message || 'Unable to verify specialist availability for this time.'
+      );
+    }).finally(() => {
+      if (specialistAvailabilityRequest.current === requestId) setAvailableSpecialistsLoading(false);
+    });
+
+    return () => { specialistAvailabilityRequest.current += 1; };
+  }, [
+    selectedService?._id,
+    bookingForm.bookingDate,
+    bookingForm.startTime,
+    bookingForm.selectedAddOns
+  ]);
 
   useEffect(() => {
     if (searchParams.get('review') === '1' && selectedBooking?.status === 'completed' && selectedBooking.paymentStatus === 'paid' && !selectedBooking.reviewStatus?.isRated && (selectedBooking.serviceProvider || selectedBooking.staff)) {
@@ -659,8 +708,11 @@ const Bookings = ({ isSubcomponent = false }) => {
 
   const isDateFullyBooked = (day) => {
     const count = getBookingCountForDate(day);
-    // Dynamic fully booked logic: if maxPetsPerSession is 1, block after 1 booking. Otherwise use the 8-slot threshold.
-    const maxLimit = (selectedService?.maxPetsPerSession === 1) ? 1 : (selectedService?.maxPetsPerSession ? selectedService.maxPetsPerSession * 8 : 8);
+    // A service can run in parallel when several assigned specialists are
+    // available. Exact slot capacity is still verified by the server.
+    const specialistCapacity = Math.max(1, selectedService?.assignedStaff?.length || 0);
+    const sessionsPerSpecialist = selectedService?.maxPetsPerSession || 8;
+    const maxLimit = sessionsPerSpecialist * specialistCapacity;
     return count >= maxLimit;
   };
 
@@ -895,6 +947,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         bookingDate: bookingForm.bookingDate,
         startTime: bookingForm.startTime,
         endTime,
+        staffId: bookingForm.preferredStaffId || undefined,
         isHomeService: bookingForm.isHomeService,
         serviceAddress: bookingForm.isHomeService ? bookingForm.serviceAddress : undefined,
         notes: bookingForm.notes,
@@ -914,7 +967,7 @@ const Bookings = ({ isSubcomponent = false }) => {
         return;
       }
       
-      toast.success('Booking request submitted. The store will review it and assign a qualified staff member before payment.');
+      toast.success('Booking request submitted. An available specialist has been reserved while the store reviews your request.');
 
       // Reset form and refresh bookings
       setBookingForm(createInitialBookingForm());
@@ -1175,6 +1228,88 @@ const Bookings = ({ isSubcomponent = false }) => {
                           )}
                         </div>
 
+                        {bookingForm.startTime && (
+                          <div className="border-t border-slate-100 pt-6">
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-800">Choose your specialist</p>
+                                <p className="mt-1 text-[9px] font-bold text-slate-400">
+                                  Only qualified specialists who are free for this exact schedule are shown.
+                                </p>
+                              </div>
+                              {!availableSpecialistsLoading && availableSpecialists.length > 0 && (
+                                <span className="shrink-0 rounded-full bg-emerald-50 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-emerald-700">
+                                  {availableSpecialists.length} available
+                                </span>
+                              )}
+                            </div>
+
+                            {availableSpecialistsLoading ? (
+                              <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-4 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                <RefreshCw className="h-4 w-4 animate-spin" /> Checking specialist schedules
+                              </div>
+                            ) : availableSpecialistsError ? (
+                              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-[9px] font-bold text-rose-700">
+                                {availableSpecialistsError} Choose another time to continue.
+                              </div>
+                            ) : availableSpecialists.length > 0 ? (
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {availableSpecialists.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setBookingForm(previous => ({ ...previous, preferredStaffId: '' }))}
+                                    className={`rounded-2xl border p-4 text-left transition-all ${
+                                      !bookingForm.preferredStaffId
+                                        ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100'
+                                        : 'border-slate-100 bg-white hover:border-primary-200'
+                                    }`}
+                                  >
+                                    <p className="text-[10px] font-black uppercase text-slate-900">No preference</p>
+                                    <p className="mt-1 text-[8px] font-bold text-slate-400">Reserve the best available specialist</p>
+                                  </button>
+                                )}
+                                {availableSpecialists.map(specialist => {
+                                  const selected = String(bookingForm.preferredStaffId) === String(specialist._id);
+                                  return (
+                                    <button
+                                      key={specialist._id}
+                                      type="button"
+                                      onClick={() => setBookingForm(previous => ({ ...previous, preferredStaffId: specialist._id }))}
+                                      className={`rounded-2xl border p-4 text-left transition-all ${
+                                        selected
+                                          ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100'
+                                          : 'border-slate-100 bg-white hover:border-primary-200'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-black text-white">
+                                          {(specialist.firstName?.[0] || '')}{(specialist.lastName?.[0] || '')}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="truncate text-[10px] font-black uppercase text-slate-900">
+                                            {specialist.firstName} {specialist.lastName}
+                                          </p>
+                                          <p className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">
+                                            {specialist.professionalTitle || specialist.staffType || 'Qualified specialist'}
+                                          </p>
+                                          {Number(specialist.reviewCount || 0) > 0 && (
+                                            <p className="mt-1 flex items-center gap-1 text-[8px] font-black text-amber-600">
+                                              <Star className="h-2.5 w-2.5 fill-current" />
+                                              {Number(specialist.averageRating || 0).toFixed(1)}
+                                              <span aria-hidden="true">|</span>
+                                              {specialist.reviewCount} review{specialist.reviewCount === 1 ? '' : 's'}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+
                         {selectedService.homeServiceAvailable && (
                           <div className="pt-6 border-t border-slate-50">
                             <button 
@@ -1204,8 +1339,8 @@ const Bookings = ({ isSubcomponent = false }) => {
                        <button type="button" onClick={() => setFormStep(3)} className="px-6 py-4 bg-slate-50 text-slate-400 rounded-2xl text-[9px] font-black uppercase hover:bg-slate-100 transition-all">Back</button>
                        <button 
                         type="button" 
-                        disabled={!bookingForm.bookingDate || !bookingForm.startTime}
-                        onClick={() => { if (validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)) setFormStep(5); }}
+                        disabled={!canAdvance(4) || availableSpecialistsLoading}
+                        onClick={() => { if (canAdvance(4) && validateBookingTime(bookingForm.bookingDate, bookingForm.startTime, true)) setFormStep(5); }}
                         className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all disabled:opacity-30"
                        >
                          Review booking
@@ -1650,12 +1785,19 @@ const Bookings = ({ isSubcomponent = false }) => {
                         <div>
                           <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Specialist</p>
                           <p className="mt-1 text-[11px] font-bold text-slate-900 dark:text-white">
-                            {bookingForm.serviceDetails.preferredSpecialistId
-                              ? buildServiceIntake(serviceBookingKind, bookingForm.serviceDetails, selectedService).details.preferredSpecialistName
-                              : 'The store will assign a qualified available specialist.'}
+                            {bookingForm.preferredStaffId
+                              ? (() => {
+                                  const specialist = availableSpecialists.find(item => String(item._id) === String(bookingForm.preferredStaffId));
+                                  return specialist ? `${specialist.firstName} ${specialist.lastName}` : 'Selected specialist';
+                                })()
+                              : availableSpecialists.length > 1
+                                ? 'No preference — reserve the best available specialist.'
+                                : availableSpecialists.length === 1
+                                  ? `${availableSpecialists[0].firstName} ${availableSpecialists[0].lastName}`
+                                  : 'Specialist availability must be checked again.'}
                           </p>
                         </div>
-                        <button type="button" onClick={() => setFormStep(3)} className="text-[9px] font-black text-primary-600 dark:text-primary-300">Edit</button>
+                        <button type="button" onClick={() => setFormStep(4)} className="text-[9px] font-black text-primary-600 dark:text-primary-300">Edit</button>
                       </div>
                     </div>
 

@@ -450,9 +450,10 @@ const autoAssignStaff = async (service, bookingDate, startTime, endTime, storeOr
  * @param {Object} service     - Service document
  * @param {Date}   bookingDate - The date
  * @param {String} startTime   - HH:MM
+ * @param {Object} options     - Rule context; specialist reservations may skip service-wide slot capacity
  * @returns {Object} { valid: Boolean, reason: String }
  */
-const validateBookingRules = async (service, bookingDate, startTime, excludeBookingId = null) => {
+const validateBookingRules = async (service, bookingDate, startTime, excludeBookingId = null, options = {}) => {
   const Booking = require('../models/Booking');
   const rules = service.bookingRules || {};
 
@@ -499,7 +500,10 @@ const validateBookingRules = async (service, bookingDate, startTime, excludeBook
   }
 
   // 3. Capacity per slot
-  if (rules.capacityPerSlot && rules.capacityPerSlot > 0) {
+  // Specialist-backed bookings are capacity-controlled by the selected staff
+  // member's schedule and overlap check. Applying the service-wide slot limit
+  // as well would incorrectly block another qualified specialist at this time.
+  if (!options.skipSlotCapacity && rules.capacityPerSlot && rules.capacityPerSlot > 0) {
     const dateStart = new Date(bookingDate);
     dateStart.setHours(0, 0, 0, 0);
     const dateEnd = new Date(bookingDate);

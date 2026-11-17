@@ -41,11 +41,12 @@ test('booking history normalizes legacy records and has a route-level render fal
   assert.match(read('client/src/utils/serviceBookingForm.js'), /service = service && typeof service === 'object' \? service : \{\}/);
 });
 
-test('customer booking creation still derives store scope and sends the store notification', () => {
+test('customer booking creation derives store scope, reserves a specialist, and notifies the store', () => {
   const controller = read('controllers/bookingController.js');
   assert.match(controller, /customerVisibleStore/);
   assert.match(controller, /store: storeId/);
-  assert.match(controller, /staff: null/);
+  assert.match(controller, /staff: selectedSpecialist\.staff\._id/);
+  assert.match(controller, /source: staffId \? 'customer' : 'automatic'/);
   assert.match(controller, /notifyStoreStaff\(storeId/);
   assert.match(controller, /status\.status = 'awaiting_payment'|status = 'awaiting_payment'/);
 });
