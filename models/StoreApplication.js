@@ -121,6 +121,12 @@ const storeApplicationSchema = new mongoose.Schema({
     expirationDate: Date,
     documentUrl: { type: String, select: false }
   },
+  barangayClearance: {
+    number: { type: String, trim: true },
+    issuingBarangay: { type: String, trim: true },
+    issueDate: Date,
+    expiryDate: Date
+  },
   taxProfile: {
     birRegistrationStatus: {
       type: String,

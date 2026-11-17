@@ -40,6 +40,7 @@ export const createStoreApplicationForm = user => ({
   businessRegistration: {
     authority: 'dti', certificateNumber: '', registeredName: '', registrationDate: '', expirationDate: ''
   },
+  barangayClearance: { number: '', issuingBarangay: '', issueDate: '', expiryDate: '' },
   taxProfile: {
     birRegistrationStatus: 'registered',
     taxpayerClassification: '',
@@ -77,6 +78,7 @@ export const hydrateStoreApplicationForm = (application, user) => {
   const address = application?.contactInfo?.address || {};
   const registration = application?.businessRegistration || {};
   const taxProfile = application?.taxProfile || {};
+  const barangayClearance = application?.barangayClearance || {};
   const registeredAddress = taxProfile.registeredAddress || {};
   const paymentInfo = application?.paymentInfo || {};
   const alternativePaymentMethod = paymentInfo.alternativePaymentMethod || {};
@@ -115,6 +117,12 @@ export const hydrateStoreApplicationForm = (application, user) => {
       registeredName: registration.registeredName || application?.registeredBusinessName || '',
       registrationDate: dateInputValue(registration.registrationDate),
       expirationDate: dateInputValue(registration.expirationDate)
+    },
+    barangayClearance: {
+      ...defaults.barangayClearance,
+      ...barangayClearance,
+      issueDate: dateInputValue(barangayClearance.issueDate),
+      expiryDate: dateInputValue(barangayClearance.expiryDate)
     },
     taxProfile: {
       ...defaults.taxProfile,
