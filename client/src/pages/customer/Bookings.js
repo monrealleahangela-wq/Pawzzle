@@ -1505,7 +1505,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                           value={bookingForm.pet.type}
                           onChange={handleFormChange}
                           required
-                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
+                          className="h-14 w-full pl-11 pr-4 py-0 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black leading-normal text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
                         >
                           {PET_TYPE_OPTIONS.map(option => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -1524,7 +1524,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                           value={bookingForm.pet.breed}
                           onChange={handleFormChange}
                           required
-                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
+                          className="h-14 w-full pl-11 pr-4 py-0 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black leading-normal text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
                         >
                           <option value="">Select a breed</option>
                           {getBreedOptions(bookingForm.pet.type).map(breed => (
