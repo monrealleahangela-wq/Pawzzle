@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { orderReturnService } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatPeso } from '../../utils/paymentSummary';
+import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const STATUS_LABELS = {
   issue_reported: 'Issue Reported', seller_review: 'Seller Review', return_approved_awaiting_pickup: 'Return Approved — Awaiting Pickup',
@@ -76,14 +77,44 @@ export default function ReturnCaseDetail() {
     catch (error) { toast.error(error.response?.data?.message || 'Unable to update this return case.'); }
     finally { setBusy(false); }
   };
-  const decide = decision => {
-    const reason = decision === 'reject' ? window.prompt('Reason for rejection (required):') : window.prompt('Decision note (optional):', '') || '';
-    if (decision === 'reject' && (!reason || reason.trim().length < 3)) return;
-    return run(() => orderReturnService.decide(id, { decision, reason }));
+  const decide = async decision => {
+    const isRejection = decision === 'reject';
+    const actionLabel = {
+      approve_return: 'Approve return',
+      approve_refund: 'Approve refund only',
+      approve_replacement: 'Approve replacement',
+      reject: 'Reject request'
+    }[decision] || 'Record decision';
+    const reason = await pawzzlePrompt(
+      isRejection
+        ? 'Explain why this return or refund request is being rejected. The customer will see this reason.'
+        : 'Add an optional note explaining this decision to the customer.',
+      {
+        title: `${actionLabel}?`,
+        inputLabel: isRejection ? 'Rejection reason' : 'Decision note (optional)',
+        required: isRejection,
+        minLength: isRejection ? 3 : undefined,
+        multiline: true,
+        maxLength: 1000,
+        confirmLabel: actionLabel,
+        tone: isRejection ? 'danger' : 'warning'
+      }
+    );
+    if (reason === null) return;
+    return run(() => orderReturnService.decide(id, { decision, reason: reason.trim() }));
   };
-  const schedule = () => {
-    const value = window.prompt('Pickup schedule (YYYY-MM-DD HH:MM):', new Date(Date.now() + 86400000).toISOString().slice(0,16));
-    if (value) run(() => orderReturnService.schedulePickup(id, { scheduledAt: new Date(value).toISOString() }));
+  const schedule = async () => {
+    const value = await pawzzlePrompt('Choose when the rider should collect the returned item from the customer.', {
+      title: 'Schedule return pickup',
+      inputLabel: 'Pickup date and time',
+      inputType: 'datetime-local',
+      defaultValue: new Date(Date.now() + 86400000).toISOString().slice(0, 16),
+      required: true,
+      confirmLabel: 'Schedule pickup',
+      tone: 'warning'
+    });
+    if (value === null) return;
+    run(() => orderReturnService.schedulePickup(id, { scheduledAt: new Date(value).toISOString() }));
   };
   const getCode = () => run(async () => { const response = await orderReturnService.getPickupCode(id); setPickupCode(response.data.verificationCode); });
   const submitInspection = event => {
@@ -92,10 +123,32 @@ export default function ReturnCaseDetail() {
     Object.entries(inspection).forEach(([key,value]) => key === 'evidence' ? value.forEach(file=>body.append('evidence',file)) : body.append(key,String(value)));
     run(() => orderReturnService.inspect(id, body));
   };
-  const dispute = () => { const reason = window.prompt('Explain why the seller decision should be reviewed:'); if (reason?.trim().length >= 3) run(()=>orderReturnService.dispute(id,{reason})); };
-  const adminDecide = decision => { const reason = window.prompt('Record the platform decision reason:'); if (reason?.trim().length >= 3) run(()=>orderReturnService.adminDecision(id,{decision,reason})); };
+  const dispute = async () => {
+    const reason = await pawzzlePrompt('Explain why the seller decision should be reviewed by Pawzzle.', {
+      title: 'Dispute seller decision?', inputLabel: 'Reason for review', required: true, minLength: 3,
+      multiline: true, maxLength: 1000, confirmLabel: 'Submit dispute', tone: 'warning'
+    });
+    if (reason === null) return;
+    run(() => orderReturnService.dispute(id, { reason: reason.trim() }));
+  };
+  const adminDecide = async decision => {
+    const reason = await pawzzlePrompt('Record the reason supporting Pawzzle’s final platform decision.', {
+      title: 'Record platform decision', inputLabel: 'Decision reason', required: true, minLength: 3,
+      multiline: true, maxLength: 1000, confirmLabel: 'Save decision', tone: 'warning'
+    });
+    if (reason === null) return;
+    run(() => orderReturnService.adminDecision(id, { decision, reason: reason.trim() }));
+  };
   const processRefund = () => run(() => orderReturnService.processRefund(id));
-  const recordRefund = status => { const reference = window.prompt('Payment provider refund reference:'); if (!reference) return; run(()=>orderReturnService.recordRefundResult(id,{callbackId:`manual-${Date.now()}`,status,reference,amount:record.refund?.amount})); };
+  const recordRefund = async status => {
+    const reference = await pawzzlePrompt('Enter the verified payment-provider reference for this manual refund result.', {
+      title: status === 'refunded' ? 'Record refund success' : 'Record refund failure',
+      inputLabel: 'Provider reference', required: true, minLength: 3, maxLength: 200,
+      confirmLabel: 'Record result', tone: status === 'refunded' ? 'warning' : 'danger'
+    });
+    if (reference === null) return;
+    run(() => orderReturnService.recordRefundResult(id, { callbackId: `manual-${Date.now()}`, status, reference: reference.trim(), amount: record.refund?.amount }));
+  };
 
   const originalTimeline = useMemo(() => record?.order?.fulfillmentTimeline || [], [record]);
   const returnTimeline = useMemo(() => (record?.history || []).filter(row => !String(row.action).includes('replacement') && !String(row.action).includes('refund')), [record]);
