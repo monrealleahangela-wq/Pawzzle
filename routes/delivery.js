@@ -12,6 +12,7 @@ const {
   sendDeliveryMessage,
   sendRiderDeliveryMessage,
   completeDelivery,
+  confirmCustomerReceipt,
   uploadLiveDeliveryProof,
   reportFailedDelivery,
   submitComplaint,
@@ -46,6 +47,7 @@ const validateArrivedAssignedRider = async (req, res, next) => {
 router.post('/assign', authenticate, requirePermission('logistics.manage'), assignDeliveryManually);
 router.post('/order/:orderId/recalculate-weight', authenticate, requirePermission('logistics.manage'), recalculateOrderParcelWeight);
 router.post('/calculate-fee', authenticate, calculateDeliveryFee);
+router.post('/order/:orderId/confirm-received', authenticate, confirmCustomerReceipt);
 router.get('/order/:orderId', authenticate, getDeliveryByOrder);
 router.get('/booking/:bookingId', authenticate, getDeliveryByBooking);
 router.post('/:deliveryId/concerns', authenticate, requirePermission('logistics.manage'), submitStoreConcern);

@@ -200,7 +200,7 @@ const notifyDeliveryParties = async (req, delivery, title, message) => {
         targetUrl: source?.returnCase
           ? (recipient.toString() === source?.customer?.toString() ? `/returns/${source.returnCase}` : `/admin/returns?case=${source.returnCase}`)
           : (recipient.toString() === source?.customer?.toString()
-            ? `/track/${delivery.trackingToken}`
+            ? (delivery.order ? `/orders/${source._id}` : `/track/${delivery.trackingToken}`)
             : `/admin/logistics/${delivery._id}`)
       });
       if (io) io.to(`user_${recipient}`).emit('newNotification', notification);
@@ -242,6 +242,31 @@ const assignedRiderQuery = req => ({
   assignmentType: 'internal',
   assignedRider: req.user._id
 });
+
+const requiresCustomerReceiptConfirmation = delivery => Boolean(
+  delivery?.order && delivery?.missionType === 'standard'
+);
+
+const recordRiderEarning = async (delivery, session) => {
+  if (!delivery.assignedRider) return;
+  const rider = await User.findOne({
+    _id: delivery.assignedRider,
+    $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }]
+  }).select('store riderProfile.earningRules').session(session);
+  if (!rider) return;
+  const rules = rider.riderProfile?.earningRules || {};
+  const baseRate = Number(rules.baseRate || 0), incentive = Number(rules.incentive || 0);
+  const bonus = Number(rules.bonus || 0), deduction = Number(rules.deduction || 0);
+  await RiderEarning.findOneAndUpdate(
+    { delivery: delivery._id },
+    { $setOnInsert: {
+      rider: rider._id, store: rider.store, delivery: delivery._id, baseRate, incentive,
+      bonus, deduction, amount: Math.max(0, baseRate + incentive + bonus - deduction),
+      status: 'available', earnedAt: delivery.deliveredAt
+    } },
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+};
 
 const assignDeliveryManually = async (req, res) => {
   try {
@@ -322,7 +347,7 @@ const recalculateOrderParcelWeight = async (req, res) => {
         order: current._id,
         'parcel.weightKg': { $gt: 0 }
       }).session(session);
-      if (frozen || ['rider_assigned', 'picked_up', 'in_transit', 'delivered', 'completed', 'delivery_failed', 'returned'].includes(current.status)) {
+      if (frozen || ['rider_assigned', 'picked_up', 'in_transit', 'customer_confirmation_pending', 'delivered', 'completed', 'delivery_failed', 'returned'].includes(current.status)) {
         throw Object.assign(new Error('Fulfillment weight is already frozen. Use an authorized delivery-correction workflow.'), { statusCode: 409 });
       }
       parcelEstimate = await refreshOrderWeightSnapshots(current, { session });
@@ -652,59 +677,65 @@ const completeDelivery = async (req, res) => {
       otpVerified = true;
     }
     proofOfDelivery.otpVerified = otpVerified;
-    delivery.proofOfDelivery = proofOfDelivery;
-    delivery.status = 'delivered';
-    delivery.deliveredAt = new Date();
-    delivery.isLive = false;
-    delivery.statusHistory.push({ status: 'delivered', timestamp: delivery.deliveredAt, notes: req.body.notes?.trim() });
+    const needsCustomerConfirmation = requiresCustomerReceiptConfirmation(delivery);
+    const now = new Date();
+    const nextStatus = needsCustomerConfirmation ? 'customer_confirmation_pending' : 'delivered';
     const session = await mongoose.startSession();
     let completedDelivery;
     try {
       await session.withTransaction(async () => {
         const transactional = await Delivery.findOne(assignedRiderQuery(req)).session(session);
         if (!transactional || transactional.status !== 'arrived' || !transactional.isLive) throw Object.assign(new Error('Delivery state changed. Refresh and try again.'), { statusCode: 409 });
-        transactional.proofOfDelivery = delivery.proofOfDelivery;
-        transactional.status = 'delivered';
-        transactional.deliveredAt = delivery.deliveredAt;
+        transactional.proofOfDelivery = proofOfDelivery;
+        transactional.status = nextStatus;
         transactional.isLive = false;
-        transactional.statusHistory.push({ status: 'delivered', timestamp: delivery.deliveredAt, notes: req.body.notes?.trim() });
+        if (needsCustomerConfirmation) transactional.customerConfirmation.requestedAt = now;
+        else transactional.deliveredAt = now;
+        transactional.statusHistory.push({
+          status: nextStatus,
+          timestamp: now,
+          notes: needsCustomerConfirmation
+            ? 'Rider submitted live delivery proof; awaiting customer receipt confirmation.'
+            : req.body.notes?.trim()
+        });
         await releaseRiderCapacity(transactional, session);
         await transactional.save({ session });
-        if (transactional.returnCase) {
+        if (!needsCustomerConfirmation && transactional.returnCase) {
           await syncReturnMissionStatus({ delivery: transactional, user: req.user, deliveryStatus: 'delivered', session });
         }
         if (transactional.order) {
           const orderResult = await Order.updateOne({ _id: transactional.order }, {
-            $set: { status: 'delivered', deliveryDate: transactional.deliveredAt },
-            $push: { fulfillmentTimeline: { status: 'delivered', timestamp: transactional.deliveredAt, actor: req.user._id, description: 'Delivery completed with proof of delivery' } }
+            $set: needsCustomerConfirmation
+              ? { status: 'customer_confirmation_pending' }
+              : { status: 'delivered', deliveryDate: now },
+            $push: { fulfillmentTimeline: {
+              status: nextStatus,
+              timestamp: now,
+              actor: req.user._id,
+              description: needsCustomerConfirmation
+                ? 'Rider submitted live proof; customer receipt confirmation is pending'
+                : 'Delivery completed with proof of delivery'
+            } }
           }, { session });
           if (!orderResult.matchedCount) throw Object.assign(new Error('The linked order no longer exists.'), { statusCode: 409 });
         }
-        if (transactional.assignedRider) {
-          const rider = await User.findOne({
-            _id: transactional.assignedRider,
-            $or: [{ role: 'delivery_rider' }, { role: 'staff', staffType: 'delivery_rider' }]
-          }).select('store riderProfile.earningRules').session(session);
-          if (rider) {
-            const rules = rider.riderProfile?.earningRules || {};
-            const baseRate = Number(rules.baseRate || 0), incentive = Number(rules.incentive || 0);
-            const bonus = Number(rules.bonus || 0), deduction = Number(rules.deduction || 0);
-            await RiderEarning.findOneAndUpdate(
-              { delivery: transactional._id },
-              { $setOnInsert: { rider: rider._id, store: rider.store, delivery: transactional._id, baseRate, incentive, bonus, deduction, amount: Math.max(0, baseRate + incentive + bonus - deduction), status: 'available', earnedAt: transactional.deliveredAt } },
-              { upsert: true, new: true, setDefaultsOnInsert: true, session }
-            );
-          }
-        }
+        if (!needsCustomerConfirmation) await recordRiderEarning(transactional, session);
         completedDelivery = transactional;
       });
     } finally { await session.endSession(); }
     const committedDelivery = completedDelivery || delivery;
     const io = req.app.get('socketio');
-    if (io) await emitAuthorizedDeliveryEvent(io, committedDelivery._id, 'statusChanged', { deliveryId: committedDelivery._id, status: 'delivered' });
+    if (io) await emitAuthorizedDeliveryEvent(io, committedDelivery._id, 'statusChanged', { deliveryId: committedDelivery._id, status: nextStatus });
     await emitAuthoritativeDeliveryUpdate(req, committedDelivery);
     emitDeliveryDashboardUpdate(req, committedDelivery);
-    await notifyDeliveryParties(req, committedDelivery, 'Delivery Completed', 'The delivery was completed and proof of delivery is available.');
+    await notifyDeliveryParties(
+      req,
+      committedDelivery,
+      needsCustomerConfirmation ? 'Confirm that you received your order' : 'Delivery Completed',
+      needsCustomerConfirmation
+        ? 'Your rider submitted live delivery proof. Open My Orders and confirm receipt to complete the delivery.'
+        : 'The delivery was completed and proof of delivery is available.'
+    );
     res.json({ success: true, delivery: riderDeliveryView(committedDelivery) });
   } catch (error) {
     console.error('Complete delivery error:', error);
@@ -713,6 +744,86 @@ const completeDelivery = async (req, res) => {
       return res.status(400).json({ message: firstValidationError?.message || 'The proof-of-delivery information is invalid.' });
     }
     res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to complete delivery.' });
+  }
+};
+
+const confirmCustomerReceipt = async (req, res) => {
+  if (req.user?.role !== 'customer') return res.status(403).json({ message: 'Customer access only.' });
+  let session;
+  try {
+    const existingOrder = await Order.findOne({ _id: req.params.orderId, customer: req.user._id }).select('status delivery');
+    if (!existingOrder) return res.status(404).json({ message: 'Order not found.' });
+    if (existingOrder.status === 'delivered') {
+      const delivered = await Delivery.findOne({ order: existingOrder._id, status: 'delivered' });
+      return res.json({ success: true, alreadyConfirmed: true, delivery: riderDeliveryView(delivered || {}) });
+    }
+    if (existingOrder.status !== 'customer_confirmation_pending') {
+      return res.status(409).json({ message: 'This order is not awaiting customer receipt confirmation.' });
+    }
+
+    const now = new Date();
+    let confirmedDelivery;
+    session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      const order = await Order.findOne({
+        _id: req.params.orderId,
+        customer: req.user._id,
+        status: 'customer_confirmation_pending'
+      }).session(session);
+      if (!order) throw Object.assign(new Error('Order state changed. Refresh and try again.'), { statusCode: 409 });
+      const delivery = await Delivery.findOne({
+        order: order._id,
+        missionType: 'standard',
+        status: 'customer_confirmation_pending'
+      }).session(session);
+      if (!delivery) throw Object.assign(new Error('The delivery is not awaiting your confirmation.'), { statusCode: 409 });
+
+      delivery.status = 'delivered';
+      delivery.deliveredAt = now;
+      delivery.customerConfirmation.confirmedAt = now;
+      delivery.customerConfirmation.confirmedBy = req.user._id;
+      delivery.statusHistory.push({ status: 'delivered', timestamp: now, notes: 'Customer confirmed receipt of the parcel.' });
+      await delivery.save({ session });
+
+      order.status = 'delivered';
+      order.deliveryDate = now;
+      order.fulfillmentTimeline.push({
+        status: 'delivered', timestamp: now, actor: req.user._id,
+        description: 'Customer confirmed receipt of the parcel'
+      });
+      await order.save({ session });
+      await recordRiderEarning(delivery, session);
+      confirmedDelivery = delivery;
+    });
+
+    const io = req.app.get('socketio');
+    if (io) {
+      await emitAuthorizedDeliveryEvent(io, confirmedDelivery._id, 'statusChanged', {
+        deliveryId: confirmedDelivery._id, status: 'delivered'
+      });
+    }
+    if (confirmedDelivery.assignedRider) {
+      const notification = await Notification.create({
+        recipient: confirmedDelivery.assignedRider,
+        sender: req.user._id,
+        type: 'delivery_update',
+        title: 'Customer confirmed delivery',
+        message: 'The customer confirmed receipt. The delivery is now completed.',
+        relatedId: confirmedDelivery._id,
+        relatedModel: 'Delivery',
+        targetUrl: `/rider/deliveries/${confirmedDelivery._id}`
+      });
+      if (io) io.to(`user_${confirmedDelivery.assignedRider}`).emit('newNotification', notification);
+    }
+    await emitAuthoritativeDeliveryUpdate(req, confirmedDelivery, { customer: req.user._id });
+    emitDeliveryDashboardUpdate(req, confirmedDelivery);
+    await notifyDeliveryParties(req, confirmedDelivery, 'Delivery confirmed', 'The customer confirmed receipt and the delivery is now completed.');
+    return res.json({ success: true, delivery: riderDeliveryView(confirmedDelivery) });
+  } catch (error) {
+    console.error('Customer receipt confirmation error:', error);
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to confirm receipt.' });
+  } finally {
+    if (session) await session.endSession();
   }
 };
 
@@ -1005,7 +1116,8 @@ module.exports = {
   calculateDeliveryFee,
   internalCreateDelivery,
   completeDelivery,
+  confirmCustomerReceipt,
   uploadLiveDeliveryProof,
   reportFailedDelivery,
-  __test: { buildProofOfDelivery, createLiveProofEvidence, verifyLiveProofEvidence, buildDeliveryConcern, concernMutation }
+  __test: { buildProofOfDelivery, createLiveProofEvidence, verifyLiveProofEvidence, buildDeliveryConcern, concernMutation, requiresCustomerReceiptConfirmation }
 };

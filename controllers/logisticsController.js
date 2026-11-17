@@ -178,6 +178,7 @@ const getLogisticsDashboard = async (req, res) => {
       assigned: count(row => ['assigned', 'accepted'].includes(row.status)),
       outForDelivery: count(row => ['picked_up', 'in_transit'].includes(row.status)),
       arrived: count(row => row.status === 'arrived'),
+      awaitingCustomer: count(row => row.status === 'customer_confirmation_pending'),
       delivered: count(row => row.status === 'delivered'),
       failed: count(row => ['failed_attempt', 'returned_to_store', 'declined'].includes(row.status)),
       cancelled: count(row => row.status === 'cancelled')

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { orderService, orderReturnService, getImageUrl } from '../../services/apiService';
+import { toast } from 'react-toastify';
+import { orderService, orderReturnService, deliveryService, getImageUrl } from '../../services/apiService';
 import { ShoppingBag, Clock, Package, Truck, CheckCircle, XCircle, ChevronLeft, ChevronRight, Star, Heart, Calendar, Receipt, MapPin } from 'lucide-react';
 import ReviewModal from '../../components/ReviewModal';
 import OrderReviewModal from '../../components/OrderReviewModal';
@@ -11,6 +12,7 @@ import PaymentBreakdown from '../../components/payments/PaymentBreakdown';
 import { formatPeso, orderPaymentSummary } from '../../utils/paymentSummary';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import ReturnIssueModal from '../../components/returns/ReturnIssueModal';
+import ConfirmationDialog from '../../components/ui/ConfirmationDialog';
 
 const STATUS_META = {
   pending_payment: { label: 'Waiting for payment', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
@@ -22,6 +24,7 @@ const STATUS_META = {
   rider_assigned: { label: 'Rider Coming', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: MapPin },
   picked_up: { label: 'In Transit', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
   in_transit: { label: 'Out for Delivery', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
+  customer_confirmation_pending: { label: 'Confirm Receipt', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: Package },
   delivered: { label: 'Delivered', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', icon: XCircle },
 };
@@ -35,6 +38,8 @@ const Orders = () => {
   const [ordersError, setOrdersError] = useState('');
   const [issueTarget, setIssueTarget] = useState(null);
   const [returnCases, setReturnCases] = useState({});
+  const [confirmationTarget, setConfirmationTarget] = useState(null);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   const fetchOrders = useCallback(async () => {
@@ -62,6 +67,21 @@ const Orders = () => {
   }, [pagination.currentPage]);
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
   useRealTimeUpdates({ onDeliveryUpdate: fetchOrders, onOrderUpdate: fetchOrders });
+
+  const confirmReceipt = async () => {
+    if (!confirmationTarget?._id) return;
+    setConfirmingReceipt(true);
+    try {
+      await deliveryService.confirmCustomerReceipt(confirmationTarget._id);
+      toast.success('Delivery confirmed. Thank you!');
+      setConfirmationTarget(null);
+      await fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm receipt.');
+    } finally {
+      setConfirmingReceipt(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex justify-center items-center py-20">
@@ -184,6 +204,18 @@ const Orders = () => {
                       ))}
                     </div>
 
+                    {effectiveStatus === 'customer_confirmation_pending' && (
+                      <div className="mx-3 mb-3 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 sm:mx-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-black text-amber-900">Did you receive this parcel?</p>
+                          <p className="mt-1 text-[10px] text-amber-800">The rider submitted live delivery proof. Confirm only after the parcel is in your possession.</p>
+                        </div>
+                        <button type="button" onClick={() => setConfirmationTarget(order)} className="min-h-10 shrink-0 rounded-xl bg-primary-700 px-4 text-xs font-black text-white hover:bg-primary-800">
+                          Confirm Received
+                        </button>
+                      </div>
+                    )}
+
                     <div className="mx-3 mb-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 sm:mx-4">
                       <PaymentBreakdown summary={orderPaymentSummary(order)} compact className="!space-y-1 !text-[9px] leading-tight" />
                     </div>
@@ -277,6 +309,15 @@ const Orders = () => {
         />
       )}
       {issueTarget && <ReturnIssueModal orderId={issueTarget.order._id} item={{...issueTarget.item,orderItemId:issueTarget.item._id}} onClose={()=>setIssueTarget(null)} onCreated={fetchOrders}/>}
+      <ConfirmationDialog
+        isOpen={Boolean(confirmationTarget)}
+        title="Confirm parcel received?"
+        description="Confirm only if you personally received the parcel. This will complete the delivery and mark the rider's mission as delivered."
+        confirmLabel="Yes, I received it"
+        onConfirm={confirmReceipt}
+        onCancel={() => setConfirmationTarget(null)}
+        busy={confirmingReceipt}
+      />
     </div>
   );
 };

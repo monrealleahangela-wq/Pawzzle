@@ -75,7 +75,7 @@ test('completion controller derives COD requirements from the persisted order', 
   const controller = source('controllers/deliveryController.js');
   assert.match(controller, /select\('pickupSession\.code paymentMethod'\)/);
   assert.match(controller, /\['cod', 'cash_on_delivery'\]\.includes\(order\?\.paymentMethod\)/);
-  assert.match(controller, /delivery\.proofOfDelivery = proofOfDelivery/);
+  assert.match(controller, /transactional\.proofOfDelivery = proofOfDelivery/);
   assert.match(controller, /error\.name === 'ValidationError'/);
 });
 

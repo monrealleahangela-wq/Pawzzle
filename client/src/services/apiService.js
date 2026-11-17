@@ -613,6 +613,7 @@ export const deliveryService = {
   sendMessage: (token, messageData) => api.post(`/deliveries/chat/${token}`, messageData),
   submitComplaint: (token, data) => api.post(`/deliveries/complaint/${token}`, data),
   submitStoreConcern: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/concerns`, data),
+  confirmCustomerReceipt: (orderId) => api.post(`/deliveries/order/${orderId}/confirm-received`),
   completeDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/complete`, data),
   reportFailedDelivery: (deliveryId, data) => api.post(`/deliveries/rider/${deliveryId}/failed`, data),
   uploadLiveDeliveryProof: (deliveryId, formData) => api.post(`/deliveries/rider/${deliveryId}/live-proof-upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),

@@ -14,7 +14,8 @@ const VALID_NEXT_STATES = Object.freeze({
   ready_for_pickup: ['rider_assigned', 'cancelled'],
   rider_assigned: ['picked_up', 'delivery_failed'],
   picked_up: ['in_transit', 'delivery_failed'],
-  in_transit: ['delivered', 'delivery_failed'],
+  in_transit: ['customer_confirmation_pending', 'delivered', 'delivery_failed'],
+  customer_confirmation_pending: ['delivered'],
   delivered: ['completed', 'returned'],
   completed: [],
   cancelled: [],
@@ -24,11 +25,11 @@ const VALID_NEXT_STATES = Object.freeze({
 });
 
 const PACKING_OR_EARLIER = new Set(['pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 'preparing']);
-const DELIVERY_PAST_PACKING = new Set(['assigned', 'accepted', 'picked_up', 'in_transit', 'arrived', 'delivered', 'failed_attempt', 'returned_to_store', 'cancelled']);
+const DELIVERY_PAST_PACKING = new Set(['assigned', 'accepted', 'picked_up', 'in_transit', 'arrived', 'customer_confirmation_pending', 'delivered', 'failed_attempt', 'returned_to_store', 'cancelled']);
 const STATUS_RANK = Object.freeze({
   pending_payment: 0, paid: 1, awaiting_confirmation: 2, confirmed: 3, preparing: 4,
   ready_for_pickup: 5, rider_assigned: 6, picked_up: 7, in_transit: 8,
-  delivered: 9, completed: 10
+  customer_confirmation_pending: 9, delivered: 10, completed: 11
 });
 
 const normalizeOrderStatus = status => {

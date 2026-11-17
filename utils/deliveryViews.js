@@ -95,7 +95,9 @@ const proofView = proof => {
     otpVerified: source.otpVerified,
     notes: source.notes,
     codPaymentStatus: source.codPaymentStatus,
-    timestamp: source.timestamp
+    timestamp: source.timestamp,
+    capturedAt: source.capturedAt,
+    captureSource: source.captureSource
   });
 };
 
@@ -155,6 +157,7 @@ const riderDeliveryView = delivery => {
     pickedUpAt: source.pickedUpAt,
     arrivedAt: source.arrivedAt,
     deliveredAt: source.deliveredAt,
+    customerConfirmation: source.customerConfirmation,
     proofOfDelivery: proofView(source.proofOfDelivery),
     createdAt: source.createdAt,
     updatedAt: source.updatedAt

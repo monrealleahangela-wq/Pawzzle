@@ -45,6 +45,8 @@ const OrderDetail = () => {
   const [riderReviewOpen, setRiderReviewOpen] = useState(false);
   const [cancelConfirmationOpen, setCancelConfirmationOpen] = useState(false);
   const [cancellingOrder, setCancellingOrder] = useState(false);
+  const [receiptConfirmationOpen, setReceiptConfirmationOpen] = useState(false);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const [concernOpen, setConcernOpen] = useState(false);
   const [concernSubmitting, setConcernSubmitting] = useState(false);
   const [returnDraft, setReturnDraft] = useState(null);
@@ -307,6 +309,20 @@ const OrderDetail = () => {
     }
   };
 
+  const confirmDeliveryReceipt = async () => {
+    setConfirmingReceipt(true);
+    try {
+      await deliveryService.confirmCustomerReceipt(id);
+      setReceiptConfirmationOpen(false);
+      toast.success('Delivery confirmed. Thank you!');
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm receipt.');
+    } finally {
+      setConfirmingReceipt(false);
+    }
+  };
+
   const handleSubmitStoreConcern = async concern => {
     const deliveryId = deliveryAssignment?._id || order?.delivery?._id;
     if (!deliveryId) return toast.error('Delivery details are unavailable.');
@@ -388,6 +404,7 @@ const OrderDetail = () => {
       rider_assigned: 'bg-rose-100 text-rose-800 border-rose-200',
       picked_up: 'bg-orange-100 text-orange-800 border-orange-200',
       in_transit: 'bg-orange-100 text-orange-800 border-orange-200',
+      customer_confirmation_pending: 'bg-amber-100 text-amber-900 border-amber-300',
       delivered: 'bg-emerald-600 text-white border-emerald-700',
       completed: 'bg-slate-900 text-white border-slate-900',
       cancelled: 'bg-red-100 text-red-800 border-red-200'
@@ -1095,6 +1112,22 @@ const OrderDetail = () => {
             </div>
           )}
 
+          {user?.role === 'customer' && order.status === 'customer_confirmation_pending' && (
+            <div className="card border-2 border-amber-300 bg-amber-50 p-6 dark:border-amber-800 dark:bg-amber-950/30">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-amber-950 dark:text-amber-100">
+                    <Package className="h-5 w-5" /> Customer confirmation pending
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-xs leading-relaxed text-amber-800 dark:text-amber-200">The rider submitted live delivery proof. Confirm only after you have the parcel. Until then, the rider's delivery remains pending and is not marked delivered.</p>
+                </div>
+                <button type="button" onClick={() => setReceiptConfirmationOpen(true)} className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-700 px-6 text-xs font-black uppercase tracking-wider text-white hover:bg-primary-800">
+                  <CheckCircle className="h-4 w-4" /> Confirm Received
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Customer Live Tracking Action */}
           {user?.role === 'customer' && order.deliveryMethod === 'delivery' && order.delivery && (order.delivery.status === 'picked_up' || order.delivery.status === 'in_transit') && order.status !== 'cancelled' && order.status !== 'delivered' && (
             <div className="card p-6 border-2 border-primary-500 bg-primary-900 text-white shadow-2xl shadow-primary-200 overflow-hidden relative">
@@ -1253,6 +1286,15 @@ const OrderDetail = () => {
         busy={cancellingOrder}
         onCancel={() => setCancelConfirmationOpen(false)}
         onConfirm={confirmCancelOrder}
+      />
+      <ConfirmationDialog
+        isOpen={receiptConfirmationOpen}
+        title="Confirm parcel received?"
+        description="Confirm only if the parcel is already in your possession. This action completes the order and marks the rider's delivery as delivered."
+        confirmLabel="Yes, I received it"
+        busy={confirmingReceipt}
+        onCancel={() => setReceiptConfirmationOpen(false)}
+        onConfirm={confirmDeliveryReceipt}
       />
       <OrderReviewModal
         isOpen={isReviewModalOpen}

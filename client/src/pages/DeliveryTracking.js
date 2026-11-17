@@ -22,7 +22,7 @@ const riderMarker = marker('Rider', '#8B4513');
 const storeMarker = marker('Store', '#f97316');
 const customerMarker = marker('Customer', '#0f766e');
 const addressText = value => value?.formattedAddress || [value?.street, value?.barangay, value?.city, value?.province || value?.state, value?.zipCode].filter(Boolean).join(', ');
-const statusLabel = value => ({ pending:'Preparing delivery', unassigned:'Awaiting rider', assigned:'Rider assigned', accepted:'Rider assigned', picked_up:'Picked up', in_transit:'Out for delivery', arrived:'Rider arrived', delivered:'Delivered', failed_attempt:'Delivery attempt issue', returned_to_store:'Returned to store', cancelled:'Cancelled' }[value] || String(value || '').replace(/_/g,' '));
+const statusLabel = value => ({ pending:'Preparing delivery', unassigned:'Awaiting rider', assigned:'Rider assigned', accepted:'Rider assigned', picked_up:'Picked up', in_transit:'Out for delivery', arrived:'Rider arrived', customer_confirmation_pending:'Customer confirmation pending', delivered:'Delivered', failed_attempt:'Delivery attempt issue', returned_to_store:'Returned to store', cancelled:'Cancelled' }[value] || String(value || '').replace(/_/g,' '));
 
 export default function DeliveryTracking() {
   const { token } = useParams();

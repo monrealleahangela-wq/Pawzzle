@@ -192,7 +192,7 @@ const orderSchema = new mongoose.Schema({
     enum: [
       'pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 
       'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 
-      'in_transit', 'delivered', 'completed', 'cancelled', 
+      'in_transit', 'customer_confirmation_pending', 'delivered', 'completed', 'cancelled',
       'payment_failed', 'delivery_failed', 'refunded', 'returned'
     ],
     default: 'pending_payment'

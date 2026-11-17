@@ -2,6 +2,7 @@ const getDeliveryStatusLabel = status => ({
   pending: 'Pending Assignment', unassigned: 'Pending Assignment', assigned: 'Assigned',
   accepted: 'Assigned', picked_up: 'Out for Delivery', in_transit: 'Out for Delivery',
   arrived: 'Arrived', delivered: 'Delivered', failed_attempt: 'Delivery Attempted',
+  customer_confirmation_pending: 'Customer Confirmation Pending',
   returned_to_store: 'Failed', cancelled: 'Cancelled', declined: 'Failed'
 }[status] || String(status || '').replace(/_/g, ' '));
 

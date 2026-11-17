@@ -15,8 +15,9 @@ const STATUS_RANK = Object.freeze({
   rider_assigned: 6,
   picked_up: 7,
   in_transit: 8,
-  delivered: 9,
-  completed: 10
+  customer_confirmation_pending: 9,
+  delivered: 10,
+  completed: 11
 });
 
 const DELIVERY_TO_ORDER_STATUS = Object.freeze({
@@ -25,6 +26,7 @@ const DELIVERY_TO_ORDER_STATUS = Object.freeze({
   picked_up: 'picked_up',
   in_transit: 'in_transit',
   arrived: 'in_transit',
+  customer_confirmation_pending: 'customer_confirmation_pending',
   delivered: 'delivered',
   returned_to_store: 'returned',
   cancelled: 'cancelled'
