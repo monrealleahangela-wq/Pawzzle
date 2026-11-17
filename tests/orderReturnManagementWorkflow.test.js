@@ -30,12 +30,16 @@ test('return cases store item-specific evidence, decisions, missions, refund ide
 });
 
 test('return pickup and replacement reuse Delivery while staying separate from the original order delivery', () => {
+  const lifecycle = source('services/orderReturnLifecycleService.js');
   assert.ok(Delivery.schema.path('returnCase'));
   assert.deepEqual(Delivery.schema.path('missionType').options.enum, ['standard','return_pickup','replacement']);
   const index = Delivery.schema.indexes().find(([, options]) => options.name === 'return_case_mission_unique');
   assert.ok(index);
   assert.equal(index[1].unique, true);
   assert.deepEqual(index[1].partialFilterExpression.missionType.$in, ['return_pickup','replacement']);
+  assert.doesNotMatch(lifecycle, /assignDelivery\(\{ deliveryId/);
+  assert.match(lifecycle, /waiting for the Store to select an available Rider/);
+  assert.match(lifecycle, /syncReturnMissionAssignment/);
 });
 
 test('refund calculation includes product amount and only returns shipping for a full single-product return', () => {

@@ -111,7 +111,7 @@ test('real MongoDB keeps manual creation idempotent and summary/list totals auth
       professionalProfile: { availability: {} }, createdAt: now, updatedAt: now
     });
     const assignment = await assignDelivery({
-      deliveryId: manual._id, parcel: { weightKg: 1.25, parcelCount: 1 }, actorId: actor
+      deliveryId: manual._id, riderId: rider, parcel: { weightKg: 1.25, parcelCount: 1 }, actorId: actor
     });
     assert.equal(String(assignment.riderId), String(rider));
     assert.equal((await Delivery.findById(manual._id).lean()).status, 'assigned');

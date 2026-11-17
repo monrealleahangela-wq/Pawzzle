@@ -6,6 +6,8 @@ import DeliveryAssignmentFields from './DeliveryAssignmentFields';
 const props = {
   parcel: { weightKg: 5, parcelCount: 1 },
   onParcelChange: jest.fn(),
+  selectedRiderId: '',
+  onRiderChange: jest.fn(),
   riders: []
 };
 
@@ -21,7 +23,20 @@ test('shows a server-authoritative setup requirement as normal eligibility statu
 test('renders an API failure as an alert instead of an empty eligibility status', () => {
   render(<DeliveryAssignmentFields {...props} assignmentReadiness={{ error: true, message: 'Unable to check Rider eligibility.' }} />);
   expect(screen.getByRole('alert')).toHaveTextContent('Unable to check Rider eligibility.');
-  expect(screen.queryByText(/backend assigns an eligible Rider atomically/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/backend rechecks availability and capacity/i)).not.toBeInTheDocument();
+});
+
+test('lets the seller choose only Riders that are eligible for the parcel', () => {
+  const onRiderChange = jest.fn();
+  render(<DeliveryAssignmentFields {...props} onRiderChange={onRiderChange} riders={[
+    { _id: 'eligible', firstName: 'Ana', lastName: 'Rider', activeDeliveryCount: 1, eligibility: { eligible: true }, remainingCapacity: { weightKg: 12, parcelCount: 3 } },
+    { _id: 'off-duty', firstName: 'Ben', lastName: 'Rider', eligibility: { eligible: false, reason: 'off_duty_or_unavailable' } }
+  ]} assignmentReadiness={{ reason: 'eligible', message: 'Eligible Riders are available.' }} />);
+  const selector = screen.getByRole('combobox', { name: /Available Delivery Rider/i });
+  expect(screen.getByRole('option', { name: /Ana Rider/ })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /Ben Rider/ })).not.toBeInTheDocument();
+  fireEvent.change(selector, { target: { value: 'eligible' } });
+  expect(onRiderChange).toHaveBeenCalledWith('eligible');
 });
 
 test('requires an explicit package confirmation and resets it when measurements change', () => {

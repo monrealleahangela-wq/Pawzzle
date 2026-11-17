@@ -1664,7 +1664,7 @@ function StaffWizard({
                     </Field>
                     <Field
                       label="Maximum load (kg)"
-                      hint="Required for automatic assignments."
+                      hint="Required to verify Rider assignment eligibility."
                     >
                       <input
                         required
@@ -1690,7 +1690,7 @@ function StaffWizard({
                     </Field>
                     <Field
                       label="Maximum parcels"
-                      hint="Required for automatic assignments."
+                      hint="Required to verify Rider assignment eligibility."
                     >
                       <input
                         required

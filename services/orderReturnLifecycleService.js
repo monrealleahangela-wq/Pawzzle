@@ -6,7 +6,6 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const InventoryLedgerService = require('./inventoryLedgerService');
 const PayMongo = require('./paymongoService');
-const { assignDelivery } = require('./deliveryAssignmentService');
 const { createNotification } = require('../controllers/notificationController');
 const { isPlatformAdmin } = require('../config/permissions');
 const { canOperateStore, getAuthorizedStoreIds, idsEqual } = require('../utils/authorizationPolicy');
@@ -340,32 +339,10 @@ const createMission = async ({ record, user, missionType, scheduledAt }) => {
   record.revision += 1;
   await record.save();
 
-  let assignment;
-  let assignmentError;
-  try {
-    assignment = await assignDelivery({ deliveryId: delivery._id, parcel, actorId: user._id });
-    if (returnPickup) {
-      record.pickup.status = 'rider_assigned';
-      record.pickup.assignedRider = assignment.riderId;
-      record.status = 'rider_assigned';
-    } else {
-      record.replacement.status = 'rider_assigned';
-      record.replacement.assignedRider = assignment.riderId;
-      record.status = 'replacement_rider_assigned';
-    }
-    appendHistory(record, {
-      action: `${missionType}_rider_assigned`, fromStatus: fromStatus === record.status ? fromStatus : missionType === 'return_pickup' ? 'pickup_scheduled' : 'replacement_prepared',
-      toStatus: record.status, user
-    });
-    record.revision += 1;
-    await record.save();
-  } catch (error) {
-    assignmentError = { code: error.code || 'NO_ELIGIBLE_RIDER', message: error.message };
-  }
   await syncOrderItemStatus(record);
   await notifyParticipants(record, user, returnPickup ? 'Return pickup scheduled' : 'Replacement prepared',
-    `${record.caseId} ${assignment ? 'has an assigned rider' : 'is waiting for an eligible rider'}.`);
-  return { record, delivery: assignment?.delivery || delivery, assignment, assignmentError, verificationCode, created: true };
+    `${record.caseId} is waiting for the Store to select an available Rider.`);
+  return { record, delivery, assignment: null, assignmentError: null, verificationCode, created: true };
 };
 
 const scheduleReturnPickup = ({ user, returnId, scheduledAt }) => OrderReturn.findById(returnId).then(async record => {
@@ -443,6 +420,36 @@ const syncReturnMissionStatus = async ({ delivery, user, deliveryStatus, session
   if (!session) {
     await notifyParticipants(record, user, 'Return case tracking update', `${record.caseId} is now ${record.status.replace(/_/g, ' ')}.`);
   }
+  return record;
+};
+
+const syncReturnMissionAssignment = async ({ delivery, user }) => {
+  if (!delivery?.returnCase || !delivery?.assignedRider || !['return_pickup', 'replacement'].includes(delivery.missionType)) return null;
+  const record = await OrderReturn.findById(delivery.returnCase);
+  if (!record) return null;
+  const fromStatus = record.status;
+  if (delivery.missionType === 'return_pickup') {
+    if (record.status === 'rider_assigned' && idsEqual(record.pickup.assignedRider, delivery.assignedRider)) return record;
+    record.pickup.status = 'rider_assigned';
+    record.pickup.assignedRider = delivery.assignedRider;
+    record.status = 'rider_assigned';
+  } else {
+    if (record.status === 'replacement_rider_assigned' && idsEqual(record.replacement.assignedRider, delivery.assignedRider)) return record;
+    record.replacement.status = 'rider_assigned';
+    record.replacement.assignedRider = delivery.assignedRider;
+    record.status = 'replacement_rider_assigned';
+  }
+  appendHistory(record, {
+    action: `${delivery.missionType}_rider_assigned`,
+    fromStatus,
+    toStatus: record.status,
+    user,
+    note: 'Store staff selected an available Rider.'
+  });
+  record.revision += 1;
+  await record.save();
+  await syncOrderItemStatus(record);
+  await notifyParticipants(record, user, 'Rider assigned', `${record.caseId} now has an assigned Rider.`);
   return record;
 };
 
@@ -833,6 +840,7 @@ module.exports = {
   requestVariantReturn,
   scheduleReturnPickup,
   syncReturnMissionStatus,
+  syncReturnMissionAssignment,
   transitionReturnReview,
   verifyReturnPickup
 };
