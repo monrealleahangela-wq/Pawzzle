@@ -11,6 +11,15 @@ const storeApplicationService = {
     return api.post('/store-applications', formData, config);
   },
 
+  extractDocument: (file, documentType) => {
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('documentType', documentType);
+    return api.post('/store-applications/ocr/extract', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+
   // Get all applications (Super Admin only)
   getAllApplications: (params) => api.get('/store-applications', { params }),
 

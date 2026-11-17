@@ -9,7 +9,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/storeApplicationService', () => ({
   __esModule: true,
-  default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), submitExpansionRequest: jest.fn() }
+  default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
 }));
 jest.mock('../../components/MapPicker', () => ({ onLocationSelected }) => (
   <button type="button" onClick={() => onLocationSelected({ street: 'Main', city: 'Dasmarinas', barangay: 'San Jose', zipCode: '4114', lat: 14.3, lng: 120.9 })}>
@@ -90,4 +90,24 @@ test('rejected application reopens with every nested persisted section prepopula
   expect(screen.getByLabelText(/legal business name/i)).toHaveValue('Saved Store OPC');
   fireEvent.click(screen.getByRole('button', { name: /owner & team/i }));
   expect(screen.getByLabelText(/full legal name/i)).toHaveValue('Saved Owner');
+});
+
+test('an uploaded registration image auto-fills reviewable OCR values', async () => {
+  storeApplicationService.extractDocument.mockResolvedValue({ data: { extraction: { fields: {
+    'businessRegistration.certificateNumber': { value: 'DTI-2027-100', confidence: 99 },
+    'businessRegistration.registeredName': { value: 'Pawzzle OCR Trading', confidence: 98 },
+    'businessRegistration.expirationDate': { value: '2032-11-18', confidence: 96 }
+  } } } });
+
+  const { container } = render(<StoreApplication />);
+  await waitFor(() => expect(storeApplicationService.getUserApplication).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /documents/i }));
+  const input = container.querySelector('input[data-field="businessRegistration"]');
+  fireEvent.change(input, { target: { files: [new File(['image'], 'dti.png', { type: 'image/png' })] } });
+  await waitFor(() => expect(storeApplicationService.extractDocument).toHaveBeenCalledWith(expect.any(File), 'business_registration'));
+  await screen.findByText(/3 fields extracted/i);
+
+  fireEvent.click(screen.getByRole('button', { name: /location & tax/i }));
+  expect(screen.getByLabelText(/registration or certificate number/i)).toHaveValue('DTI-2027-100');
+  expect(screen.getByLabelText(/^expiration date/i)).toHaveValue('2032-11-18');
 });

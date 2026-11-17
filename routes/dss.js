@@ -12,10 +12,16 @@ const {
   getDSSConfig,
   updateDSSConfig
 } = require('../controllers/serviceRecommendationController');
+const { getCustomerProductRecommendations } = require('../controllers/productRecommendationController');
+const { body } = require('express-validator');
 
 // Customer DSS - any authenticated user
 router.get('/customer', authenticate, getCustomerInsights);
 router.post('/customer/pet-recommendations', authenticate, customerOnly, getCustomerPetRecommendations);
+router.post('/customer/product-recommendations', authenticate, customerOnly, [
+  body('budget').isFloat({ gt: 0, max: 1000000 }).withMessage('Enter a product budget between ₱1 and ₱1,000,000.'),
+  body('petProfileId').optional({ checkFalsy: true }).isMongoId().withMessage('Select a valid saved pet profile.')
+], getCustomerProductRecommendations);
 router.get('/service-recommendations', authenticate, getServiceRecommendations);
 router.post('/service-recommendations', authenticate, customerOnly, createServiceAdvisorRecommendations);
 router.post('/service-advisor/requirements', authenticate, customerOnly, getServiceAdvisorRequirements);
