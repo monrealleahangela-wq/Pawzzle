@@ -482,6 +482,7 @@ export const archiveService = {
 export const dssService = {
   getCustomerInsights: () => api.get('/dss/customer'),
   getPetRecommendations: (data) => api.post('/dss/customer/pet-recommendations', data),
+  getProductRecommendations: (data) => api.post('/dss/customer/product-recommendations', data),
   getServiceRecommendations: (data) => api.post('/dss/service-recommendations', data),
   getServiceAdvisorRequirements: (data) => api.post('/dss/service-advisor/requirements', data),
   getServiceConfig: () => api.get('/dss/service-config'),
