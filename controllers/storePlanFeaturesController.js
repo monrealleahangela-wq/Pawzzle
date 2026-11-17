@@ -5,11 +5,18 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { ENTITLEMENTS } = require('../config/subscriptionPlans');
 const { assertCanAddLocation, assertStoreEntitlement, getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
-const { findCanonicalOwnedStore } = require('../services/storeAccessService');
+const { resolveSubscriptionContext } = require('../services/storeAccessService');
 
-const ownedStore = userId => findCanonicalOwnedStore(userId);
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const sendError = (res, error) => res.status(error.statusCode || 500).json({ message: error.message || 'Unable to update plan features.', code: error.code, details: error.details });
+const resolvePlanFeatureContext = async user => {
+  const context = await resolveSubscriptionContext(user);
+  if (!context?.operationalStore) throw fail('Store not found.', 404);
+  return {
+    store: context.operationalStore,
+    subscriptionOptions: { authoritativeSubscription: context.authoritativeSubscription }
+  };
+};
 const clean = (value, max) => String(value || '').trim().slice(0, max);
 const cleanCoordinates = value => {
   if (value === undefined || value === null || value === '') return undefined;
@@ -34,22 +41,20 @@ const cleanAddress = (value = {}, current = {}) => ({
 
 const listLocations = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
     const primary = {
       id: 'primary', name: `${store.name} - Main location`, code: 'MAIN', phone: store.contactInfo?.phone,
       address: store.contactInfo?.address, isPrimary: true, isActive: true
     };
-    return res.json({ locations: [primary, ...(store.operatingLocations || []).map(row => ({ ...row.toObject(), id: row._id }))], subscription: await getStoreSubscriptionSummary(store) });
+    return res.json({ locations: [primary, ...(store.operatingLocations || []).map(row => ({ ...row.toObject(), id: row._id }))], subscription: await getStoreSubscriptionSummary(store, subscriptionOptions) });
   } catch (error) { return sendError(res, error); }
 };
 
 const createLocation = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.MULTI_LOCATION);
-    await assertCanAddLocation(store._id);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.MULTI_LOCATION, subscriptionOptions);
+    await assertCanAddLocation(store, subscriptionOptions);
     const input = req.body || {};
     const address = input.address || {};
     const location = {
@@ -68,9 +73,8 @@ const createLocation = async (req, res) => {
 
 const updateLocation = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.MULTI_LOCATION);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.MULTI_LOCATION, subscriptionOptions);
     const location = store.operatingLocations.id(req.params.locationId);
     if (!location) throw fail('Store location not found.', 404);
     if (req.body.name !== undefined) location.name = clean(req.body.name, 120);
@@ -87,17 +91,15 @@ const updateLocation = async (req, res) => {
 
 const getStorefrontCustomization = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    return res.json({ storefrontCustomization: store.storefrontCustomization || {}, reportSchedule: store.reportSchedule || {}, subscription: await getStoreSubscriptionSummary(store) });
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    return res.json({ storefrontCustomization: store.storefrontCustomization || {}, reportSchedule: store.reportSchedule || {}, subscription: await getStoreSubscriptionSummary(store, subscriptionOptions) });
   } catch (error) { return sendError(res, error); }
 };
 
 const updateStorefrontCustomization = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.STOREFRONT_CUSTOMIZATION);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.STOREFRONT_CUSTOMIZATION, subscriptionOptions);
     store.storefrontCustomization = {
       announcement: clean(req.body.announcement, 180), welcomeMessage: clean(req.body.welcomeMessage, 500),
       accentStyle: ['classic', 'warm', 'minimal'].includes(req.body.accentStyle) ? req.body.accentStyle : 'classic',
@@ -110,9 +112,8 @@ const updateStorefrontCustomization = async (req, res) => {
 
 const updateReportSchedule = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.SCHEDULED_REPORTS);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.SCHEDULED_REPORTS, subscriptionOptions);
     const enabled = Boolean(req.body.enabled);
     const frequency = req.body.frequency === 'weekly' ? 'weekly' : 'monthly';
     const recipientEmail = clean(req.body.recipientEmail || store.contactInfo?.email, 180).toLowerCase();
@@ -127,9 +128,8 @@ const updateReportSchedule = async (req, res) => {
 
 const getConsolidatedInventory = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.CONSOLIDATED_INVENTORY);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.CONSOLIDATED_INVENTORY, subscriptionOptions);
     const rows = await Inventory.find({ store: store._id, isActive: true })
       .populate('product', 'name sku images').populate('productVariant', 'sku attributes').lean();
     const locations = new Map([['primary', `${store.name} - Main location`], ...(store.operatingLocations || []).map(row => [String(row._id), row.name])]);
@@ -146,9 +146,8 @@ const getConsolidatedInventory = async (req, res) => {
 
 const assignInventoryLocation = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.CONSOLIDATED_INVENTORY);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.CONSOLIDATED_INVENTORY, subscriptionOptions);
     const requested = String(req.body.locationId || 'primary');
     const operatingLocation = requested === 'primary' ? null : store.operatingLocations.id(requested);
     if (requested !== 'primary' && (!operatingLocation || operatingLocation.isActive === false)) {
@@ -196,18 +195,16 @@ const buildOperationalReport = async (store, query = {}) => {
 
 const getOperationalReport = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.ADVANCED_REPORTS);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.ADVANCED_REPORTS, subscriptionOptions);
     return res.json({ report: await buildOperationalReport(store, req.query) });
   } catch (error) { return sendError(res, error); }
 };
 
 const exportOperationalReport = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.CSV_EXPORTS);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.CSV_EXPORTS, subscriptionOptions);
     const report = await buildOperationalReport(store, req.query);
     const rows = [
       ['Metric', 'Value'], ['Period (days)', report.periodDays], ['Paid orders', report.sales.orders],
@@ -225,9 +222,8 @@ const exportOperationalReport = async (req, res) => {
 
 const getRetentionInsights = async (req, res) => {
   try {
-    const store = await ownedStore(req.user._id);
-    if (!store) throw fail('Store not found.', 404);
-    await assertStoreEntitlement(store._id, ENTITLEMENTS.CUSTOMER_RETENTION_INSIGHTS);
+    const { store, subscriptionOptions } = await resolvePlanFeatureContext(req.user);
+    await assertStoreEntitlement(store, ENTITLEMENTS.CUSTOMER_RETENTION_INSIGHTS, subscriptionOptions);
     const [orders, bookings] = await Promise.all([
       Order.find({ store: store._id, paymentStatus: 'paid' }).select('customer totalAmount createdAt').lean(),
       Booking.find({ store: store._id, paymentStatus: 'paid' }).select('customer totalPrice createdAt').lean()

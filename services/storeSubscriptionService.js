@@ -254,8 +254,8 @@ const assertStoreEntitlement = async (storeId, entitlement, options = {}) => {
   return summary;
 };
 
-const assertCanAddLocation = async storeId => {
-  const summary = await getStoreSubscriptionSummary(storeId);
+const assertCanAddLocation = async (storeId, options = {}) => {
+  const summary = await getStoreSubscriptionSummary(storeId, options);
   if (!summary.capabilities.canAddLocation) {
     throw limitError('SUBSCRIPTION_LOCATION_LIMIT', `${summary.plan.name} allows ${summary.allowances.locations} store location${summary.allowances.locations === 1 ? '' : 's'}.`, summary);
   }
