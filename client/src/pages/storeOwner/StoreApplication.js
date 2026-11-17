@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
@@ -17,6 +17,11 @@ import {
   STORE_APPLICATION_FIELD_STEPS,
   validateStoreApplicationForm
 } from '../../utils/storeApplicationForm';
+import {
+  applyStoreDocumentExtraction,
+  canOcrStoreDocument,
+  STORE_DOCUMENT_OCR_TYPES
+} from '../../utils/storeDocumentOcr';
 
 const StoreApplication = () => {
   const { user, updateUser } = useAuth();
@@ -28,6 +33,8 @@ const StoreApplication = () => {
   const [formData, setFormData] = useState(() => createStoreApplicationForm(user));
   const [fieldErrors, setFieldErrors] = useState({});
   const [documentAvailability, setDocumentAvailability] = useState({});
+  const [documentOcr, setDocumentOcr] = useState({});
+  const ocrRequestIds = useRef({});
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [files, setFiles] = useState({
     licenseDocument: null,
@@ -35,6 +42,7 @@ const StoreApplication = () => {
     businessRegistration: null,
     birRegistration: null,
     barangayClearance: null,
+    mayorsPermit: null,
     storeLogo: null,
     authorityDocument: null
   });
@@ -117,7 +125,7 @@ const StoreApplication = () => {
     });
   };
 
-  const handleFileChange = (fileType, file) => {
+  const handleFileChange = async (fileType, file) => {
     setFiles(prev => ({ ...prev, [fileType]: file }));
     if (file) setFieldErrors(prev => {
       if (!prev[fileType]) return prev;
@@ -125,6 +133,44 @@ const StoreApplication = () => {
       delete next[fileType];
       return next;
     });
+    const documentType = STORE_DOCUMENT_OCR_TYPES[fileType];
+    if (!file || !documentType) return;
+    if (!canOcrStoreDocument(file)) {
+      setDocumentOcr(prev => ({
+        ...prev,
+        [fileType]: { status: 'unsupported', message: 'Auto-extraction supports JPG and PNG. Enter details manually for this file.' }
+      }));
+      return;
+    }
+    const requestId = (ocrRequestIds.current[fileType] || 0) + 1;
+    ocrRequestIds.current[fileType] = requestId;
+    setDocumentOcr(prev => ({ ...prev, [fileType]: { status: 'reading', message: 'Reading document securely...' } }));
+    try {
+      const response = await storeApplicationService.extractDocument(file, documentType);
+      if (ocrRequestIds.current[fileType] !== requestId) return;
+      const extraction = response.data?.extraction;
+      const fieldCount = Object.keys(extraction?.fields || {}).length;
+      setFormData(prev => applyStoreDocumentExtraction(prev, extraction));
+      setDocumentOcr(prev => ({
+        ...prev,
+        [fileType]: {
+          status: fieldCount ? 'complete' : 'review',
+          message: fieldCount
+            ? `${fieldCount} field${fieldCount === 1 ? '' : 's'} extracted. Review the values before submitting.`
+            : 'No high-confidence fields were found. Enter the details manually.'
+        }
+      }));
+      if (fieldCount) toast.success(`${fieldCount} document field${fieldCount === 1 ? '' : 's'} extracted for review.`);
+    } catch (error) {
+      if (ocrRequestIds.current[fileType] !== requestId) return;
+      setDocumentOcr(prev => ({
+        ...prev,
+        [fileType]: {
+          status: 'error',
+          message: error.response?.data?.message || 'Auto-extraction was unavailable. Enter the details manually.'
+        }
+      }));
+    }
   };
 
   const focusFirstError = (errors) => {
@@ -206,6 +252,7 @@ const StoreApplication = () => {
       if (files.businessRegistration) formDataToSend.append('businessRegistration', files.businessRegistration);
       if (files.birRegistration) formDataToSend.append('birRegistration', files.birRegistration);
       if (files.barangayClearance) formDataToSend.append('barangayClearance', files.barangayClearance);
+      if (files.mayorsPermit) formDataToSend.append('mayorsPermit', files.mayorsPermit);
       if (files.storeLogo) formDataToSend.append('storeLogo', files.storeLogo);
       if (files.authorityDocument) formDataToSend.append('authorityDocument', files.authorityDocument);
 
@@ -1020,7 +1067,7 @@ const StoreApplication = () => {
           <div data-step="4" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
             <div className="store-field-note" role="note">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Upload clear and readable copies of your business documents. Payout details are optional now and can be completed before receiving store payouts.</span>
+              <span>Upload clear and readable copies of your business documents. Selecting a JPG or PNG sends that image to AWS Textract to suggest form values; review and correct every suggestion before submitting. PDFs and Word files remain manual-entry uploads.</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-6">
@@ -1041,6 +1088,7 @@ const StoreApplication = () => {
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label} {doc.required ? '*' : '(optional)'}</p>
                             {documentAvailability[doc.id] && !files[doc.id] && <p className="text-[8px] font-bold text-emerald-700">Saved document retained</p>}
                             {isFieldBroken(doc.id) && <p className="text-[9px] text-rose-600 font-black mt-0.5">Please upload a corrected copy.</p>}
+                            {documentOcr[doc.id] && <p aria-live="polite" className={`mt-1 max-w-[240px] text-[9px] font-bold leading-4 ${documentOcr[doc.id].status === 'error' ? 'text-rose-600' : documentOcr[doc.id].status === 'reading' ? 'text-primary-700' : 'text-slate-500'}`}>{documentOcr[doc.id].message}</p>}
                           </div>
                         </div>
                         <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />
@@ -1049,6 +1097,18 @@ const StoreApplication = () => {
                         </label>
                       </div>
                     ))}
+                </div>
+                <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4">
+                  <div><h4 className="text-xs font-black text-slate-900">Mayor's / business permit details</h4><p className="mt-1 text-[10px] text-slate-500">Auto-filled when readable. Leave blank only when no permit was uploaded.</p></div>
+                  <label className="store-field-label">Permit number<input className="input-premium mt-2" value={formData.businessLicense.number} onChange={(e) => handleChange('businessLicense.number', e.target.value)} /></label>
+                  <label className="store-field-label">Issuing city, municipality, or authority<input className="input-premium mt-2" value={formData.businessLicense.issuingAuthority} onChange={(e) => handleChange('businessLicense.issuingAuthority', e.target.value)} /></label>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="store-field-label">Issue date<input type="date" className="input-premium mt-2" value={formData.businessLicense.issueDate} onChange={(e) => handleChange('businessLicense.issueDate', e.target.value)} /></label><label className="store-field-label">Expiration date<input type="date" className="input-premium mt-2" value={formData.businessLicense.expiryDate} onChange={(e) => handleChange('businessLicense.expiryDate', e.target.value)} /></label></div>
+                </div>
+                <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4">
+                  <div><h4 className="text-xs font-black text-slate-900">Barangay clearance details</h4><p className="mt-1 text-[10px] text-slate-500">Confirm the extracted dates against the clearance.</p></div>
+                  <label className="store-field-label">Clearance number<input className="input-premium mt-2" value={formData.barangayClearance.number} onChange={(e) => handleChange('barangayClearance.number', e.target.value)} /></label>
+                  <label className="store-field-label">Issuing barangay<input className="input-premium mt-2" value={formData.barangayClearance.issuingBarangay} onChange={(e) => handleChange('barangayClearance.issuingBarangay', e.target.value)} /></label>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="store-field-label">Issue date<input type="date" className="input-premium mt-2" value={formData.barangayClearance.issueDate} onChange={(e) => handleChange('barangayClearance.issueDate', e.target.value)} /></label><label className="store-field-label">Expiration date<input type="date" className="input-premium mt-2" value={formData.barangayClearance.expiryDate} onChange={(e) => handleChange('barangayClearance.expiryDate', e.target.value)} /></label></div>
                 </div>
               </div>
 

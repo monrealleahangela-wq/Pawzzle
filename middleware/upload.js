@@ -183,6 +183,25 @@ const registrationIdentityUpload = multer({
   }
 });
 
+// Store-document OCR is stateless: the image is held only long enough to send
+// it to Textract and the controller clears the buffer before returning.
+const storeDocumentOcrUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const mimeType = String(file.mimetype || '').toLowerCase();
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    const validImage = ['image/jpeg', 'image/png'].includes(mimeType)
+      && ['.jpg', '.jpeg', '.png'].includes(extension);
+    if (!validImage || file.fieldname !== 'document') {
+      const error = new Error('OCR requires a JPG or PNG document image.');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    return cb(null, true);
+  }
+});
+
 const returnEvidenceUpload = multer({
   storage: returnEvidenceStorage,
   limits: { fileSize: 25 * 1024 * 1024, files: 6 },
@@ -240,6 +259,7 @@ const uploadRegistrationIdentity = registrationIdentityUpload.fields([
   { name: 'governmentIdImage', maxCount: 1 },
   { name: 'selfieImage', maxCount: 1 }
 ]);
+const uploadStoreDocumentOcr = storeDocumentOcrUpload.single('document');
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -267,6 +287,7 @@ module.exports = {
   uploadAttendanceEvidence,
   uploadReturnEvidence,
   uploadRegistrationIdentity,
+  uploadStoreDocumentOcr,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

@@ -32,12 +32,14 @@ test('hydrates every nested edit section while retaining safe defaults', () => {
     businessName: 'Saved Store',
     staffingConfiguration: { hasStaff: 'yes' },
     businessRegistration: { registrationDate: '2025-01-02T00:00:00.000Z' },
+    barangayClearance: { number: 'BC-1', issueDate: '2027-01-02T00:00:00.000Z', expiryDate: '2027-12-31T00:00:00.000Z' },
     taxProfile: { birRegistrationStatus: 'registered' },
     contactInfo: { address: { street: 'Saved Street', coordinates: { lat: 14.3, lng: 120.9 } } }
   }, { email: 'owner@example.com' });
   expect(hydrated.staffingConfiguration.hasStaff).toBe('yes');
   expect(hydrated.staffingConfiguration.staffQuantityRange).toBe('1-5');
   expect(hydrated.businessRegistration.registrationDate).toBe('2025-01-02');
+  expect(hydrated.barangayClearance).toMatchObject({ number: 'BC-1', issueDate: '2027-01-02', expiryDate: '2027-12-31' });
   expect(hydrated.taxProfile.registeredAddress).toBeDefined();
   expect(hydrated.contactInfo.address.coordinates.lat).toBe(14.3);
 });

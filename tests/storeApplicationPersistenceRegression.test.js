@@ -30,7 +30,9 @@ const body = () => ({
     address: { street: 'Main St', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', zipCode: '4114', coordinates: { lat: 14.3, lng: 120.9 } }
   }),
   representative: JSON.stringify({ fullName: 'Store Owner', role: 'Owner', phone: '09171234567', email: 'owner@example.com', isAuthorizedRepresentative: false }),
+  businessLicense: JSON.stringify({ number: 'BP-100', issuingAuthority: 'Dasmarinas City', issueDate: '2027-01-02', expiryDate: '2027-12-31' }),
   businessRegistration: JSON.stringify({ authority: 'sec', certificateNumber: 'SEC-123', registeredName: 'Pawzzle Store OPC' }),
+  barangayClearance: JSON.stringify({ number: 'BC-100', issuingBarangay: 'San Jose', issueDate: '2027-01-02', expiryDate: '2027-12-31' }),
   taxProfile: JSON.stringify({ birRegistrationStatus: 'not_registered', registeredAddress: {} }),
   declaration: JSON.stringify({ accepted: true, applicantName: 'Store Owner' }),
   references: JSON.stringify([
@@ -48,6 +50,14 @@ test('multipart application mappings preserve supported nested fields and staffi
   assert.equal(data.staffingConfiguration.isStaffVisibleToCustomers, true);
   assert.equal(data.contactInfo.address.province, 'Cavite');
   assert.equal(data.businessRegistration.registeredName, data.registeredBusinessName);
+  assert.equal(data.businessLicense.expiryDate, '2027-12-31');
+  assert.equal(data.barangayClearance.expiryDate, '2027-12-31');
+});
+
+test('approved permit and barangay expiry dates seed compliance monitoring', () => {
+  const controller = read('controllers/storeApplicationController.js');
+  assert.match(controller, /requirementKey: 'mayors_permit'[\s\S]*?expirationDate: application\.businessLicense\?\.expiryDate/);
+  assert.match(controller, /requirementKey: 'barangay_clearance'[\s\S]*?expirationDate: application\.barangayClearance\?\.expiryDate/);
 });
 
 test('browser payload cannot assign workflow, ownership, review, or document URL fields', () => {

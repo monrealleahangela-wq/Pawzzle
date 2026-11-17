@@ -216,6 +216,7 @@ const buildApplicationData = (body, applicantId) => {
     contactInfo: safeParse(body.contactInfo),
     representative: safeParse(body.representative),
     businessRegistration: safeParse(body.businessRegistration),
+    barangayClearance: safeParse(body.barangayClearance),
     taxProfile: safeParse(body.taxProfile),
     declaration: safeParse(body.declaration),
     staffingConfiguration: safeParse(body.staffingConfiguration),
@@ -250,6 +251,7 @@ const buildApplicationData = (body, applicantId) => {
     contactInfo: parsed.contactInfo || {},
     representative: parsed.representative || {},
     businessRegistration: parsed.businessRegistration || {},
+    barangayClearance: parsed.barangayClearance || {},
     taxProfile: parsed.taxProfile || {},
     declaration: parsed.declaration || {},
     businessDescription: body.businessDescription,
@@ -920,6 +922,14 @@ const reviewApplication = async (req, res) => {
               application.taxProfile?.corDocumentUrl && application.taxProfile?.verificationStatus === 'verified' ? {
                 requirementKey: 'bir_certificate', label: 'BIR Certificate of Registration (Form 2303)', requiredForOperation: true, taxAffecting: true, currentVersion: 1,
                 versions: [{ version: 1, documentUrl: application.taxProfile.corDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: application.taxProfile.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: application.taxProfile.verifiedAt || new Date(), verifiedBy: application.taxProfile.verifiedBy || req.user.id, sourceApplication: application._id }]
+              } : null,
+              application.mayorsPermitUrl ? {
+                requirementKey: 'mayors_permit', label: "Mayor's / Business Permit", requiredForOperation: false, taxAffecting: false, currentVersion: 1,
+                versions: [{ version: 1, documentUrl: application.mayorsPermitUrl, issueDate: application.businessLicense?.issueDate, hasExpiration: Boolean(application.businessLicense?.expiryDate), expirationDate: application.businessLicense?.expiryDate, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
+              } : null,
+              application.barangayClearanceUrl ? {
+                requirementKey: 'barangay_clearance', label: 'Barangay Clearance', requiredForOperation: false, taxAffecting: false, currentVersion: 1,
+                versions: [{ version: 1, documentUrl: application.barangayClearanceUrl, issueDate: application.barangayClearance?.issueDate, hasExpiration: Boolean(application.barangayClearance?.expiryDate), expirationDate: application.barangayClearance?.expiryDate, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
               } : null,
               application.representative?.authorityDocumentUrl ? {
                 requirementKey: 'authority_document', label: 'Proof of Authority', requiredForOperation: true, taxAffecting: false, currentVersion: 1,

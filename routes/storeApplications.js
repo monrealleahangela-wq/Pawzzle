@@ -16,8 +16,11 @@ const {
   getApplicationDocument,
   upload
 } = require('../controllers/storeApplicationController');
+const { extractStoreDocumentFields } = require('../controllers/storeDocumentOcrController');
 const { authenticate, superAdminOnly } = require('../middleware/auth');
 const { storeOwnerOnly } = require('../middleware/auth');
+const { authRateLimits } = require('../middleware/authRateLimit');
+const { uploadStoreDocumentOcr, handleUploadError } = require('../middleware/upload');
 const {
   getMyCompliance,
   getCurrentComplianceDocument,
@@ -81,6 +84,15 @@ router.post('/', authenticate, upload.fields([
   { name: 'storeLogo', maxCount: 1 },
   { name: 'mayorsPermit', maxCount: 1 }
 ]), submitApplication);
+
+router.post(
+  '/ocr/extract',
+  authenticate,
+  authRateLimits.storeDocumentOcr,
+  uploadStoreDocumentOcr,
+  handleUploadError,
+  extractStoreDocumentFields
+);
 
 router.get('/my-application', authenticate, getUserApplication);
 router.get('/compliance/my-store', authenticate, storeOwnerOnly, getMyCompliance);
