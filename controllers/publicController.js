@@ -8,6 +8,7 @@ const { getPublicRecaptchaConfig } = require('../utils/captchaVerifier');
 const { getCustomerVisibleOwnerIds, buildCustomerVisibleStoreFilter, withCustomerComplianceFilter } = require('../utils/storeVisibility');
 const { buildPublicPetFilter } = require('../utils/catalogListing');
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
+const { buildCustomerProductStockFilter } = require('../services/customerProductAvailabilityService');
 
 // Public site keys are designed to be sent to browsers. The matching secret
 // remains server-only and is never included in this response.
@@ -28,9 +29,14 @@ const getLandingPageData = async (req, res) => {
       visibleStores.map(store => store._id)
     );
     const variantReadiness = await getCustomerVariantReadiness();
+    const productStockFilter = await buildCustomerProductStockFilter({
+      storeIds: visibleStores.map(store => store._id),
+      variantBrowsingEnabled: variantReadiness.browsingEnabled
+    });
     const publicProductFilter = {
       store: { $in: visibleStores.map(store => store._id) },
       visibility: { $nin: ['draft', 'hidden'] }, isActive: true, isDeleted: { $ne: true },
+      $and: [productStockFilter],
       ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
     };
     const [
@@ -50,7 +56,7 @@ const getLandingPageData = async (req, res) => {
       Product.find(publicProductFilter)
         .sort({ featured: -1, createdAt: -1 })
         .limit(8)
-        .select('name price images category stockQuantity store')
+        .select('name price images category stockQuantity productMode store')
         .populate('store', 'name contactInfo.address'),
       
       // 3. Best Services

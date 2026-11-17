@@ -28,6 +28,7 @@ const {
   withCustomerComplianceFilter
 } = require('../utils/storeVisibility');
 const { buildPublicPetFilter } = require('../utils/catalogListing');
+const { buildCustomerProductStockFilter } = require('../services/customerProductAvailabilityService');
 const { getPublicPlanCatalog, normalizeSubscriptionTier, SUBSCRIPTION_PLANS } = require('../config/subscriptionPlans');
 const { getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
 const { resolveOperationalStore, resolveSubscriptionContext } = require('../services/storeAccessService');
@@ -112,6 +113,10 @@ const getStoreById = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
     const variantReadiness = await getCustomerVariantReadiness();
+    const productStockFilter = await buildCustomerProductStockFilter({
+      storeIds: [store._id],
+      variantBrowsingEnabled: variantReadiness.browsingEnabled
+    });
 
     // Get store's pets and products
     const [pets, products] = await Promise.all([
@@ -127,6 +132,7 @@ const getStoreById = async (req, res) => {
         visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
         isDeleted: { $ne: true },
+        $and: [productStockFilter],
         ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
       }).limit(6)
     ]);
@@ -150,6 +156,10 @@ const getStoreDetails = async (req, res) => {
       return res.status(404).json({ message: 'Store not found' });
     }
     const variantReadiness = await getCustomerVariantReadiness();
+    const productStockFilter = await buildCustomerProductStockFilter({
+      storeIds: [store._id],
+      variantBrowsingEnabled: variantReadiness.browsingEnabled
+    });
 
     // Get store's products, services, pets, follower count, and staff
     const [products, services, pets, followerCount, staff] = await Promise.all([
@@ -161,6 +171,7 @@ const getStoreDetails = async (req, res) => {
         visibility: { $nin: ['draft', 'hidden'] },
         isActive: true,
         isDeleted: { $ne: true },
+        $and: [productStockFilter],
         ...(variantReadiness.browsingEnabled ? {} : { productMode: { $ne: 'variant' } })
       }).select('name description price images stockQuantity category productMode'),
       Service.find({

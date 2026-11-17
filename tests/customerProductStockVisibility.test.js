@@ -68,3 +68,18 @@ test('customer availability rejects depleted simple and variant products', () =>
   assert.match(controller, /product\.productMode !== 'variant' && !hasCustomerAvailableStock\(product\)/);
   assert.match(controller, /!catalog\.browsingEnabled \|\| !hasCustomerAvailableStock\(product, catalog\.variants\)/);
 });
+
+test('store pages and customer home apply the same stock filter', () => {
+  const storeController = source('controllers/storeController.js');
+  const publicController = source('controllers/publicController.js');
+
+  assert.match(storeController, /const \{ buildCustomerProductStockFilter \} = require\('\.\.\/services\/customerProductAvailabilityService'\)/);
+  assert.equal((storeController.match(/\$and: \[productStockFilter\]/g) || []).length, 2);
+  assert.match(storeController, /const getStoreById[\s\S]*?buildCustomerProductStockFilter\(\{[\s\S]*?storeIds: \[store\._id\]/);
+  assert.match(storeController, /const getStoreDetails[\s\S]*?buildCustomerProductStockFilter\(\{[\s\S]*?storeIds: \[store\._id\]/);
+
+  assert.match(publicController, /const \{ buildCustomerProductStockFilter \} = require\('\.\.\/services\/customerProductAvailabilityService'\)/);
+  assert.match(publicController, /publicProductFilter = \{[\s\S]*?\$and: \[productStockFilter\]/);
+  assert.match(publicController, /Product\.countDocuments\(publicProductFilter\)/);
+  assert.match(publicController, /\.select\('name price images category stockQuantity productMode store'\)/);
+});
