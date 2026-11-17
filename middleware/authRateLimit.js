@@ -38,6 +38,12 @@ const authRateLimits = {
     prefix: 'booking-verification',
     keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}`
   }),
+  identityVerification: createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 8,
+    prefix: 'identity-verification',
+    keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}`
+  }),
   storeDocumentOcr: createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 12,

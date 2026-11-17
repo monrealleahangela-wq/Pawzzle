@@ -11,6 +11,8 @@ const {
   getFaceMatchThreshold,
   compareIdentityFaces
 } = require('../utils/identityVerification');
+const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
+const { __test: authControllerTest } = require('../controllers/authController');
 
 test('government ID types and registration identity fields are constrained', () => {
   assert.equal(isGovernmentIdType('passport'), true);
@@ -67,4 +69,38 @@ test('all public account creation paths enforce identity verification', () => {
   assert.doesNotMatch(controller, /selfieImage\.buffer[^\n]*identityVerification/);
   assert.match(passport, /IDENTITY_VERIFICATION_REQUIRED/);
   assert.doesNotMatch(passport, /user = new User/);
+});
+
+test('verified identity is mandatory while only recovery endpoints remain reachable', () => {
+  assert.equal(hasVerifiedIdentity({ identityVerification: { status: 'verified' } }), true);
+  assert.equal(hasVerifiedIdentity({ identityVerification: { status: 'review_required' } }), false);
+  assert.equal(hasVerifiedIdentity({}), false);
+  for (const route of ['/me', '/identity/verify', '/change-password', '/logout']) {
+    assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/auth', path: route }), true);
+  }
+  assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/auth', path: '/profile' }), false);
+  assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/orders', path: '/' }), false);
+});
+
+test('login summaries expose identity state without exposing the encrypted ID', () => {
+  const summary = authControllerTest.userSummary({
+    _id: 'user-1', email: 'user@example.com', role: 'customer',
+    identityVerification: { status: 'verified', governmentId: { encryptedImage: 'secret' } }
+  });
+  assert.equal(summary.identityVerificationStatus, 'verified');
+  assert.equal(summary.identityVerification, undefined);
+  assert.equal(JSON.stringify(summary).includes('secret'), false);
+});
+
+test('HTTP and socket feature access fail closed until face matching succeeds', () => {
+  const middleware = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
+  const routes = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
+  const sockets = fs.readFileSync(path.join(__dirname, '../services/socketAuthorization.js'), 'utf8');
+  assert.match(middleware, /select\('\+identityVerification\.status'\)/);
+  assert.match(middleware, /IDENTITY_VERIFICATION_REQUIRED/);
+  assert.match(routes, /router\.post\('\/identity\/verify',[\s\S]*authenticate[\s\S]*authRateLimits\.identityVerification[\s\S]*uploadRegistrationIdentity[\s\S]*verifyCurrentUserIdentity/);
+  assert.match(controller, /policyVersion: 'identity-access-v1'/);
+  assert.match(controller, /file\.buffer\.fill\(0\)/);
+  assert.match(sockets, /Identity verification required/);
 });

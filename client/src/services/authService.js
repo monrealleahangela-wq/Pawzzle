@@ -113,6 +113,10 @@ const authService = {
       });
   },
 
+  verifyIdentity: (formData) => api.post('/auth/identity/verify', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(response => response.data),
+
   updateProfile: (userData) => {
     // Validate session
     const sessionValidation = SessionService.validateSession();

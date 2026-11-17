@@ -20,8 +20,11 @@ const authenticateSocket = async (socket, next) => {
     const { token, deliveryToken } = socketCredentials(socket);
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('-password');
+      const user = await User.findById(decoded.id).select('+identityVerification.status');
       if (!user || !user.isActive || user.isDeleted) return next(new Error('Authentication failed'));
+      if (user.identityVerification?.status !== 'verified') {
+        return next(new Error('Identity verification required'));
+      }
       if (requiresPlatformVerification(user) && getProfessionalVerificationStatus(user) !== 'verified') {
         return next(new Error('Professional verification required'));
       }

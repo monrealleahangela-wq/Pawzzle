@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { OPERATIONAL_ROLES, canAccessDashboard, effectiveStaffType, hasUiActionPermission, hasUiPermission, isProfessionalVerificationPending, portalHomeForUser } from '../utils/authorization';
+import { OPERATIONAL_ROLES, canAccessDashboard, effectiveStaffType, hasUiActionPermission, hasUiPermission, isIdentityVerificationRequired, isProfessionalVerificationPending, portalHomeForUser } from '../utils/authorization';
 
 const roleMatches = (userRole, allowedRoles) =>
   allowedRoles.includes(userRole) ||
@@ -22,6 +22,10 @@ const ProtectedRoute = ({ children, roles = [], staffTypes = [], requiredPermiss
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  if (isIdentityVerificationRequired(user)) {
+    return <Navigate to="/identity-verification" replace />;
   }
 
   if (!allowPendingProfessional && isProfessionalVerificationPending(user)) {

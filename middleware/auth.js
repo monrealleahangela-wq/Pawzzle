@@ -11,6 +11,11 @@ const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
   && ['/me', '/change-password', '/logout'].includes(req.path))
   || (req.baseUrl === '/api/staff' && ['/me/professional-profile', '/me/credentials'].includes(req.path));
 
+const isIdentityRecoveryRoute = req => req.baseUrl === '/api/auth'
+  && ['/me', '/identity/verify', '/change-password', '/logout'].includes(req.path);
+
+const hasVerifiedIdentity = user => user?.identityVerification?.status === 'verified';
+
 // Authentication middleware
 const authenticate = async (req, res, next) => {
   try {
@@ -21,7 +26,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id).select('+identityVerification.status');
     if (!user) {
       return res.status(401).json({ message: 'Invalid token.' });
     }
@@ -36,6 +41,14 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+    if (!hasVerifiedIdentity(user) && !isIdentityRecoveryRoute(req)) {
+      return res.status(403).json({
+        message: 'Verify your government ID and complete the live face match before using Pawzzle features.',
+        code: 'IDENTITY_VERIFICATION_REQUIRED',
+        identityVerificationStatus: user.identityVerification?.status || 'not_verified',
+        verificationPath: '/identity-verification'
+      });
+    }
     if (requiresPlatformVerification(user) && getProfessionalVerificationStatus(user) !== 'verified' && !isProfessionalRecoveryRoute(req)) {
       return res.status(403).json({
         message: 'Your professional account is awaiting Platform Admin verification.',
@@ -208,5 +221,7 @@ module.exports = {
   requireStaffType,
   customerOnly,
   requirePasswordChangeCompleted,
-  canAccessResource
+  canAccessResource,
+  hasVerifiedIdentity,
+  isIdentityRecoveryRoute
 };
