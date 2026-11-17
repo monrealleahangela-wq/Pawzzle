@@ -160,6 +160,29 @@ const attendanceEvidenceUpload = multer({
   }
 });
 
+// Registration identity images remain in memory. The ID is encrypted before
+// persistence and the live selfie is discarded after the stateless face match.
+const registrationIdentityUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 2 },
+  fileFilter: (req, file, cb) => {
+    const mimeType = String(file.mimetype || '').toLowerCase();
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    const validField = ['governmentIdImage', 'selfieImage'].includes(file.fieldname);
+    const validImage = ['image/jpeg', 'image/png'].includes(mimeType) && ['.jpg', '.jpeg', '.png'].includes(extension);
+    const validSelfie = file.fieldname !== 'selfieImage'
+      || (mimeType === 'image/jpeg' && /^identity-live-selfie-\d+\.jpg$/i.test(String(file.originalname || '')));
+    if (!validField || !validImage || !validSelfie) {
+      const error = new Error(file.fieldname === 'selfieImage'
+        ? 'Identity verification requires a new live-camera JPEG selfie.'
+        : 'Government ID must be a JPG or PNG image.');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    return cb(null, true);
+  }
+});
+
 const returnEvidenceUpload = multer({
   storage: returnEvidenceStorage,
   limits: { fileSize: 25 * 1024 * 1024, files: 6 },
@@ -213,6 +236,10 @@ const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
 const uploadReturnEvidence = returnEvidenceUpload.array('evidence', 6);
+const uploadRegistrationIdentity = registrationIdentityUpload.fields([
+  { name: 'governmentIdImage', maxCount: 1 },
+  { name: 'selfieImage', maxCount: 1 }
+]);
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
   { name: 'image', maxCount: 1 }
@@ -239,6 +266,7 @@ module.exports = {
   uploadProcurementEvidence,
   uploadAttendanceEvidence,
   uploadReturnEvidence,
+  uploadRegistrationIdentity,
   uploadServicePhotos,
   uploadDoc,
   handleUploadError

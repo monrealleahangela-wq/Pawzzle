@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../../services/authService';
+import IdentityRegistrationFields from '../../components/auth/IdentityRegistrationFields';
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowLeft, ArrowRight,
   ShieldCheck, RefreshCw, Sparkles, HeartHandshake, Store
@@ -21,7 +22,7 @@ const RegistrationShell = ({ children }) => (
       <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary-100/60" />
     </div>
 
-    <main className="relative mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-primary-100/80 bg-white shadow-premium animate-fade-in sm:rounded-[2rem] lg:min-h-[43rem] lg:grid-cols-[0.9fr_1.1fr]">
+    <main className="relative mx-auto grid w-full max-w-7xl overflow-hidden rounded-3xl border border-primary-100/80 bg-white shadow-premium animate-fade-in sm:rounded-[2rem] lg:min-h-[43rem] lg:grid-cols-[0.75fr_1.25fr]">
       <aside className="relative hidden overflow-hidden bg-primary-950 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div className="absolute -right-24 -top-20 h-64 w-64 rounded-full border border-white/10" />
@@ -65,7 +66,7 @@ const RegistrationShell = ({ children }) => (
       </aside>
 
       <section className="relative flex min-w-0 items-center justify-center px-4 py-5 sm:px-10 sm:py-10 lg:px-14">
-        <div className="min-w-0 w-full max-w-md">
+        <div className="min-w-0 w-full max-w-2xl">
           <div className="mb-5 flex items-center gap-3 sm:mb-7 lg:hidden">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 p-2 ring-1 ring-primary-100 sm:h-12 sm:w-12 sm:rounded-2xl">
               <img src="/images/logo.png" alt="Pawzzle" className="h-full w-full object-contain" />
@@ -83,24 +84,29 @@ const RegistrationShell = ({ children }) => (
 );
 
 const Register = () => {
+  const location = useLocation();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    // Hidden/Defaults for now
     firstName: '',
+    middleName: '',
     lastName: '',
     phone: '',
+    governmentIdType: '',
+    biometricConsent: false,
     address: {
-      street: 'N/A',
-      city: 'N/A',
-      province: 'Cavite',
-      barangay: 'N/A',
+      street: '',
+      city: '',
+      province: '',
+      barangay: '',
       zipCode: '',
       country: 'PH'
     }
   });
+  const [governmentIdImage, setGovernmentIdImage] = useState(null);
+  const [selfieImage, setSelfieImage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -112,6 +118,12 @@ const Register = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef([]);
 
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('notice') === 'identity-verification-required') {
+      toast.info('Complete identity verification here before using Google sign-in.');
+    }
+  }, [location.search]);
+
   // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -121,8 +133,13 @@ const Register = () => {
   }, [resendCooldown]);
 
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleAddressChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, address: { ...prev.address, [name]: value } }));
   };
 
   // ─── STEP 1: Submit simplified registration form ────────────────────────────
@@ -139,12 +156,15 @@ const Register = () => {
       toast.error('Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols');
       return;
     }
+    if (!governmentIdImage || !selfieImage || !formData.biometricConsent) {
+      toast.error('Add your government ID, capture a live selfie, and accept the identity verification consent.');
+      return;
+    }
 
     setLoading(true);
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      // We send the simplified data. Backend fields like firstName/lastName are now optional.
       const result = await authService.sendRegisterOTP(registerData);
 
       if (result.success) {
@@ -192,7 +212,12 @@ const Register = () => {
     }
     setOtpLoading(true);
     try {
-      const result = await authService.verifyRegisterOTP({ email: formData.email, otp });
+      const identityData = new FormData();
+      identityData.append('email', formData.email);
+      identityData.append('otp', otp);
+      identityData.append('governmentIdImage', governmentIdImage);
+      identityData.append('selfieImage', selfieImage);
+      const result = await authService.verifyRegisterOTP(identityData);
       if (result.success && result.token && result.user) {
         localStorage.setItem('token', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
@@ -234,7 +259,7 @@ const Register = () => {
           <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-primary-600 sm:mb-2 sm:text-xs sm:tracking-[0.22em]">Email verification</p>
           <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-4xl">Check your inbox</h2>
           <p className="mt-2 text-sm leading-5 text-slate-500 sm:leading-6">
-            Enter the 6-digit code sent to <span className="break-all font-bold text-slate-700">{formData.email}</span>.
+            Enter the 6-digit code sent to <span className="break-all font-bold text-slate-700">{formData.email}</span>. Your account is created after the secure face match succeeds.
           </p>
         </div>
 
@@ -319,6 +344,17 @@ const Register = () => {
                   />
                 </div>
               </div>
+
+              <IdentityRegistrationFields
+                formData={formData}
+                onChange={handleChange}
+                onAddressChange={handleAddressChange}
+                governmentIdImage={governmentIdImage}
+                onGovernmentIdImage={setGovernmentIdImage}
+                selfieImage={selfieImage}
+                onSelfieImage={setSelfieImage}
+                onFileError={toast.error}
+              />
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>

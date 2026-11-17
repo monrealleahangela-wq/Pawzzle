@@ -15,6 +15,13 @@ const {
 } = require('../utils/authSecurity');
 const { attachStoreRolePolicy, serializeEffectivePermissionMap } = require('../services/rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
+const { isGovernmentIdType } = require('../config/governmentIds');
+const {
+  getEncryptionKey,
+  encryptIdentityDocument,
+  matchesImageSignature,
+  compareIdentityFaces
+} = require('../utils/identityVerification');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -29,7 +36,10 @@ const userSummary = user => ({
   role: user.role,
   staffType: user.staffType,
   firstName: user.firstName,
+  middleName: user.middleName,
   lastName: user.lastName,
+  phone: user.phone,
+  identityVerificationStatus: user.identityVerification?.status || null,
   store: user.store,
   permissions: serializeEffectivePermissionMap(user),
   requiresPasswordChange: Boolean(user.requiresPasswordChange),
@@ -52,7 +62,7 @@ const sendRegisterOTP = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    let { username, email, password, firstName, lastName, phone, address } = req.body;
+    let { username, email, password, firstName, middleName, lastName, phone, address, governmentIdType, biometricConsent } = req.body;
     email = String(email).trim().toLowerCase();
 
     if (!username) {
@@ -73,9 +83,12 @@ const sendRegisterOTP = async (req, res) => {
       email,
       password: passwordHash,
       firstName,
+      middleName,
       lastName,
       phone,
-      address
+      address,
+      governmentIdType,
+      biometricConsent
     });
 
     const otp = otpService.generateOTP();
@@ -105,7 +118,20 @@ const verifyRegisterOTP = async (req, res) => {
     const { otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and verification code are required' });
 
-    const verification = await otpService.verifyOTP(email, 'registration', otp);
+    const governmentIdImage = req.files?.governmentIdImage?.[0];
+    const selfieImage = req.files?.selfieImage?.[0];
+    if (!governmentIdImage || !selfieImage) {
+      return res.status(400).json({ code: 'IDENTITY_IMAGES_REQUIRED', message: 'A government ID image and new live-camera selfie are required.' });
+    }
+    if (!matchesImageSignature(governmentIdImage.buffer, governmentIdImage.mimetype)
+      || !matchesImageSignature(selfieImage.buffer, selfieImage.mimetype)) {
+      return res.status(400).json({ code: 'IDENTITY_IMAGE_INVALID', message: 'One or more identity images are not valid JPG or PNG files.' });
+    }
+
+    // Fail closed before checking or consuming the one-time code when the
+    // encryption or face-match service is not configured.
+    getEncryptionKey();
+    const verification = await otpService.verifyOTP(email, 'registration', otp, { consume: false });
     if (!verification.valid) {
       return res.status(400).json({
         message: otpFailureMessage(verification, 'Too many invalid codes. Please request a new verification code.')
@@ -114,6 +140,9 @@ const verifyRegisterOTP = async (req, res) => {
 
     const userData = verification.userData;
     if (!userData) return res.status(400).json({ message: 'Registration data is unavailable. Please start over.' });
+    if (!isGovernmentIdType(userData.governmentIdType) || userData.biometricConsent !== true) {
+      return res.status(400).json({ code: 'IDENTITY_CONSENT_REQUIRED', message: 'Identity verification consent and a valid government ID type are required. Please start over.' });
+    }
     userData.role = 'customer';
 
     const conflict = await User.findOne({
@@ -122,6 +151,38 @@ const verifyRegisterOTP = async (req, res) => {
     });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
+    const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
+    if (!faceMatch.matched) {
+      return res.status(400).json({
+        code: 'FACE_MATCH_FAILED',
+        message: 'Your live selfie did not match the face on the government ID. Retake both images in clear lighting and try again.'
+      });
+    }
+
+    const encryptedGovernmentId = encryptIdentityDocument(governmentIdImage.buffer);
+    const consumed = await otpService.consumeVerifiedOTP(verification.sessionId, 'registration');
+    if (!consumed) return res.status(400).json({ message: 'This verification code has expired or was already used. Please request a new code.' });
+
+    userData.identityVerification = {
+      status: 'verified',
+      governmentId: {
+        documentType: userData.governmentIdType,
+        encryptedImage: encryptedGovernmentId,
+        mimeType: governmentIdImage.mimetype,
+        size: governmentIdImage.size
+      },
+      faceMatch: {
+        provider: faceMatch.provider,
+        similarity: faceMatch.similarity,
+        threshold: faceMatch.threshold,
+        sourceFaceConfidence: faceMatch.sourceFaceConfidence
+      },
+      consent: { acceptedAt: new Date(), policyVersion: 'registration-identity-v1' },
+      verifiedAt: new Date()
+    };
+    delete userData.governmentIdType;
+    delete userData.biometricConsent;
+
     const user = new User(userData);
     await user.save();
 
@@ -129,7 +190,7 @@ const verifyRegisterOTP = async (req, res) => {
       await ActivityLog.create({
         user: user._id,
         action: 'Account Verified',
-        details: 'User successfully completed email verification and account activation',
+        details: 'User completed email and government identity verification',
         ipAddress: req.ip
       });
     } catch (activityError) {
@@ -138,13 +199,21 @@ const verifyRegisterOTP = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Email verified! Welcome to Pawzzle.',
+      message: 'Email and identity verified! Welcome to Pawzzle.',
       token: generateToken(user._id),
       user: userSummary(user)
     });
   } catch (error) {
     console.error('Registration verification failed');
+    if (error?.statusCode && error?.code) {
+      return res.status(error.statusCode).json({ code: error.code, message: error.message });
+    }
     return res.status(500).json({ message: 'Server error during verification' });
+  } finally {
+    for (const field of ['governmentIdImage', 'selfieImage']) {
+      const buffer = req.files?.[field]?.[0]?.buffer;
+      if (Buffer.isBuffer(buffer)) buffer.fill(0);
+    }
   }
 };
 

@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { ArrowRight, BadgeCheck, Eye, EyeOff, LockKeyhole, Mail, RefreshCw, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Eye, EyeOff, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import StoreApplicationJourney from '../../components/stores/StoreApplicationJourney';
+import IdentityRegistrationFields from '../../components/auth/IdentityRegistrationFields';
 import '../../components/stores/StoreApplicationFields.css';
 
 const initialRegistration = {
-  firstName: '', lastName: '', email: '', password: '', confirmPassword: ''
+  firstName: '', middleName: '', lastName: '', phone: '', email: '', password: '', confirmPassword: '',
+  governmentIdType: '', biometricConsent: false,
+  address: { street: '', barangay: '', city: '', province: '', zipCode: '', country: 'PH' }
 };
 
 const SellerJoin = () => {
@@ -22,6 +25,8 @@ const SellerJoin = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [governmentIdImage, setGovernmentIdImage] = useState(null);
+  const [selfieImage, setSelfieImage] = useState(null);
   const otpRefs = useRef([]);
 
   useEffect(() => {
@@ -35,14 +40,23 @@ const SellerJoin = () => {
   }, [resendCooldown]);
 
   const handleRegistrationChange = event => {
+    const { name, value, type, checked } = event.target;
+    setRegistration(previous => ({ ...previous, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleAddressChange = event => {
     const { name, value } = event.target;
-    setRegistration(previous => ({ ...previous, [name]: value }));
+    setRegistration(previous => ({ ...previous, address: { ...previous.address, [name]: value } }));
   };
 
   const handleAccountSubmit = async event => {
     event.preventDefault();
     if (registration.password !== registration.confirmPassword) {
       toast.error('Passwords do not match.');
+      return;
+    }
+    if (!governmentIdImage || !selfieImage || !registration.biometricConsent) {
+      toast.error('Add your government ID, capture a live selfie, and accept the identity verification consent.');
       return;
     }
     setLoading(true);
@@ -83,7 +97,12 @@ const SellerJoin = () => {
     }
     setOtpLoading(true);
     try {
-      const result = await authService.verifyRegisterOTP({ email: registration.email, otp });
+      const identityData = new FormData();
+      identityData.append('email', registration.email);
+      identityData.append('otp', otp);
+      identityData.append('governmentIdImage', governmentIdImage);
+      identityData.append('selfieImage', selfieImage);
+      const result = await authService.verifyRegisterOTP(identityData);
       if (!result.success || !result.token || !result.user) {
         toast.error(result.message || 'Email verification failed.');
         return;
@@ -135,12 +154,18 @@ const SellerJoin = () => {
                   <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>Enter your personal account details below. Fields marked <strong>Required</strong> must be completed before we can send your verification code.</span>
                 </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <label className="store-field-label">First name <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="given-name" type="text" name="firstName" required value={registration.firstName} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="Enter your first name" /></span><span className="store-field-help">Use the first name shown on your valid ID.</span></label>
-                  <label className="store-field-label">Last name <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><UserRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="family-name" type="text" name="lastName" required value={registration.lastName} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="Enter your last name" /></span><span className="store-field-help">Use the last name shown on your valid ID.</span></label>
-                </div>
-
                 <label className="store-field-label">Email address <span className="store-field-label__status">Required</span><span className="relative mt-2 block"><Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input autoComplete="email" type="email" name="email" required value={registration.email} onChange={handleRegistrationChange} className="input-premium store-field-with-icon" placeholder="name@example.com" /></span><span className="store-field-help">We will send a 6-digit verification code to this email.</span></label>
+
+                <IdentityRegistrationFields
+                  formData={registration}
+                  onChange={handleRegistrationChange}
+                  onAddressChange={handleAddressChange}
+                  governmentIdImage={governmentIdImage}
+                  onGovernmentIdImage={setGovernmentIdImage}
+                  selfieImage={selfieImage}
+                  onSelfieImage={setSelfieImage}
+                  onFileError={toast.error}
+                />
 
                 <div className="grid gap-5 sm:grid-cols-2">
                   {[
@@ -156,7 +181,7 @@ const SellerJoin = () => {
               </form>
             ) : (
               <div className="space-y-7 p-6 sm:p-9">
-                <div className="rounded-2xl border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">We sent a 6-digit code to <strong>{registration.email}</strong>. Enter it below to unlock the complete store application.</div>
+                <div className="rounded-2xl border border-primary-100 bg-primary-50 p-4 text-sm text-primary-900">We sent a 6-digit code to <strong>{registration.email}</strong>. Your account is created after the secure face match succeeds.</div>
                 <div className="flex justify-center gap-2 sm:gap-3" onPaste={handleOtpPaste}>
                   {otpDigits.map((digit, index) => (
                     <input key={index} ref={element => { otpRefs.current[index] = element; }} aria-label={`Verification digit ${index + 1}`} inputMode="numeric" autoComplete={index === 0 ? 'one-time-code' : 'off'} maxLength={1} value={digit} onChange={event => updateOtpDigit(index, event.target.value)} onKeyDown={event => { if (event.key === 'Backspace' && !otpDigits[index] && index > 0) otpRefs.current[index - 1]?.focus(); }} className="h-14 w-11 rounded-xl border-2 border-slate-300 bg-white text-center text-xl font-black text-slate-950 shadow-sm outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-100 sm:h-16 sm:w-14" />

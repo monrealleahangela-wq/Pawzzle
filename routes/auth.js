@@ -23,6 +23,8 @@ const {
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
+const { uploadRegistrationIdentity, handleUploadError } = require('../middleware/upload');
+const { isGovernmentIdType } = require('../config/governmentIds');
 
 // Validation rules
 const registerValidation = [
@@ -42,10 +44,18 @@ const registerValidation = [
       }
       return true;
     }),
-  body('firstName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('First name is required'),
-  body('lastName').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Last name is required'),
-  body('phone').trim().optional({ checkFalsy: true }).isMobilePhone().withMessage('Please provide a valid phone number'),
-  body('address.barangay').trim().optional({ checkFalsy: true }).notEmpty().withMessage('Barangay is required'),
+  body('firstName').trim().notEmpty().isLength({ max: 100 }).withMessage('First name is required'),
+  body('middleName').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Middle name is too long'),
+  body('lastName').trim().notEmpty().isLength({ max: 100 }).withMessage('Surname is required'),
+  body('phone').trim().notEmpty().isMobilePhone().withMessage('Please provide a valid contact number'),
+  body('address.street').trim().notEmpty().isLength({ max: 200 }).withMessage('Street address is required'),
+  body('address.barangay').trim().notEmpty().isLength({ max: 100 }).withMessage('Barangay is required'),
+  body('address.city').trim().notEmpty().isLength({ max: 100 }).withMessage('City or municipality is required'),
+  body('address.province').trim().notEmpty().isLength({ max: 100 }).withMessage('Province is required'),
+  body('address.zipCode').trim().notEmpty().isPostalCode('any').withMessage('A valid ZIP code is required'),
+  body('address.country').trim().equals('PH').withMessage('Country must be Philippines'),
+  body('governmentIdType').custom(isGovernmentIdType).withMessage('Select a valid government ID type'),
+  body('biometricConsent').custom(value => value === true || value === 'true').withMessage('Consent to face matching is required'),
   body('role').optional().equals('customer').withMessage('Public registration only creates customer accounts')
 ];
 
@@ -114,7 +124,7 @@ const otpVerificationValidation = [
 
 // ─── Registration with OTP ────────────────────────────────────────────────────
 router.post('/register/send-otp', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, sendRegisterOTP);
-router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, otpVerificationValidation, verifyRegisterOTP);
+router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, uploadRegistrationIdentity, handleUploadError, otpVerificationValidation, verifyRegisterOTP);
 router.post('/register/resend-otp', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, resendRegisterOTP);
 
 // ─── Legacy register (for admin/super_admin creation) ─────────────────────────
@@ -138,6 +148,9 @@ router.post('/logout', authenticate, logout);
 router.post('/verify-2fa', authRateLimits.authIp, authRateLimits.otpVerify, otpVerificationValidation, verify2FA);
 router.post('/toggle-2fa', authenticate, toggle2FA);
 
+const getFrontendUrl = () => process.env.FRONTEND_URL
+  || (process.env.NODE_ENV === 'production' ? 'https://pawzzle.io' : 'http://localhost:3000');
+
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────
 const issueTokenAndRedirect = async (req, res) => {
   try {
@@ -157,29 +170,10 @@ const issueTokenAndRedirect = async (req, res) => {
       authProvider: user.authProvider
     });
 
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.headers.host;
-    
-    // Dynamic determination of frontend URL
-    let defaultFrontend = `${protocol}://${host.replace(':5000', ':3000')}`;
-    
-    // If we're on a production domain like pawzzle.io, ensure we don't accidentally use :3000
-    if (host.includes('pawzzle.io') || !host.includes('localhost')) {
-      defaultFrontend = `${protocol}://${host}`;
-    }
-
-    // Prioritize the dynamic host if FRONTEND_URL is set to localhost but we're on a live site
-    let frontendUrl = process.env.FRONTEND_URL;
-    if (!frontendUrl || (frontendUrl.includes('localhost') && !host.includes('localhost'))) {
-      frontendUrl = defaultFrontend;
-    }
-    
-    res.redirect(`${frontendUrl}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);
+    res.redirect(`${getFrontendUrl()}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);
   } catch (err) {
     console.error('OAuth redirect error:', err);
-    // Use dynamic host for error redirect too
-    const fallbackHost = req.headers.host ? `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` : 'https://pawzzle.io';
-    res.redirect(`${process.env.FRONTEND_URL || fallbackHost}/login?error=oauth_failed`);
+    res.redirect(`${getFrontendUrl()}/login?error=oauth_failed`);
   }
 };
 
@@ -197,8 +191,15 @@ if (googleOAuthConfigured) {
   );
 
   router.get('/google/callback',
-    passport.authenticate('google', { session: false, failureRedirect: '/login?error=google_failed' }),
-    issueTokenAndRedirect
+    (req, res, next) => passport.authenticate('google', { session: false }, (error, user, info) => {
+      if (error) return res.redirect(`${getFrontendUrl()}/login?error=google_failed`);
+      if (!user && info?.code === 'IDENTITY_VERIFICATION_REQUIRED') {
+        return res.redirect(`${getFrontendUrl()}/register?notice=identity-verification-required`);
+      }
+      if (!user) return res.redirect(`${getFrontendUrl()}/login?error=google_failed`);
+      req.user = user;
+      return issueTokenAndRedirect(req, res);
+    })(req, res, next)
   );
 } else {
   router.get('/google', googleOAuthUnavailable);

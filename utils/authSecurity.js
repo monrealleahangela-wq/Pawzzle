@@ -1,4 +1,4 @@
-const PROFILE_FIELDS = Object.freeze(['firstName', 'lastName', 'phone', 'avatar']);
+const PROFILE_FIELDS = Object.freeze(['firstName', 'middleName', 'lastName', 'phone', 'avatar']);
 const ADDRESS_FIELDS = Object.freeze(['street', 'city', 'province', 'barangay', 'state', 'zipCode', 'country']);
 const COORDINATE_FIELDS = Object.freeze(['lat', 'lng']);
 
@@ -51,6 +51,7 @@ const sanitizeUser = (user) => {
   const safe = user.toObject ? user.toObject() : { ...user };
   delete safe.password;
   delete safe.twoFactorSecret;
+  delete safe.identityVerification;
   delete safe.__v;
   return safe;
 };
@@ -60,9 +61,12 @@ const buildPublicRegistrationData = (data) => ({
   email: data.email,
   password: data.password,
   firstName: data.firstName,
+  middleName: data.middleName,
   lastName: data.lastName,
   phone: data.phone,
   address: data.address,
+  governmentIdType: data.governmentIdType,
+  biometricConsent: data.biometricConsent === true,
   role: 'customer'
 });
 
