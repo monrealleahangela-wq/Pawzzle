@@ -190,7 +190,10 @@ const authService = {
   },
 
   verifyRegisterOTP: (data) => {
-    return api.post('/auth/register/verify-otp', data)
+    const config = typeof FormData !== 'undefined' && data instanceof FormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined;
+    return api.post('/auth/register/verify-otp', data, config)
       .then(response => {
         const { token, user } = response.data;
         if (token && user) {

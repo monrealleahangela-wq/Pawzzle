@@ -1,6 +1,31 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { RIDER_VEHICLE_TYPES } = require('../config/riderVehicles');
+const { GOVERNMENT_ID_TYPES } = require('../config/governmentIds');
+
+const identityVerificationSchema = new mongoose.Schema({
+  status: { type: String, enum: ['verified', 'review_required', 'rejected'], required: true },
+  governmentId: {
+    documentType: { type: String, enum: GOVERNMENT_ID_TYPES, required: true },
+    encryptedImage: { type: String, required: true },
+    mimeType: { type: String, enum: ['image/jpeg', 'image/png'], required: true },
+    size: { type: Number, min: 1, max: 5 * 1024 * 1024, required: true }
+  },
+  faceMatch: {
+    provider: { type: String, enum: ['aws_rekognition'], required: true },
+    similarity: { type: Number, min: 0, max: 100, required: true },
+    threshold: { type: Number, min: 80, max: 100, required: true },
+    sourceFaceConfidence: { type: Number, min: 0, max: 100, default: 0 }
+  },
+  consent: {
+    acceptedAt: { type: Date, required: true },
+    policyVersion: { type: String, required: true, default: 'registration-identity-v1' }
+  },
+  verifiedAt: { type: Date, required: true },
+  reviewedAt: Date,
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewNotes: { type: String, trim: true, maxlength: 1000, default: '' }
+}, { _id: false });
 
 const compensationRevisionSchema = new mongoose.Schema({
   compensationType: { type: String, enum: ['salary', 'daily', 'hourly'], required: true },
@@ -93,6 +118,11 @@ const userSchema = new mongoose.Schema({
     required: false,
     trim: true
   },
+  middleName: {
+    type: String,
+    required: false,
+    trim: true
+  },
   lastName: {
     type: String,
     required: false,
@@ -114,6 +144,12 @@ const userSchema = new mongoose.Schema({
       lat: { type: Number },
       lng: { type: Number }
     }
+  },
+  // Optional at schema level so existing accounts remain valid. New public
+  // registrations enforce identity verification before account creation.
+  identityVerification: {
+    type: identityVerificationSchema,
+    select: false
   },
   isActive: {
     type: Boolean,

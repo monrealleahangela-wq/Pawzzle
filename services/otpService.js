@@ -123,7 +123,7 @@ const getActiveOtpSession = async (email, type) => {
   return stored;
 };
 
-const verifyOTP = async (email, type, submittedOtp) => {
+const verifyOTP = async (email, type, submittedOtp, options = {}) => {
   const normalizedEmail = String(email || '').trim().toLowerCase();
   const stored = await Otp.findOne({ email: normalizedEmail, type })
     .sort({ createdAt: -1 })
@@ -145,6 +145,10 @@ const verifyOTP = async (email, type, submittedOtp) => {
     return { valid: false, reason: !updated || updated.attempts >= updated.maxAttempts ? 'locked' : 'invalid' };
   }
 
+  if (options.consume === false) {
+    return { valid: true, sessionId: stored._id, userData: stored.userData || null };
+  }
+
   const consumed = await Otp.findOneAndDelete({
     _id: stored._id,
     expiresAt: { $gt: new Date() },
@@ -154,6 +158,16 @@ const verifyOTP = async (email, type, submittedOtp) => {
   return consumed
     ? { valid: true, userData: consumed.userData || null }
     : { valid: false, reason: 'expired' };
+};
+
+const consumeVerifiedOTP = async (sessionId, type = 'registration') => {
+  if (!sessionId) return null;
+  return Otp.findOneAndDelete({
+    _id: sessionId,
+    type,
+    expiresAt: { $gt: new Date() },
+    attempts: { $lt: OTP_MAX_ATTEMPTS }
+  }).select('+userData');
 };
 
 const deliverEmail = async (to, subject, html) => {
@@ -199,6 +213,7 @@ module.exports = {
   sendPasswordResetOTP,
   sendLoginOTP,
   verifyOTP,
+  consumeVerifiedOTP,
   getActiveOtpSession,
   sendSMS_OTP: async () => true,
   __test: { hashOTP, matchesOTP, OTP_MAX_ATTEMPTS, OTP_TTL_MS }

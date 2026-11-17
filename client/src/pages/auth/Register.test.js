@@ -5,6 +5,16 @@ import { MemoryRouter } from 'react-router-dom';
 import Register from './Register';
 import authService from '../../services/authService';
 
+jest.mock('../../components/auth/IdentityRegistrationFields', () => props => (
+  <section aria-label="Verified personal identity">
+    <label>First name *<input name="firstName" value={props.formData.firstName} onChange={props.onChange} /></label>
+    <label>Surname *<input name="lastName" value={props.formData.lastName} onChange={props.onChange} /></label>
+    <button type="button" onClick={() => props.onGovernmentIdImage(new File(['id'], 'id.jpg', { type: 'image/jpeg' }))}>Attach valid government ID</button>
+    <button type="button" onClick={() => props.onSelfieImage(new File(['selfie'], 'identity-live-selfie-1.jpg', { type: 'image/jpeg' }))}>Capture live selfie</button>
+    <button type="button" onClick={() => props.onChange({ target: { name: 'biometricConsent', type: 'checkbox', checked: true } })}>Accept face-match consent</button>
+  </section>
+));
+
 jest.mock('../../services/authService', () => ({
   __esModule: true,
   default: {
@@ -40,6 +50,7 @@ describe('Register page', () => {
     expect(screen.getByLabelText('Email address')).toHaveAttribute('autocomplete', 'email');
     expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'new-password');
     expect(screen.getByLabelText('Confirm password')).toHaveAttribute('autocomplete', 'new-password');
+    expect(screen.getByRole('region', { name: 'Verified personal identity' })).toBeInTheDocument();
     expect(screen.getByText(/use at least 8 characters/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
@@ -69,6 +80,9 @@ describe('Register page', () => {
     fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'user@example.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Secure123!' } });
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Secure123!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => expect(authService.sendRegisterOTP).toHaveBeenCalledTimes(1));
