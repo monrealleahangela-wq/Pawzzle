@@ -138,7 +138,7 @@ const deliverySchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'unassigned', 'assigned', 'accepted', 'declined',
-      'picked_up', 'in_transit', 'arrived', 'delivered', 'failed_attempt',
+      'picked_up', 'in_transit', 'arrived', 'customer_confirmation_pending', 'delivered', 'failed_attempt',
       'returned_to_store', 'cancelled'],
     default: 'pending'
   },
@@ -251,6 +251,11 @@ const deliverySchema = new mongoose.Schema({
   },
   deliveredAt: {
     type: Date
+  },
+  customerConfirmation: {
+    requestedAt: Date,
+    confirmedAt: Date,
+    confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
   reviewStatus: {
     isRated: { type: Boolean, default: false },

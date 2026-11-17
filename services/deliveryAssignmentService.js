@@ -186,10 +186,10 @@ const releaseRiderCapacity = async (delivery, session) => {
 
 const CANCELLATION_STOCK_DEDUCTED_STATUSES = [
   'confirmed', 'preparing', 'ready_for_pickup', 'rider_assigned',
-  'picked_up', 'in_transit', 'delivery_failed', 'delivered'
+  'picked_up', 'in_transit', 'customer_confirmation_pending', 'delivery_failed', 'delivered'
 ];
 const CUSTOMER_CANCELLATION_BLOCKED_STATUSES = [
-  'confirmed', 'processing', 'shipped', 'picked_up', 'in_transit', 'delivered',
+  'confirmed', 'processing', 'shipped', 'picked_up', 'in_transit', 'customer_confirmation_pending', 'delivered',
   'completed', 'delivery_failed', 'refunded', 'returned'
 ];
 const CANCELLABLE_DELIVERY_STATUSES = ['pending', 'unassigned', 'assigned', 'accepted'];

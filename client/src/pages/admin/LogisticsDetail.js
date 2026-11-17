@@ -19,7 +19,7 @@ const feeValue = (key, value) => key === 'ratePerKilometer'
   : (['includedKilometers', 'billableKilometers'].includes(key) ? `${Number(value)} km` : money(value));
 const fullName = person => person ? `${person.firstName || person.name || ''} ${person.lastName || ''}`.trim() : 'Not assigned';
 const addressText = address => address?.formattedAddress || [address?.street, address?.barangay, address?.city, address?.province || address?.state, address?.zipCode].filter(Boolean).join(', ');
-const eventLabel = status => ({ pending:'Order Ready', unassigned:'Pending Assignment', assigned:'Rider Assigned', picked_up:'Picked Up', in_transit:'Out for Delivery', arrived:'Arrived', delivered:'Delivered', failed_attempt:'Delivery Attempted', returned_to_store:'Returned to Store', cancelled:'Cancelled' }[status] || String(status || '').replace(/_/g,' '));
+const eventLabel = status => ({ pending:'Order Ready', unassigned:'Pending Assignment', assigned:'Rider Assigned', picked_up:'Picked Up', in_transit:'Out for Delivery', arrived:'Arrived', customer_confirmation_pending:'Customer Confirmation Pending', delivered:'Delivered', failed_attempt:'Delivery Attempted', returned_to_store:'Returned to Store', cancelled:'Cancelled' }[status] || String(status || '').replace(/_/g,' '));
 const validCoords = value => Number.isFinite(Number(value?.lat)) && Number.isFinite(Number(value?.lng)) && Number(value.lat)>=-90 && Number(value.lat)<=90 && Number(value.lng)>=-180 && Number(value.lng)<=180;
 const mapIcon = color => L.divIcon({ className:'', html:`<div style="width:24px;height:24px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 2px 8px #33415566"></div>`, iconSize:[24,24], iconAnchor:[12,12] });
 const entityId = value => value?._id || value || '';
@@ -129,7 +129,7 @@ export default function LogisticsDetail() {
   const pickupCoords = pickupAddress?.coordinates;
   const destinationCoords = address?.coordinates;
   const currentRider = delivery.assignedRider;
-  const isClosed = ['delivered','returned_to_store','cancelled'].includes(delivery.status);
+  const isClosed = ['customer_confirmation_pending','delivered','returned_to_store','cancelled'].includes(delivery.status);
   const isFailedAttempt = delivery.status === 'failed_attempt';
   const cod = ['cod','cash_on_delivery'].includes(source?.paymentMethod);
   const feeBreakdown = Object.entries(delivery.feeCalculation?.breakdown || {})

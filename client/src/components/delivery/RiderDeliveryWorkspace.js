@@ -12,7 +12,7 @@ import LiveCameraProofCapture from './LiveCameraProofCapture';
 
 const STATUS = {
   pending: 'Assigned', assigned: 'Assigned', accepted: 'Assigned', picked_up: 'Picked Up',
-  in_transit: 'Out for Delivery', arrived: 'Arrived', delivered: 'Delivered',
+  in_transit: 'Out for Delivery', arrived: 'Arrived', customer_confirmation_pending: 'Customer Confirmation Pending', delivered: 'Delivered',
   failed_attempt: 'Delivery Attempted', returned_to_store: 'Failed', cancelled: 'Cancelled'
 };
 const RETURN_PICKUP_STATUS = {
@@ -76,6 +76,7 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
   const tracking = order?.trackingNumber || order?.orderNumber || `DLV-${String(delivery._id).slice(-8).toUpperCase()}`;
   const isCod = ['cod', 'cash_on_delivery'].includes(order?.paymentMethod);
   const completed = delivery.status === 'delivered';
+  const awaitingCustomerConfirmation = delivery.status === 'customer_confirmation_pending';
   const canReportFailure = ['in_transit', 'arrived'].includes(delivery.status);
 
   const timeline = useMemo(() => {
@@ -140,8 +141,11 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
       const location = await currentLocation();
       const payload = { ...proof, location, method: 'live_camera' };
       if (!isCod) delete payload.codPaymentStatus;
-      await deliveryService.completeDelivery(token, payload);
-      toast.success('Delivery completed'); setShowProof(false); await onRefresh();
+      const response = await deliveryService.completeDelivery(token, payload);
+      toast.success(response.data?.delivery?.status === 'customer_confirmation_pending'
+        ? 'Proof submitted. Waiting for customer confirmation.'
+        : 'Delivery completed');
+      setShowProof(false); await onRefresh();
     } catch (error) { toast.error(error.response?.data?.message || 'Unable to complete delivery'); }
     finally { setSubmitting(false); }
   };
@@ -150,9 +154,9 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
     if (isCod && !proof.codPaymentStatus) return toast.error('Record the COD payment status.');
     if (!proof.photo || !proof.liveProofToken) return toast.error('Capture a live delivery photo before continuing.');
     setConfirmation({
-      title: 'Confirm delivery?',
-      description: 'This completes the delivery, records the proof and releases the Rider capacity reservation.',
-      confirmLabel: 'Complete delivery',
+      title: 'Submit delivery handoff?',
+      description: 'This records the live proof and releases the Rider capacity reservation. The delivery is marked delivered only after the customer confirms receipt.',
+      confirmLabel: 'Submit proof',
       action: submitCompletion
     });
   };
@@ -197,6 +201,7 @@ export default function RiderDeliveryWorkspace({ delivery, token, eta, distanceK
   };
 
   if (completed) return <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100"><section className="w-full max-w-lg rounded-2xl border bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900"><CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-500"/><p className="text-xs font-black uppercase tracking-[.25em] text-emerald-600 dark:text-emerald-400">{missionStatus.delivered || 'Delivery completed'}</p><h1 className="mt-1 text-xl font-black text-slate-900 dark:text-white">{tracking}</h1><div className="mt-5 divide-y text-left text-sm dark:divide-slate-800"><p className="py-3"><b>Recipient:</b> {recipient?.firstName} {recipient?.lastName}</p><p className="py-3"><b>Completed:</b> {formatTime(delivery.deliveredAt)}</p><p className="py-3"><b>Verification:</b> {delivery.proofOfDelivery?.method === 'live_camera' ? 'Live camera photo' : delivery.proofOfDelivery?.method || 'Recorded proof'}</p>{delivery.proofOfDelivery?.capturedAt && <p className="py-3"><b>Photo captured:</b> {formatTime(delivery.proofOfDelivery.capturedAt)}</p>}{isCod && <p className="py-3"><b>COD:</b> {delivery.proofOfDelivery?.codPaymentStatus?.replace(/_/g, ' ')}</p>}</div><p className="mt-5 text-sm text-slate-500 dark:text-slate-400">This mission is complete and no longer accepts rider updates.</p></section></div>;
+  if (awaitingCustomerConfirmation) return <div className="flex min-h-[100dvh] items-center justify-center bg-amber-50 p-4 text-slate-900 dark:bg-slate-950 dark:text-slate-100"><section className="w-full max-w-lg rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm dark:border-amber-900 dark:bg-slate-900"><Clock className="mx-auto mb-3 h-12 w-12 text-amber-500"/><p className="text-xs font-black uppercase tracking-[.22em] text-amber-700 dark:text-amber-300">Customer confirmation pending</p><h1 className="mt-2 text-xl font-black text-slate-900 dark:text-white">{tracking}</h1><div className="mt-5 divide-y text-left text-sm dark:divide-slate-800"><p className="py-3"><b>Recipient:</b> {recipient?.firstName} {recipient?.lastName}</p><p className="py-3"><b>Proof submitted:</b> {formatTime(delivery.customerConfirmation?.requestedAt || delivery.updatedAt)}</p><p className="py-3"><b>Verification:</b> Live camera proof recorded</p></div><p className="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">No further rider action is needed. This delivery will automatically change to Delivered when the customer confirms receipt.</p></section></div>;
 
   return <div className="rider-delivery-workspace min-h-[100dvh] bg-slate-50 pb-[calc(8rem+env(safe-area-inset-bottom))] text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:pb-[calc(7rem+env(safe-area-inset-bottom))]">
     <header className="sticky top-0 z-40 border-b bg-white/95 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95"><div data-testid="rider-delivery-header-container" className={`${WORKSPACE_CONTAINER} flex items-center justify-between gap-3`}><button onClick={()=>window.history.back()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-slate-800" aria-label="Back"><ArrowLeft size={18}/></button><div className="min-w-0 flex-1"><p className="text-xs font-black uppercase text-slate-500 dark:text-slate-400">{delivery.returnItem?.caseId || tracking}</p><h1 className="truncate text-base font-black">{missionStatus[delivery.status] || delivery.status}</h1></div><a href="mailto:support@pawzzle.io" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-slate-700" aria-label="Help"><HelpCircle size={18}/></a></div></header>

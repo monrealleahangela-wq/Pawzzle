@@ -10,7 +10,7 @@ const {
 
 const ACTIVE_ORDER_STATUSES = [
   'pending_payment', 'paid', 'awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup',
-  'rider_assigned', 'picked_up', 'in_transit', 'delivered'
+  'rider_assigned', 'picked_up', 'in_transit', 'customer_confirmation_pending', 'delivered'
 ];
 const ACTIVE_ADOPTION_STATUSES = [
   'inquiry_submitted', 'under_review', 'reserved', 'approved', 'pickup_scheduling', 'pickup_confirmed'

@@ -9,6 +9,7 @@ import ManualDeliveryForm from '../../components/delivery/ManualDeliveryForm';
 import { pawzzlePrompt } from '../../utils/pawzzleDialog';
 
 const statusStyle = status => ({
+  customer_confirmation_pending: 'bg-amber-50 text-amber-800 border-amber-200',
   delivered: 'bg-emerald-50 text-emerald-700 border-emerald-100',
   failed_attempt: 'bg-rose-50 text-rose-700 border-rose-100',
   returned_to_store: 'bg-rose-50 text-rose-700 border-rose-100',
@@ -100,6 +101,7 @@ export default function Logistics() {
     ['Assigned', dashboard?.summary?.assigned, Users, 'text-indigo-600'],
     ['Out for Delivery', dashboard?.summary?.outForDelivery, Bike, 'text-blue-600'],
     ['Arrived', dashboard?.summary?.arrived, MapPin, 'text-violet-600'],
+    ['Awaiting Customer', dashboard?.summary?.awaitingCustomer, Clock3, 'text-amber-600'],
     ['Delivered', dashboard?.summary?.delivered, CheckCircle2, 'text-emerald-600'],
     ['Failed', dashboard?.summary?.failed, AlertTriangle, 'text-rose-600'],
     ['Active Riders (Store)', dashboard?.summary?.activeInternalRiders, Activity, 'text-orange-600']
@@ -146,7 +148,7 @@ export default function Logistics() {
         <p className="text-[10px] text-slate-500">Summary cards and the table total use the same Store, status, Rider, search, and date filters. Active Riders remains a Store-wide availability count.</p>
         <form onSubmit={event => { event.preventDefault(); setPage(1); setAppliedFilters(Object.fromEntries(Object.entries(filters).filter(([,value]) => value))); }} className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
           <label className="col-span-2 relative"><Search size={14} className="absolute left-3 top-3 text-slate-400"/><input value={filters.search} onChange={e=>setFilters({...filters,search:e.target.value})} placeholder="Tracking, order, customer, rider" className="w-full h-9 pl-9 pr-3 rounded-lg border text-xs"/></label>
-          <select value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"><option value="">All statuses</option>{['pending','unassigned','assigned','accepted','declined','picked_up','in_transit','arrived','delivered','failed_attempt','returned_to_store','cancelled'].map(value=><option key={value} value={value}>{value.replace(/_/g,' ')}</option>)}</select>
+          <select value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"><option value="">All statuses</option>{['pending','unassigned','assigned','accepted','declined','picked_up','in_transit','arrived','customer_confirmation_pending','delivered','failed_attempt','returned_to_store','cancelled'].map(value=><option key={value} value={value}>{value.replace(/_/g,' ')}</option>)}</select>
           <select value={filters.riderType} onChange={e=>setFilters({...filters,riderType:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"><option value="">All rider types</option><option value="internal">Internal</option><option value="unassigned">Unassigned</option></select>
           <select value={filters.rider} onChange={e=>setFilters({...filters,rider:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"><option value="">All riders</option>{riders.map(rider=><option key={rider._id} value={rider._id}>{personName(rider)}</option>)}</select>
           <input type="date" value={filters.from} onChange={e=>setFilters({...filters,from:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"/><input type="date" value={filters.to} onChange={e=>setFilters({...filters,to:e.target.value})} className="h-9 px-2 rounded-lg border text-xs"/>

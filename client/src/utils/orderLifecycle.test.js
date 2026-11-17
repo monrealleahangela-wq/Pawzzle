@@ -10,6 +10,7 @@ describe('seller order lifecycle presentation', () => {
   test('uses the linked Delivery when it proves the order is past packing', () => {
     expect(getEffectiveOrderStatus({ status: 'confirmed', delivery: { status: 'delivered' } })).toBe('delivered');
     expect(getEffectiveOrderStatus({ status: 'preparing', delivery: { status: 'in_transit' } })).toBe('in_transit');
+    expect(getEffectiveOrderStatus({ status: 'in_transit', delivery: { status: 'customer_confirmation_pending' } })).toBe('customer_confirmation_pending');
   });
 
   test('keeps terminal order states terminal', () => {

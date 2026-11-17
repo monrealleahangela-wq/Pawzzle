@@ -15,6 +15,7 @@ const STATUS_PRESENTATION = {
   picked_up: { label: 'Picked Up', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' },
   in_transit: { label: 'Out for Delivery', badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' },
   arrived: { label: 'Rider Arrived', badgeClass: 'bg-teal-50 text-teal-700 border-teal-200' },
+  customer_confirmation_pending: { label: 'Customer Confirmation Pending', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
   delivered: { label: 'Delivered', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   completed: { label: 'Completed', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   failed_attempt: { label: 'Delivery Attempt Issue', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
@@ -31,7 +32,7 @@ const TERMINAL_ORDER_STATUSES = new Set([
 ]);
 
 const ACTIVE_DELIVERY_STATUSES = new Set([
-  'assigned', 'accepted', 'declined', 'picked_up', 'in_transit', 'arrived',
+  'assigned', 'accepted', 'declined', 'picked_up', 'in_transit', 'arrived', 'customer_confirmation_pending',
   'delivered', 'failed_attempt', 'returned_to_store', 'cancelled'
 ]);
 
@@ -89,6 +90,7 @@ const descriptionFor = status => ({
   picked_up: 'The Rider collected the parcel from the Store.',
   in_transit: 'The parcel is on the way to the delivery address.',
   arrived: 'The Rider arrived at the delivery address.',
+  customer_confirmation_pending: 'The Rider submitted live proof. The customer must confirm receipt before delivery is completed.',
   delivered: 'The delivery was completed.',
   completed: 'The order was completed.',
   failed_attempt: 'The Rider recorded an unsuccessful delivery attempt.',

@@ -41,7 +41,7 @@ const canViewRetailOrders = user => isPlatformAdmin(user)
 const canManageRetailOrders = user => isPlatformAdmin(user)
   || hasPermission(user, 'sales.manage') || hasPermission(user, 'orders.update');
 const DELIVERY_CONTROLLED_ORDER_STATUSES = new Set([
-  'rider_assigned', 'picked_up', 'in_transit', 'delivered', 'delivery_failed', 'returned'
+  'rider_assigned', 'picked_up', 'in_transit', 'customer_confirmation_pending', 'delivered', 'delivery_failed', 'returned'
 ]);
 
 // Get all orders (Admin only) or user's own orders (Customer)

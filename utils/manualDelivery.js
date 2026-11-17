@@ -1,6 +1,6 @@
 const DELIVERY_STATUSES = new Set([
   'pending', 'unassigned', 'assigned', 'accepted', 'declined', 'picked_up',
-  'in_transit', 'arrived', 'delivered', 'failed_attempt', 'returned_to_store',
+  'in_transit', 'arrived', 'customer_confirmation_pending', 'delivered', 'failed_attempt', 'returned_to_store',
   'cancelled'
 ]);
 

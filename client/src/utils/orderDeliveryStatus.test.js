@@ -14,8 +14,31 @@ test('uses active delivery status instead of the assignment-type badge', () => {
     .toBe('Picked Up');
   expect(getOrderDeliveryStatus({ status: 'in_transit', delivery: { status: 'in_transit', assignmentType: 'internal' } }).label)
     .toBe('Out for Delivery');
+  expect(getOrderDeliveryStatus({ status: 'customer_confirmation_pending', delivery: { status: 'customer_confirmation_pending', assignmentType: 'internal' } }).label)
+    .toBe('Customer Confirmation Pending');
   expect(getOrderDeliveryStatus({ status: 'delivered', delivery: { status: 'delivered', assignmentType: 'internal' } }).label)
     .toBe('Delivered');
+});
+
+test('shows rider proof submission before final customer-confirmed delivery', () => {
+  const timeline = buildOrderDeliveryTimeline({
+    status: 'customer_confirmation_pending',
+    orderDate: '2026-11-17T08:00:00.000Z',
+    fulfillmentTimeline: [
+      { status: 'customer_confirmation_pending', timestamp: '2026-11-17T09:00:00.000Z' }
+    ],
+    delivery: {
+      status: 'customer_confirmation_pending',
+      assignmentType: 'internal',
+      statusHistory: [
+        { status: 'arrived', timestamp: '2026-11-17T08:55:00.000Z' },
+        { status: 'customer_confirmation_pending', timestamp: '2026-11-17T09:00:00.000Z' }
+      ]
+    }
+  });
+
+  expect(timeline[timeline.length - 1].label).toBe('Customer Confirmation Pending');
+  expect(timeline[timeline.length - 1].isCurrent).toBe(true);
 });
 
 test('terminal order state overrides a stale Rider assignment', () => {
