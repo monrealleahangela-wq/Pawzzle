@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { validationResult } = require('express-validator');
+const { randomUUID } = require('crypto');
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const User = require('../models/User');
@@ -9,7 +10,7 @@ const PetProfile = require('../models/PetProfile');
 const Review = require('../models/Review');
 const RevenueService = require('../services/revenueService');
 const { createNotification, notifyStoreStaff } = require('./notificationController');
-const { calculateServicePrice, validateBookingRules } = require('../utils/pricingEngine');
+const { calculateServicePrice, validateBookingRules, getEligibleStaff, getStaffAssignmentReadiness } = require('../utils/pricingEngine');
 const { hasPermission, isPlatformAdmin, isStoreAdmin, isOperationalStaff } = require('../config/permissions');
 const { getAuthorizedStoreIds, canAccessStore } = require('../utils/authorizationPolicy');
 const {
@@ -225,7 +226,8 @@ const createBooking = async (req, res) => {
       selectedAddOns,
       selectedConditions,
       petProfileId,
-      serviceIntake
+      serviceIntake,
+      staffId
     } = req.body;
 
     // Check if booking date/time is in the past
@@ -265,12 +267,6 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Home service is not available for this service' });
     }
 
-    // ── Validate Booking Rules ──────────────────────────────────────
-    const ruleCheck = await validateBookingRules(service, bookingDate, startTime);
-    if (!ruleCheck.valid) {
-      return res.status(400).json({ message: ruleCheck.reason });
-    }
-
     // ── Dynamic Pricing Engine ──────────────────────────────────────
     const { breakdown, resolvedAddOns } = calculateServicePrice(
       service,
@@ -290,6 +286,47 @@ const createBooking = async (req, res) => {
       duration: serviceDuration
     });
     if (!scheduleCheck.valid) return res.status(400).json({ message: scheduleCheck.reason });
+
+    const eligibleSpecialists = await getEligibleStaff(
+      service,
+      bookingDate,
+      startTime,
+      scheduleCheck.endTime,
+      null,
+      service.store
+    );
+    if (!eligibleSpecialists.length) {
+      const readiness = await getStaffAssignmentReadiness(
+        service,
+        bookingDate,
+        startTime,
+        scheduleCheck.endTime,
+        null,
+        service.store
+      );
+      return res.status(409).json({
+        message: readiness.message || 'No qualified specialist is available for this schedule.',
+        reason: readiness.reason || 'no_eligible_staff'
+      });
+    }
+    const selectedSpecialist = staffId
+      ? eligibleSpecialists.find(candidate => String(candidate.staff._id) === String(staffId))
+      : eligibleSpecialists[0];
+    if (!selectedSpecialist) {
+      return res.status(409).json({
+        message: 'Your preferred specialist is no longer available for this time. Please choose another specialist or time.',
+        reason: 'preferred_staff_unavailable'
+      });
+    }
+
+    const ruleCheck = await validateBookingRules(
+      service,
+      bookingDate,
+      startTime,
+      null,
+      { skipSlotCapacity: true }
+    );
+    if (!ruleCheck.valid) return res.status(400).json({ message: ruleCheck.reason });
 
     // Resolve selected conditions to full objects for storage
     const resolvedConditions = [];
@@ -356,7 +393,14 @@ const createBooking = async (req, res) => {
       addedBy: service.addedBy || (service.store ? service.store.owner : req.user._id),
       service: serviceId,
       store: storeId,
-      staff: null,
+      staff: selectedSpecialist.staff._id,
+      staffRoleSnapshot: getStaffSpecializationRole(selectedSpecialist.staff) || '',
+      staffSpecialtySnapshot: selectedSpecialist.staff.professionalProfile?.specialty || '',
+      staffAssignmentHistory: [{
+        staff: selectedSpecialist.staff._id,
+        assignedBy: req.user._id,
+        source: staffId ? 'customer' : 'automatic'
+      }],
       pet: bookingPet,
       petProfile: linkedPetProfile?._id || null,
       serviceIntake: preparedIntake.value,
@@ -376,7 +420,64 @@ const createBooking = async (req, res) => {
       notes
     });
 
-    await booking.save();
+    const reservationToken = randomUUID();
+    const lockAcquiredAt = new Date();
+    const lockedSpecialist = await User.findOneAndUpdate({
+      _id: selectedSpecialist.staff._id,
+      $or: [
+        { 'professionalProfile.bookingReservationLock.expiresAt': { $exists: false } },
+        { 'professionalProfile.bookingReservationLock.expiresAt': { $lte: lockAcquiredAt } }
+      ]
+    }, {
+      $set: {
+        'professionalProfile.bookingReservationLock.token': reservationToken,
+        'professionalProfile.bookingReservationLock.expiresAt': new Date(lockAcquiredAt.getTime() + 15000)
+      }
+    }, { new: false });
+
+    if (!lockedSpecialist) {
+      if (appliedVoucherId) await Voucher.findByIdAndUpdate(appliedVoucherId, { $inc: { usedCount: -1 } }).catch(() => {});
+      return res.status(409).json({
+        message: 'This specialist is being reserved by another customer. Please check availability again.',
+        reason: 'specialist_reservation_in_progress'
+      });
+    }
+
+    try {
+      const finalEligibility = await getEligibleStaff(
+        service,
+        bookingDate,
+        startTime,
+        scheduleCheck.endTime,
+        null,
+        service.store
+      );
+      const stillAvailable = finalEligibility.some(candidate => String(candidate.staff._id) === String(selectedSpecialist.staff._id));
+      if (!stillAvailable) {
+        if (appliedVoucherId) await Voucher.findByIdAndUpdate(appliedVoucherId, { $inc: { usedCount: -1 } }).catch(() => {});
+        return res.status(409).json({
+          message: 'Your preferred specialist was just booked for this time. Please choose another specialist or time.',
+          reason: 'preferred_staff_unavailable'
+        });
+      }
+      await booking.save();
+    } catch (error) {
+      if (appliedVoucherId) {
+        await Voucher.findByIdAndUpdate(appliedVoucherId, { $inc: { usedCount: -1 } }).catch(() => {});
+      }
+      throw error;
+    } finally {
+      try {
+        await User.updateOne({
+          _id: selectedSpecialist.staff._id,
+          'professionalProfile.bookingReservationLock.token': reservationToken
+        }, {
+          $unset: { 'professionalProfile.bookingReservationLock': 1 }
+        });
+      } catch (lockReleaseError) {
+        console.error('Booking specialist lock release deferred until expiry:', lockReleaseError.message);
+      }
+    }
 
     // ── Auto-save / update pet profile for this customer ──
     try {
@@ -657,6 +758,63 @@ const toPublicStaff = (staff, ratings = {}) => {
   averageRating: ratings.averageRating || 0,
   reviewCount: ratings.reviewCount || 0
   });
+};
+
+const getAvailableServiceStaff = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: errors.array().map(error => error.msg).join(', '), errors: errors.array() });
+    }
+    const { serviceId, bookingDate, startTime, selectedAddOns = [] } = req.body;
+    const service = await Service.findById(serviceId).populate('store');
+    if (!service || !service.isActive || service.isDeleted || !service.store || !service.store.isActive
+        || service.store.isDeleted || service.store.verificationStatus !== 'verified') {
+      return res.status(404).json({ message: 'Service not found or unavailable.' });
+    }
+    const customerVisibleOwnerIds = await getCustomerVisibleOwnerIds();
+    const visibleStore = await Store.findOne(withCustomerComplianceFilter(buildCustomerVisibleStoreFilter(
+      customerVisibleOwnerIds,
+      { _id: service.store._id }
+    ))).select('_id');
+    if (!visibleStore) return res.status(404).json({ message: 'Service not found or unavailable.' });
+
+    const requestedAddOns = new Set((selectedAddOns || []).map(String));
+    const addOnDuration = (service.addOns || [])
+      .filter(addOn => addOn.isActive !== false && requestedAddOns.has(String(addOn._id)))
+      .reduce((total, addOn) => total + Number(addOn.duration || 0), 0);
+    const duration = Number(service.duration || 0) + addOnDuration;
+    const scheduleCheck = validateServiceSchedule({
+      service,
+      store: service.store,
+      bookingDate,
+      startTime,
+      duration
+    });
+    if (!scheduleCheck.valid) return res.status(400).json({ message: scheduleCheck.reason });
+    const ruleCheck = await validateBookingRules(service, bookingDate, startTime, null, { skipSlotCapacity: true });
+    if (!ruleCheck.valid) return res.status(409).json({ message: ruleCheck.reason });
+
+    const [candidates, assignmentReadiness] = await Promise.all([
+      getEligibleStaff(service, bookingDate, startTime, scheduleCheck.endTime, null, service.store),
+      getStaffAssignmentReadiness(service, bookingDate, startTime, scheduleCheck.endTime, null, service.store)
+    ]);
+    const ratings = await ratingMapForStaff(candidates.map(candidate => candidate.staff._id));
+    res.json({
+      endTime: scheduleCheck.endTime,
+      assignmentReadiness,
+      staff: candidates.map(candidate => ({
+        ...toPublicStaff(candidate.staff, ratings.get(String(candidate.staff._id))),
+        matchScore: candidate.matchScore,
+        matchExplanation: candidate.matchExplanation,
+        performance: candidate.performance
+      }))
+    });
+  } catch (error) {
+    res.status(error.name === 'CastError' ? 404 : 500).json({
+      message: error.name === 'CastError' ? 'Service not found or unavailable.' : 'Unable to load available specialists.'
+    });
+  }
 };
 
 const getEligibleBookingStaff = async (req, res) => {
@@ -1368,6 +1526,7 @@ module.exports = {
   cancelBooking,
   validateBookingQR,
   getEligibleBookingStaff,
+  getAvailableServiceStaff,
   assignBookingStaff,
   selectBookingStaff,
   confirmBookingForPayment,

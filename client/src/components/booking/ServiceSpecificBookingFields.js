@@ -55,7 +55,6 @@ const SelectInput = ({ label, name, value, onChange, error, required, options })
 const ServiceSpecificBookingFields = ({ service, details, onChange, errors = {}, pet }) => {
   const kind = resolveServiceBookingKind(service);
   const boardingNights = calculateBoardingNights(details.checkInDate, details.checkOutDate);
-  const specialists = service?.assignedStaff || [];
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
@@ -68,7 +67,6 @@ const ServiceSpecificBookingFields = ({ service, details, onChange, errors = {},
           <Choice label="Is this an emergency?" value={details.emergency} onChange={value => onChange('emergency', value)} error={errors.emergency} />
           <TextArea label="Current medications (optional)" name="currentMedications" value={details.currentMedications} onChange={onChange} placeholder="Medication name and schedule" />
           <TextArea label="Allergies (optional)" name="allergies" value={details.allergies || (pet?.allergies === 'None' ? '' : pet?.allergies)} onChange={onChange} placeholder="Known food or medicine allergies" />
-          {specialists.length > 0 && <SelectInput label="Preferred veterinarian (optional)" name="preferredSpecialistId" value={details.preferredSpecialistId} onChange={onChange} options={specialists.map(member => ({ value: member._id, label: `${member.firstName} ${member.lastName}` }))} />}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"><Shield className="mb-1 h-4 w-4 text-emerald-600" /><strong>Vaccination status:</strong> {pet?.vaccinationStatus || 'Not provided'}<br />The store can review the vaccination record saved in your pet profile.</div>
         </div>
       </>}

@@ -141,7 +141,13 @@ const prepareForPayment = async bookingOrId => {
   const { booking, service, store } = await loadContext(bookingOrId);
   assertStoreTransactionEligible(store, { requireTax: true });
   assertBookingIsCurrent(booking);
-  const bookingRules = await validateBookingRules(service, booking.bookingDate, booking.startTime, booking._id);
+  const bookingRules = await validateBookingRules(
+    service,
+    booking.bookingDate,
+    booking.startTime,
+    booking._id,
+    { skipSlotCapacity: Boolean(booking.staff) }
+  );
   if (!bookingRules.valid) throw Object.assign(new Error(bookingRules.reason), { statusCode: 409 });
   const { staff } = await validateAssignedStaff(booking, service, store);
   const pricing = await recalculateBooking(booking, service, store);

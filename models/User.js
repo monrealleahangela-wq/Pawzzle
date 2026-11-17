@@ -364,6 +364,10 @@ const userSchema = new mongoose.Schema({
       since: Date,
       reason: { type: String, trim: true, maxlength: 500, default: '' }
     },
+    bookingReservationLock: {
+      token: { type: String, select: false },
+      expiresAt: { type: Date, select: false }
+    },
     bio: String,
     specializations: [String],
     rating: { type: Number, default: 0, min: 0, max: 5 },
