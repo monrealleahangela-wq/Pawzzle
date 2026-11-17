@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { productService, getImageUrl } from '../../services/apiService';
-import { Package, Filter, Search, ArrowLeft, ArrowRight, ShoppingCart, Eye, MapPin, Navigation, Zap, Star } from 'lucide-react';
+import { dssService, productService, getImageUrl } from '../../services/apiService';
+import { Package, Filter, Search, ArrowLeft, ArrowRight, ShoppingCart, Eye, MapPin, Navigation, Zap, Star, Sparkles, PawPrint } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCitiesByProvince } from '../../constants/locationConstants';
@@ -48,6 +48,11 @@ const Products = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [recommendationBudget, setRecommendationBudget] = useState('1000');
+  const [selectedPetProfileId, setSelectedPetProfileId] = useState('');
+  const [recommendationData, setRecommendationData] = useState(null);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState('');
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -61,6 +66,33 @@ const Products = () => {
     }, 350);
     return () => clearTimeout(debounce);
   }, [filters.category, filters.brand, filters.suitableFor, filters.minPrice, filters.maxPrice, filters.city, pagination.currentPage, searchTerm]);
+
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'customer') {
+      setRecommendationData(null);
+      return undefined;
+    }
+    let active = true;
+    const debounce = setTimeout(async () => {
+      try {
+        setRecommendationsLoading(true);
+        setRecommendationError('');
+        const response = await dssService.getProductRecommendations({
+          budget: Number(recommendationBudget),
+          ...(selectedPetProfileId ? { petProfileId: selectedPetProfileId } : {})
+        });
+        if (active) setRecommendationData(response.data);
+      } catch (requestError) {
+        if (active) setRecommendationError(requestError.response?.data?.message || 'Personalized food suggestions are temporarily unavailable.');
+      } finally {
+        if (active) setRecommendationsLoading(false);
+      }
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(debounce);
+    };
+  }, [isAuthenticated, user?.role, recommendationBudget, selectedPetProfileId]);
 
   const fetchProducts = async () => {
     try {
@@ -295,6 +327,46 @@ const Products = () => {
           </form>
         </div>
       </div>
+
+      {isAuthenticated && user?.role === 'customer' && (
+        <section className="overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-secondary-50 p-4 shadow-sm sm:p-6" aria-labelledby="pet-food-dss-title">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary-700"><Sparkles className="h-4 w-4" /> Pet Food DSS</p>
+              <h2 id="pet-food-dss-title" className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">Recommended food for your saved pets</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Available food is ranked using the selected saved pet profile, declared species suitability, life stage, and your maximum budget per item.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:w-[30rem]">
+              <label className="text-[10px] font-black uppercase tracking-wide text-slate-600">Saved pet profile
+                <select aria-label="Saved pet profile" value={selectedPetProfileId} onChange={event => setSelectedPetProfileId(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case tracking-normal text-slate-800">
+                  <option value="">All saved pets</option>
+                  {(recommendationData?.petProfiles || []).map(pet => <option key={pet._id} value={pet._id}>{pet.name} · {pet.type}{pet.breed ? ` · ${pet.breed}` : ''}</option>)}
+                </select>
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wide text-slate-600">Maximum budget per item
+                <select aria-label="Maximum budget per item" value={recommendationBudget} onChange={event => setRecommendationBudget(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case tracking-normal text-slate-800">
+                  {[250, 500, 1000, 2000, 5000].map(value => <option key={value} value={String(value)}>{formatPeso(value)}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
+
+          {recommendationsLoading && <p className="mt-5 rounded-2xl bg-white/80 p-5 text-center text-xs font-bold text-slate-500">Calculating personalized food suggestions...</p>}
+          {!recommendationsLoading && recommendationError && <p role="alert" className="mt-5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-700">{recommendationError}</p>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_pet_profiles' && <div className="mt-5 rounded-2xl border border-dashed border-primary-200 bg-white/80 p-5 text-center"><PawPrint className="mx-auto h-6 w-6 text-primary-500" /><p className="mt-2 text-sm font-black text-slate-900">Add a pet profile to receive food suggestions</p><p className="mt-1 text-xs text-slate-500">Pawzzle only recommends food when it can match a saved pet's species.</p><Link to="/profile" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-white">Manage pet profiles</Link></div>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'budget_mismatch' && <p className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold text-amber-800">Compatible food is available, but none fits the current {formatPeso(recommendationData.budget)} budget. Choose a higher budget to see suggestions.</p>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_compatible_food' && <p className="mt-5 rounded-2xl bg-white/80 p-4 text-xs font-bold text-slate-600">No currently available food has declared suitability for the selected pet profile.</p>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.recommendations?.length > 0 && (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {recommendationData.recommendations.map(({ product, score, reasons }) => <article key={product._id} className="flex min-w-0 gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">{product.images?.[0] ? <img src={getImageUrl(product.images[0])} alt={product.name} className="h-full w-full object-cover" /> : <Package className="m-6 h-8 w-8 text-slate-300" />}</div>
+                <div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="line-clamp-2 text-xs font-black uppercase leading-4 text-slate-950">{product.name}</p><span className="shrink-0 rounded-lg bg-primary-100 px-2 py-1 text-[9px] font-black text-primary-800">{score}% match</span></div><p className="mt-1 text-sm font-black text-slate-900">{formatPeso(product.price)}</p><p className="mt-1 line-clamp-2 text-[9px] font-semibold leading-4 text-slate-500">{reasons.join(' · ')}</p><Link to={`/products/${product._id}`} className="mt-2 inline-flex text-[9px] font-black uppercase tracking-wide text-primary-700">View product →</Link></div>
+              </article>)}
+            </div>
+          )}
+          {recommendationData?.disclaimer && <p className="mt-4 text-[9px] font-semibold leading-4 text-slate-500">{recommendationData.disclaimer}</p>}
+        </section>
+      )}
 
       <div className="marketplace-catalog-layout flex w-full min-w-0 flex-col gap-4 xl:flex-row xl:items-start xl:gap-5">
         {/* Modern Filters Sidebar */}

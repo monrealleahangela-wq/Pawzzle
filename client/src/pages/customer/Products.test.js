@@ -3,10 +3,11 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Products from './Products';
-import { productService } from '../../services/apiService';
+import { dssService, productService } from '../../services/apiService';
 
 jest.mock('../../services/apiService', () => ({
   productService: { getAllProducts: jest.fn() },
+  dssService: { getProductRecommendations: jest.fn() },
   getImageUrl: value => value
 }));
 jest.mock('../../contexts/AuthContext', () => ({
@@ -35,6 +36,10 @@ const renderProducts = () => render(
 
 beforeEach(() => {
   productService.getAllProducts.mockReset();
+  dssService.getProductRecommendations.mockReset();
+  dssService.getProductRecommendations.mockResolvedValue({
+    data: { status: 'no_pet_profiles', budget: 1000, petProfiles: [], recommendations: [] }
+  });
 });
 
 test('Customer Product categories use canonical values and send the selected category to the API', async () => {
@@ -82,4 +87,31 @@ test('Customer marketplace never renders a zero-stock product returned by the AP
 
   expect(await screen.findByText('Available Food')).toBeInTheDocument();
   expect(screen.queryByText('Depleted Food')).not.toBeInTheDocument();
+});
+
+test('Customer sees pet-profile food suggestions above the catalog and can change the recommendation budget', async () => {
+  productService.getAllProducts.mockResolvedValue(emptyResponse);
+  dssService.getProductRecommendations.mockResolvedValue({
+    data: {
+      status: 'ready',
+      budget: 1000,
+      petProfiles: [{ _id: 'pet-1', name: 'Milo', type: 'dog', breed: 'Beagle' }],
+      recommendations: [{
+        product: { _id: 'food-1', name: 'Milo Puppy Food', category: 'Pet Food', price: 450, stockQuantity: 8, images: [] },
+        score: 100,
+        reasons: ['Suitable for dog', 'Within the ₱1,000 budget', 'Matched to Milo']
+      }],
+      disclaimer: 'Suggestions are not veterinary advice.'
+    }
+  });
+
+  renderProducts();
+
+  expect(await screen.findByRole('heading', { name: 'Recommended food for your saved pets' })).toBeInTheDocument();
+  expect(await screen.findByText('Milo Puppy Food')).toBeInTheDocument();
+  expect(screen.getByText('100% match')).toBeInTheDocument();
+  expect(dssService.getProductRecommendations).toHaveBeenCalledWith({ budget: 1000 });
+
+  fireEvent.change(screen.getByLabelText('Maximum budget per item'), { target: { value: '500' } });
+  await waitFor(() => expect(dssService.getProductRecommendations).toHaveBeenLastCalledWith({ budget: 500 }));
 });
