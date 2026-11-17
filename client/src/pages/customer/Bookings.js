@@ -18,6 +18,7 @@ import { buildServiceIntake, createEmptyServiceDetails, getLocalDateKey, resolve
 import { formatRecordId, formatSafeDate, normalizeBookingCollection, normalizeBookingRecord, normalizeServiceDetail } from '../../utils/customerServiceData';
 import ModalViewport from '../../components/ui/ModalViewport';
 import ReservationQrCode from '../../components/booking/ReservationQrCode';
+import { getBreedOptions, PET_TYPE_OPTIONS } from '../../utils/petBreedCatalog';
 
 const createInitialBookingForm = () => ({
   bookingDate: '',
@@ -285,7 +286,8 @@ const Bookings = ({ isSubcomponent = false }) => {
         ...prev,
         [parent]: {
           ...prev[parent],
-          [child]: value
+          [child]: value,
+          ...(name === 'pet.type' ? { breed: '' } : {})
         }
       }));
     } else {
@@ -1478,8 +1480,61 @@ const Bookings = ({ isSubcomponent = false }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[
                       { label: 'Pet Name', name: 'pet.name', type: 'text', placeholder: 'e.g. Max', required: true, icon: User },
-                      { label: 'Pet Type', name: 'pet.type', type: 'text', placeholder: 'e.g. Dog, Cat', required: true, icon: Heart },
-                      { label: 'Breed', name: 'pet.breed', type: 'text', placeholder: 'e.g. Bulldog', required: true, icon: Activity },
+                    ].map(({ label, name, type, placeholder, required, step, icon: Icon }) => {
+                      const val = name.split('.').reduce((o, k) => (o || {})[k], bookingForm);
+                      return (
+                        <div key={name} className="group">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors uppercase tracking-[0.2em]">{label}{required && ' *'}</label>
+                          <div className="relative">
+                            <Icon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                            <input type={type} name={name} value={val} onChange={handleFormChange}
+                              placeholder={placeholder} required={required} step={step}
+                              className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm" />
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="group">
+                      <label htmlFor="booking-pet-type" className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors tracking-[0.2em]">Pet Type *</label>
+                      <div className="relative">
+                        <Heart className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                        <select
+                          id="booking-pet-type"
+                          name="pet.type"
+                          value={bookingForm.pet.type}
+                          onChange={handleFormChange}
+                          required
+                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
+                        >
+                          {PET_TYPE_OPTIONS.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="group">
+                      <label htmlFor="booking-pet-breed" className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1 group-focus-within:text-primary-500 transition-colors tracking-[0.2em]">Breed *</label>
+                      <div className="relative">
+                        <Activity className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-primary-500 transition-colors" />
+                        <select
+                          id="booking-pet-breed"
+                          name="pet.breed"
+                          value={bookingForm.pet.breed}
+                          onChange={handleFormChange}
+                          required
+                          className="w-full pl-11 pr-4 py-4 bg-white/40 backdrop-blur-md border border-slate-100 rounded-[1.25rem] text-[13px] font-black text-slate-900 uppercase tracking-tight focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all shadow-sm cursor-pointer"
+                        >
+                          <option value="">Select a breed</option>
+                          {getBreedOptions(bookingForm.pet.type).map(breed => (
+                            <option key={breed} value={breed}>{breed}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {[
                       { label: 'Age (years)', name: 'pet.age', type: 'number', placeholder: '1', required: true, icon: Clock },
                       { label: 'Weight (kg)', name: 'pet.weight', type: 'number', placeholder: '5.0', required: true, step: '0.1', icon: TrendingUp },
                     ].map(({ label, name, type, placeholder, required, step, icon: Icon }) => {
