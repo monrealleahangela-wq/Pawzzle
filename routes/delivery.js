@@ -12,6 +12,7 @@ const {
   sendDeliveryMessage,
   sendRiderDeliveryMessage,
   completeDelivery,
+  uploadLiveDeliveryProof,
   reportFailedDelivery,
   submitComplaint,
   submitStoreConcern,
@@ -20,12 +21,24 @@ const {
 } = require('../controllers/deliveryController');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const Delivery = require('../models/Delivery');
-const { uploadSingle, handleUploadError } = require('../middleware/upload');
+const { uploadSingle, uploadLiveCameraProof, handleUploadError } = require('../middleware/upload');
 const { uploadImage } = require('../controllers/uploadController');
 
 const validateAssignedRider = async (req, res, next) => {
   const delivery = await Delivery.findOne({ _id: req.params.deliveryId, assignedRider: req.user._id, assignmentType: 'internal', isLive: true }).select('_id');
   if (!delivery) return res.status(403).json({ message: 'Assigned delivery is inactive or unavailable.' });
+  next();
+};
+
+const validateArrivedAssignedRider = async (req, res, next) => {
+  const delivery = await Delivery.findOne({
+    _id: req.params.deliveryId,
+    assignedRider: req.user._id,
+    assignmentType: 'internal',
+    isLive: true,
+    status: 'arrived'
+  }).select('_id');
+  if (!delivery) return res.status(403).json({ message: 'Mark the assigned delivery as arrived before capturing delivery evidence.' });
   next();
 };
 
@@ -43,6 +56,7 @@ router.patch('/rider/:deliveryId/location', authenticate, updateLocation);
 router.post('/rider/:deliveryId/chat', authenticate, sendRiderDeliveryMessage);
 router.post('/rider/:deliveryId/complete', authenticate, completeDelivery);
 router.post('/rider/:deliveryId/failed', authenticate, reportFailedDelivery);
+router.post('/rider/:deliveryId/live-proof-upload', authenticate, validateArrivedAssignedRider, uploadLiveCameraProof, handleUploadError, uploadLiveDeliveryProof);
 router.post('/rider/:deliveryId/proof-upload', authenticate, validateAssignedRider, uploadSingle, handleUploadError, uploadImage);
 
 // Public customer tracking capability. Rider mutation requires an authenticated assigned account.

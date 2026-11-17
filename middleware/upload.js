@@ -116,6 +116,21 @@ const upload = multer({
   fileFilter
 });
 
+const liveCameraProofUpload = multer({
+  storage: singleStorage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const isJpeg = String(file.mimetype || '').toLowerCase() === 'image/jpeg';
+    const hasCaptureName = /^delivery-live-proof-\d+\.jpg$/i.test(String(file.originalname || ''));
+    if (!isJpeg || !hasCaptureName) {
+      const error = new Error('Delivery confirmation requires a new live-camera JPEG capture.');
+      error.statusCode = 400;
+      return cb(error);
+    }
+    return cb(null, true);
+  }
+});
+
 // Configure multer upload (multiple)
 const uploadMulti = multer({
   storage: multipleStorage,
@@ -193,6 +208,7 @@ const uploadDoc = multer({
 
 // Middleware exports
 const uploadSingle = upload.single('image');
+const uploadLiveCameraProof = liveCameraProofUpload.single('image');
 const uploadMultiple = uploadMulti.array('images', 10);
 const uploadProcurementEvidence = procurementEvidenceUpload.array('images', 10);
 const uploadAttendanceEvidence = attendanceEvidenceUpload.single('evidence');
@@ -218,6 +234,7 @@ const handleUploadError = (err, req, res, next) => {
 module.exports = {
   cloudinary,
   uploadSingle,
+  uploadLiveCameraProof,
   uploadMultiple,
   uploadProcurementEvidence,
   uploadAttendanceEvidence,

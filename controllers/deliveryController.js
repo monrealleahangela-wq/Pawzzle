@@ -28,8 +28,62 @@ if (!CLIENT_URL || CLIENT_URL.includes('localhost')) {
     CLIENT_URL = isProduction ? 'https://pawzzle.io' : 'http://localhost:3000';
 }
 
-const PROOF_METHODS = new Set(['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes']);
+const PROOF_METHODS = new Set(['photo', 'qr', 'otp', 'signature', 'recipient_acknowledgment', 'notes', 'live_camera']);
 const COD_PAYMENT_STATUSES = new Set(['cash_received', 'digital_received', 'not_received']);
+const LIVE_PROOF_MAX_AGE_MS = 10 * 60 * 1000;
+
+const liveProofSecret = () => {
+  const secret = process.env.DELIVERY_PROOF_SECRET || process.env.JWT_SECRET;
+  if (!secret) throw Object.assign(new Error('Live delivery proof signing is not configured.'), { statusCode: 503 });
+  return secret;
+};
+
+const signLiveProofPayload = encodedPayload => crypto
+  .createHmac('sha256', liveProofSecret())
+  .update(encodedPayload)
+  .digest('base64url');
+
+const createLiveProofEvidence = ({ deliveryId, riderId, photo, capturedAt = new Date() }) => {
+  const payload = {
+    version: 1,
+    deliveryId: String(deliveryId),
+    riderId: String(riderId),
+    photo: String(photo),
+    capturedAt: new Date(capturedAt).toISOString()
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${encodedPayload}.${signLiveProofPayload(encodedPayload)}`;
+};
+
+const verifyLiveProofEvidence = (token, expected, now = new Date()) => {
+  const [encodedPayload, suppliedSignature, ...extra] = String(token || '').split('.');
+  if (!encodedPayload || !suppliedSignature || extra.length) throw new Error('Capture a new live delivery photo.');
+  const expectedSignature = signLiveProofPayload(encodedPayload);
+  const suppliedBuffer = Buffer.from(suppliedSignature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)) {
+    throw new Error('The live delivery photo could not be verified. Capture it again.');
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
+  } catch (_error) {
+    throw new Error('The live delivery photo could not be verified. Capture it again.');
+  }
+  const capturedAt = new Date(payload.capturedAt);
+  const ageMs = new Date(now).getTime() - capturedAt.getTime();
+  if (payload.version !== 1
+    || payload.deliveryId !== String(expected.deliveryId)
+    || payload.riderId !== String(expected.riderId)
+    || payload.photo !== String(expected.photo || '')
+    || !Number.isFinite(capturedAt.getTime())
+    || ageMs < -30 * 1000
+    || ageMs > LIVE_PROOF_MAX_AGE_MS) {
+    throw new Error('The live delivery photo is invalid or expired. Capture it again.');
+  }
+  return { photo: payload.photo, capturedAt };
+};
 
 const activeDeliveryView = delivery => {
   const payload = delivery?.toObject ? delivery.toObject() : { ...delivery };
@@ -53,13 +107,13 @@ const activeDeliveryView = delivery => {
   return payload;
 };
 
-const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
-  const photo = String(input.photo || '').trim();
+const buildProofOfDelivery = (input = {}, delivery, isCod = false, liveEvidence) => {
+  const photo = String(liveEvidence?.photo || '').trim();
   const recipientName = String(input.recipientName || '').trim();
   const otp = String(input.otp || '').trim();
   const notes = String(input.notes || '').trim();
-  if (!photo && !recipientName && !notes && !otp) {
-    throw Object.assign(new Error('Add a photo, recipient-name acknowledgment, OTP, or delivery notes as proof.'), { statusCode: 400 });
+  if (!photo || !liveEvidence?.capturedAt) {
+    throw Object.assign(new Error('Capture a live delivery photo before confirming delivery.'), { statusCode: 400 });
   }
 
   const codPaymentStatus = String(input.codPaymentStatus || '').trim();
@@ -70,7 +124,7 @@ const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
     throw Object.assign(new Error('Record the COD payment status before completing delivery.'), { statusCode: 400 });
   }
 
-  const method = otp ? 'otp' : (input.method || (photo ? 'photo' : recipientName ? 'recipient_acknowledgment' : 'notes'));
+  const method = input.method || 'live_camera';
   if (!PROOF_METHODS.has(method)) {
     throw Object.assign(new Error('Select a valid proof-of-delivery method.'), { statusCode: 400 });
   }
@@ -78,7 +132,9 @@ const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
   return {
     photo: photo || undefined,
     recipientName: recipientName || undefined,
-    method,
+    method: 'live_camera',
+    captureSource: 'live_camera',
+    capturedAt: liveEvidence.capturedAt,
     otpVerified: false,
     notes: notes || undefined,
     location: input.location,
@@ -87,6 +143,36 @@ const buildProofOfDelivery = (input = {}, delivery, isCod = false) => {
     timestamp: new Date(),
     ...(codPaymentStatus ? { codPaymentStatus } : {})
   };
+};
+
+const uploadLiveDeliveryProof = async (req, res) => {
+  try {
+    if (!isDeliveryRider(req.user)) return res.status(403).json({ message: 'Delivery Rider access only.' });
+    const delivery = await Delivery.findOne(assignedRiderQuery(req)).select('_id assignedRider status isLive');
+    if (!delivery) return res.status(404).json({ message: 'Assigned delivery not found.' });
+    if (!delivery.isLive || delivery.status !== 'arrived') {
+      return res.status(400).json({ message: 'Mark the delivery as arrived before capturing delivery evidence.' });
+    }
+    if (!req.file?.path) return res.status(400).json({ message: 'No live camera image was received.' });
+
+    const capturedAt = new Date();
+    const evidenceToken = createLiveProofEvidence({
+      deliveryId: delivery._id,
+      riderId: delivery.assignedRider,
+      photo: req.file.path,
+      capturedAt
+    });
+    return res.json({
+      message: 'Live delivery photo captured',
+      url: req.file.path,
+      imageUrl: req.file.path,
+      capturedAt: capturedAt.toISOString(),
+      evidenceToken
+    });
+  } catch (error) {
+    console.error('Live delivery proof upload error:', error);
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to save the live delivery photo.' });
+  }
 };
 
 const notifyDeliveryParties = async (req, delivery, title, message) => {
@@ -551,7 +637,12 @@ const completeDelivery = async (req, res) => {
     const isCod = ['cod', 'cash_on_delivery'].includes(order?.paymentMethod);
     let proofOfDelivery;
     try {
-      proofOfDelivery = buildProofOfDelivery(req.body, delivery, isCod);
+      const liveEvidence = verifyLiveProofEvidence(req.body.liveProofToken, {
+        deliveryId: delivery._id,
+        riderId: delivery.assignedRider,
+        photo: req.body.photo
+      });
+      proofOfDelivery = buildProofOfDelivery(req.body, delivery, isCod, liveEvidence);
     } catch (error) {
       return res.status(error.statusCode || 400).json({ message: error.message });
     }
@@ -914,6 +1005,7 @@ module.exports = {
   calculateDeliveryFee,
   internalCreateDelivery,
   completeDelivery,
+  uploadLiveDeliveryProof,
   reportFailedDelivery,
-  __test: { buildProofOfDelivery, buildDeliveryConcern, concernMutation }
+  __test: { buildProofOfDelivery, createLiveProofEvidence, verifyLiveProofEvidence, buildDeliveryConcern, concernMutation }
 };

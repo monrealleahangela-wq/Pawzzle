@@ -19,6 +19,7 @@ jest.mock('react-toastify', () => ({
 
 jest.mock('../../services/apiService', () => ({
   deliveryService: {
+    uploadLiveDeliveryProof: jest.fn(),
     uploadDeliveryProof: jest.fn(),
     completeDelivery: jest.fn(),
     reportFailedDelivery: jest.fn()
