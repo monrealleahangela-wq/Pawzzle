@@ -9,7 +9,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/storeApplicationService', () => ({
   __esModule: true,
-  default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
+  default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), saveDraft: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
 }));
 jest.mock('../../components/MapPicker', () => ({ onLocationSelected }) => (
   <button type="button" onClick={() => onLocationSelected({ street: 'Main', city: 'Dasmarinas', barangay: 'San Jose', zipCode: '4114', lat: 14.3, lng: 120.9 })}>
@@ -104,8 +104,8 @@ test('an uploaded registration image auto-fills reviewable OCR values', async ()
   fireEvent.click(screen.getByRole('button', { name: /documents/i }));
   const input = container.querySelector('input[data-field="businessRegistration"]');
   fireEvent.change(input, { target: { files: [new File(['image'], 'dti.png', { type: 'image/png' })] } });
-  await waitFor(() => expect(storeApplicationService.extractDocument).toHaveBeenCalledWith(expect.any(File), 'business_registration'));
-  await screen.findByText(/3 fields extracted/i);
+  await waitFor(() => expect(storeApplicationService.extractDocument).toHaveBeenCalledWith(expect.any(File), 'business_registration', expect.any(Object)));
+  await screen.findByText(/3 fields suggested/i);
 
   fireEvent.click(screen.getByRole('button', { name: /location & tax/i }));
   expect(screen.getByLabelText(/registration or certificate number/i)).toHaveValue('DTI-2027-100');

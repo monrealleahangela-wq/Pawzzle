@@ -5,6 +5,43 @@ export const STORE_DOCUMENT_OCR_TYPES = Object.freeze({
   birRegistration: 'bir_registration'
 });
 
+const DOCUMENT_FIELDS = Object.freeze({
+  business_registration: [
+    'businessRegistration.certificateNumber',
+    'businessRegistration.registeredName',
+    'businessRegistration.registrationDate',
+    'businessRegistration.expirationDate'
+  ],
+  business_permit: [
+    'businessLicense.number',
+    'businessLicense.issuingAuthority',
+    'businessLicense.issueDate',
+    'businessLicense.expiryDate'
+  ],
+  barangay_clearance: [
+    'barangayClearance.number',
+    'barangayClearance.issuingBarangay',
+    'barangayClearance.issueDate',
+    'barangayClearance.expiryDate'
+  ],
+  bir_registration: [
+    'taxProfile.tin',
+    'taxProfile.branchCode',
+    'taxProfile.registeredName',
+    'taxProfile.lineOfBusiness',
+    'taxProfile.declaredTaxStatus'
+  ]
+});
+
+const valueAtPath = (source, path) => path.split('.').reduce((value, part) => value?.[part], source);
+
+export const expectedStoreDocumentValues = (form, documentType) => Object.fromEntries(
+  (DOCUMENT_FIELDS[documentType] || [])
+    .map(field => [field, valueAtPath(form, field)])
+    .filter(([_field, value]) => value !== undefined && value !== null && String(value).trim())
+    .map(([field, value]) => [field, String(value).trim()])
+);
+
 const setPath = (target, path, value) => {
   const parts = path.split('.');
   let cursor = target;

@@ -8,7 +8,6 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   businessName: {
     type: String,
-    required: true,
     trim: true
   },
   registeredBusinessName: { type: String, trim: true },
@@ -17,8 +16,7 @@ const storeApplicationSchema = new mongoose.Schema({
   yearBusinessStarted: { type: Number, min: 1800, max: 2200 },
   businessType: {
     type: String,
-    enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],
-    required: true
+    enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other']
   },
   operationalModules: [{
     type: String,
@@ -82,12 +80,10 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   contactInfo: {
     phone: {
-      type: String,
-      required: true
+      type: String
     },
     email: {
-      type: String,
-      required: true
+      type: String
     },
     address: {
       unitBuilding: { type: String, trim: true },
@@ -244,10 +240,51 @@ const storeApplicationSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  storefrontPhotoUrls: [{
+    type: String,
+    select: false
+  }],
   mayorsPermitUrl: {
     type: String,
     required: false
   },
+  activityDocuments: [{
+    activity: {
+      type: String,
+      enum: ['pets', 'products', 'services'],
+      required: true
+    },
+    label: { type: String, required: true, trim: true },
+    documentUrl: { type: String, required: true, select: false },
+    originalName: { type: String, trim: true },
+    issueDate: Date,
+    expiryDate: Date
+  }],
+  documentReview: {
+    status: {
+      type: String,
+      enum: ['not_checked', 'ready_for_manual_review', 'needs_attention'],
+      default: 'not_checked'
+    },
+    checkedAt: Date,
+    manualApprovalRequired: { type: Boolean, default: true },
+    checks: [{
+      documentKey: { type: String, trim: true },
+      label: { type: String, trim: true },
+      status: {
+        type: String,
+        enum: ['complete', 'needs_review', 'mismatch', 'expired', 'unreadable']
+      },
+      message: { type: String, trim: true, maxlength: 500 }
+    }],
+    extractedInformation: [{
+      documentKey: { type: String, trim: true, maxlength: 60 },
+      field: { type: String, trim: true, maxlength: 120 },
+      label: { type: String, trim: true, maxlength: 160 },
+      value: { type: String, trim: true, maxlength: 300 }
+    }]
+  },
+  draftSavedAt: Date,
   paymentInfo: {
     bankName: String,
     bankAccountName: String,
@@ -269,7 +306,7 @@ const storeApplicationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'pending_review', 'under_review', 'approved', 'rejected', 'requires_more_info', 'expansion_pending'],
+    enum: ['draft', 'submitted', 'pending_review', 'under_review', 'approved', 'rejected', 'requires_more_info', 'withdrawn', 'expansion_pending'],
     default: 'draft'
   },
   requiredCorrections: [{
@@ -279,7 +316,8 @@ const storeApplicationSchema = new mongoose.Schema({
       'taxId', 'governmentId', 'businessRegistration', 'mayorsPermit',
       'birRegistration', 'barangayClearance', 'address', 'paymentInfo',
       'references', 'representative', 'businessRegistrationDetails',
-      'taxProfile', 'taxStatus', 'coordinates', 'declaration'
+      'taxProfile', 'taxStatus', 'coordinates', 'declaration',
+      'storefrontPhotos', 'petActivityDocuments', 'productActivityDocuments', 'serviceActivityDocuments'
     ]
   }],
   reviewNotes: {
@@ -313,7 +351,7 @@ const storeApplicationSchema = new mongoose.Schema({
   reviewHistory: [{
     action: {
       type: String,
-      enum: ['submitted', 'resubmitted', 'under_review', 'needs_correction', 'approved', 'rejected', 'tax_verified', 'tax_rejected', 'tax_update_requested']
+      enum: ['draft_saved', 'submitted', 'resubmitted', 'under_review', 'needs_correction', 'approved', 'rejected', 'withdrawn', 'tax_verified', 'tax_rejected', 'tax_update_requested']
     },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     at: { type: Date, default: Date.now },

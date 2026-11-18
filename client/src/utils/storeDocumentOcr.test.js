@@ -1,6 +1,7 @@
 import {
   applyStoreDocumentExtraction,
   canOcrStoreDocument,
+  expectedStoreDocumentValues,
   STORE_DOCUMENT_OCR_TYPES
 } from './storeDocumentOcr';
 
@@ -13,6 +14,16 @@ test('maps supported upload controls to OCR document types', () => {
   });
   expect(canOcrStoreDocument({ type: 'image/png' })).toBe(true);
   expect(canOcrStoreDocument({ type: 'application/pdf' })).toBe(false);
+});
+
+test('sends only comparable entered values for document consistency checks', () => {
+  expect(expectedStoreDocumentValues({
+    businessRegistration: { certificateNumber: ' DTI-123 ', registeredName: 'Pawzzle Trading', expirationDate: '' },
+    registeredBusinessName: 'Not part of the document field map'
+  }, 'business_registration')).toEqual({
+    'businessRegistration.certificateNumber': 'DTI-123',
+    'businessRegistration.registeredName': 'Pawzzle Trading'
+  });
 });
 
 test('applies approved fields immutably and synchronizes the registered name', () => {

@@ -28,6 +28,7 @@ const storeSchema = new mongoose.Schema({
   coverImage: {
     type: String
   },
+  storefrontPhotos: [{ type: String }],
   businessType: {
     type: String,
     enum: ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'],

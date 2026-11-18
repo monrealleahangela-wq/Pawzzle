@@ -11,14 +11,21 @@ const storeApplicationService = {
     return api.post('/store-applications', formData, config);
   },
 
-  extractDocument: (file, documentType) => {
+  extractDocument: (file, documentType, expectedValues = {}) => {
     const formData = new FormData();
     formData.append('document', file);
     formData.append('documentType', documentType);
+    formData.append('expectedValues', JSON.stringify(expectedValues));
     return api.post('/store-applications/ocr/extract', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+
+  saveDraft: (formData) => api.post('/store-applications/draft', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
+  withdrawApplication: () => api.patch('/store-applications/my-application/withdraw'),
 
   // Get all applications (Super Admin only)
   getAllApplications: (params) => api.get('/store-applications', { params }),
