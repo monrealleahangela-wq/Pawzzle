@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const { RekognitionClient, CompareFacesCommand } = require('@aws-sdk/client-rekognition');
 
+const DEFAULT_REKOGNITION_REGION = 'ap-southeast-1';
+
 const configurationError = (message, code) => Object.assign(new Error(message), {
   statusCode: 503,
   code
@@ -57,13 +59,15 @@ const getFaceMatchThreshold = configured => {
   return value;
 };
 
-const createRekognitionClient = () => {
-  const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
-  if (!region) {
-    throw configurationError('Identity face matching is temporarily unavailable.', 'IDENTITY_FACE_MATCH_NOT_CONFIGURED');
-  }
-  return new RekognitionClient({ region });
-};
+const resolveRekognitionRegion = (environment = process.env) => [
+  environment.AWS_REKOGNITION_REGION,
+  environment.AWS_REGION,
+  environment.AWS_DEFAULT_REGION
+].map(value => String(value || '').trim()).find(Boolean) || DEFAULT_REKOGNITION_REGION;
+
+const createRekognitionClient = () => new RekognitionClient({
+  region: resolveRekognitionRegion()
+});
 
 const mapFaceMatchError = error => {
   if (['InvalidParameterException', 'InvalidImageFormatException', 'ImageTooLargeException'].includes(error?.name)) {
@@ -111,5 +115,6 @@ module.exports = {
   decryptIdentityDocument,
   matchesImageSignature,
   getFaceMatchThreshold,
+  resolveRekognitionRegion,
   compareIdentityFaces
 };

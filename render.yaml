@@ -14,3 +14,15 @@ services:
         value: 6LckpYUtAAAAALNjXnyczMrAwdl_bLUO8xzEoW5-
       - key: REACT_APP_RECAPTCHA_SITE_KEY
         value: 6LckpYUtAAAAALNjXnyczMrAwdl_bLUO8xzEoW5-
+      - key: AWS_REGION
+        value: ap-southeast-1
+      - key: AWS_REKOGNITION_REGION
+        value: ap-southeast-1
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: IDENTITY_DOCUMENT_ENCRYPTION_KEY
+        sync: false
+      - key: IDENTITY_FACE_MATCH_THRESHOLD
+        value: "95"

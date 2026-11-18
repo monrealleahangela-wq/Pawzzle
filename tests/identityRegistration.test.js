@@ -9,6 +9,7 @@ const {
   decryptIdentityDocument,
   matchesImageSignature,
   getFaceMatchThreshold,
+  resolveRekognitionRegion,
   compareIdentityFaces
 } = require('../utils/identityVerification');
 const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
@@ -38,6 +39,24 @@ test('identity image signatures and face-match threshold fail closed', () => {
   assert.equal(matchesImageSignature(Buffer.from('not an image'), 'image/jpeg'), false);
   assert.equal(getFaceMatchThreshold(95), 95);
   assert.throws(() => getFaceMatchThreshold(79), error => error.code === 'IDENTITY_FACE_MATCH_INVALID_THRESHOLD');
+});
+
+test('Rekognition region resolution supports deployment overrides and a Philippines-near default', () => {
+  assert.equal(resolveRekognitionRegion({ AWS_REKOGNITION_REGION: 'us-west-2', AWS_REGION: 'eu-west-1' }), 'us-west-2');
+  assert.equal(resolveRekognitionRegion({ AWS_REGION: 'eu-west-1' }), 'eu-west-1');
+  assert.equal(resolveRekognitionRegion({ AWS_DEFAULT_REGION: 'us-east-1' }), 'us-east-1');
+  assert.equal(resolveRekognitionRegion({ AWS_REKOGNITION_REGION: '  ', AWS_REGION: 'ap-northeast-1' }), 'ap-northeast-1');
+  assert.equal(resolveRekognitionRegion({}), 'ap-southeast-1');
+});
+
+test('Render declares every required face-match deployment setting without committing secrets', () => {
+  const render = fs.readFileSync(path.join(__dirname, '../render.yaml'), 'utf8');
+  assert.match(render, /key: AWS_REKOGNITION_REGION\s+value: ap-southeast-1/);
+  for (const key of ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'IDENTITY_DOCUMENT_ENCRYPTION_KEY']) {
+    assert.match(render, new RegExp(`key: ${key}\\s+sync: false`));
+  }
+  assert.doesNotMatch(render, /key: AWS_SECRET_ACCESS_KEY\s+value:/);
+  assert.doesNotMatch(render, /key: IDENTITY_DOCUMENT_ENCRYPTION_KEY\s+value:/);
 });
 
 test('face comparison sends only in-memory bytes and enforces the threshold', async () => {
