@@ -57,6 +57,20 @@ const IdentityVerification = () => {
       toast.success('Identity verified. Pawzzle features are now unlocked.');
       navigate(portalHomeForUser(result.user), { replace: true });
     } catch (requestError) {
+      if (requestError.response?.data?.code === 'IDENTITY_ALREADY_VERIFIED') {
+        try {
+          const response = await authService.getCurrentUser();
+          const refreshedUser = response.user || response;
+          updateUser(refreshedUser);
+          if (!isIdentityVerificationRequired(refreshedUser)) {
+            toast.success('Identity is already verified. Pawzzle features are unlocked.');
+            navigate(portalHomeForUser(refreshedUser), { replace: true });
+            return;
+          }
+        } catch (_refreshError) {
+          // Preserve the original server message when the session refresh fails.
+        }
+      }
       setError(requestError.response?.data?.message || 'Identity verification failed. Check both images and try again.');
     } finally {
       setSubmitting(false);

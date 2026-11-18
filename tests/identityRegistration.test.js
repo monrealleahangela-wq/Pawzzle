@@ -161,3 +161,12 @@ test('HTTP and socket feature access fail closed until face matching succeeds', 
   assert.match(controller, /file\.buffer\.fill\(0\)/);
   assert.match(sockets, /Identity verification required/);
 });
+
+test('identity verification is idempotent for accounts already verified in the database', () => {
+  const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
+  assert.match(
+    controller,
+    /identityVerification\?\.status === 'verified'[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
+  );
+  assert.doesNotMatch(controller, /IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified/);
+});

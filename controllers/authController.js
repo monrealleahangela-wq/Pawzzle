@@ -418,6 +418,21 @@ const verifyCurrentUserIdentity = async (req, res) => {
   const governmentIdImage = req.files?.governmentIdImage?.[0];
   const selfieImage = req.files?.selfieImage?.[0];
   try {
+    const user = await User.findById(req.user._id).select('+identityVerification');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.identityVerification?.status === 'verified') {
+      await user.populate('store');
+      await attachStoreRolePolicy(user);
+      const safe = withProfessionalVerificationState(sanitizeUser(user), user);
+      safe.permissions = serializeEffectivePermissionMap(user);
+      return res.json({
+        success: true,
+        alreadyVerified: true,
+        message: 'Identity is already verified. Pawzzle features are unlocked.',
+        user: safe
+      });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     if (!governmentIdImage || !selfieImage) {
@@ -438,12 +453,6 @@ const verifyCurrentUserIdentity = async (req, res) => {
         code: 'IDENTITY_CONSENT_REQUIRED',
         message: 'Select a valid government ID and consent to the face comparison.'
       });
-    }
-
-    const user = await User.findById(req.user._id).select('+identityVerification');
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.identityVerification?.status === 'verified') {
-      return res.status(409).json({ code: 'IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified.' });
     }
 
     getEncryptionKey();
