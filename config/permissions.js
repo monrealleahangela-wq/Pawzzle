@@ -139,6 +139,10 @@ const isPlatformAdmin = userOrRole => PLATFORM_ADMIN_ROLES.has(
   typeof userOrRole === 'string' ? userOrRole : userOrRole?.role
 );
 
+const requiresIdentityVerification = user => Boolean(user)
+  && !isPlatformAdmin(user)
+  && user.identityVerification?.status !== 'verified';
+
 const isStoreAdmin = userOrRole => STORE_ADMIN_ROLES.has(
   typeof userOrRole === 'string' ? userOrRole : userOrRole?.role
 );
@@ -235,6 +239,7 @@ module.exports = {
   STORE_ADMIN_ROLES,
   SPECIALIZED_OPERATIONAL_ROLES,
   isPlatformAdmin,
+  requiresIdentityVerification,
   isStoreAdmin,
   isOperationalStaff,
   normalizeRole,

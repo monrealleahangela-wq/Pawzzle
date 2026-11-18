@@ -35,6 +35,7 @@ const renderPage = () => render(
     <Routes>
       <Route path="/identity-verification" element={<IdentityVerification />} />
       <Route path="/home" element={<div>Unlocked home</div>} />
+      <Route path="/superadmin/dashboard" element={<div>Platform administration</div>} />
     </Routes>
   </MemoryRouter>
 );
@@ -67,6 +68,16 @@ test('already verified accounts cannot reopen the verification workflow', () => 
   renderPage();
   expect(screen.getByText('Unlocked home')).toBeVisible();
 });
+
+test.each(['super_admin', 'platform_admin'])(
+  'redirects an unverified %s away from the identity workflow',
+  role => {
+    mockAuthState.user.role = role;
+    renderPage();
+    expect(screen.getByText('Platform administration')).toBeVisible();
+    expect(screen.queryByText(/verify your identity to continue/i)).not.toBeInTheDocument();
+  }
+);
 
 test('recovers a stale session when the server says the account is already verified', async () => {
   const verifiedUser = { _id: 'user-1', role: 'customer', identityVerificationStatus: 'verified' };

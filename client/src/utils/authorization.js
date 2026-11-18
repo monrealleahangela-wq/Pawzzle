@@ -74,6 +74,7 @@ export const isProfessionalVerificationPending = user => requiresProfessionalVer
   && professionalVerificationStatus(user) !== 'verified';
 
 export const isIdentityVerificationRequired = user => Boolean(user)
+  && !PLATFORM_ADMIN_ROLES.has(user.role)
   && user.identityVerificationStatus !== 'verified';
 
 export const hasUiPermission = (user, resource) => {
