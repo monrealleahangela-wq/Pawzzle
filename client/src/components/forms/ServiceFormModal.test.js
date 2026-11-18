@@ -3,71 +3,64 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ServiceFormModal from './ServiceFormModal';
 
-jest.mock('../../services/apiService', () => ({ getImageUrl: value => value }));
+const categories = [
+  { id: 'grooming', label: 'Grooming', subServices: ['Bathing'] },
+  { id: 'boarding_hotel', label: 'Pet Boarding / Pet Hotel', subServices: ['Pet Boarding'] },
+  { id: 'home_services', label: 'Home Services', subServices: ['Home Visit'] }
+];
 
-const categories = [{ id: 'health_wellness', label: 'Health & Wellness', subServices: ['Veterinary Consultation'] }];
-const form = {
-  name: 'Veterinary Consultation',
-  category: 'health_wellness',
-  subCategory: 'Veterinary Consultation',
-  description: 'A consultation for customer pets.',
-  duration: 30,
-  price: 500,
-  images: ['/service.jpg'],
-  assignedStaff: [],
-  isActive: true,
-  recommendationCriteria: { enabled: false, applicablePetTypes: ['any'] }
-};
-const props = {
-  form,
-  setForm: jest.fn(),
-  categories,
-  onClose: jest.fn(),
-  onSubmit: jest.fn(event => event.preventDefault()),
-  onImageUpload: jest.fn(),
-  onAdvanced: jest.fn(),
-  loading: false
+const regularForm = {
+  name: 'Bathing', category: 'grooming', subCategory: 'Bathing', description: 'Bath and dry.',
+  duration: 30, bufferTime: 0, price: 500, isActive: true,
+  pricingConfiguration: { pricingBasis: 'fixed', pricePerNight: 0, petSizePricingEnabled: false, petSizeRates: { small: 0, medium: 0, large: 0 }, minimumNights: 0, maximumNights: 0 },
+  recommendationCriteria: { enabled: false }
 };
 
-test('shows an active direct-role Veterinarian in the Health & Wellness selector', () => {
-  render(<ServiceFormModal {...props} staff={[{
-    _id: 'vet-1', firstName: 'Ana', lastName: 'Reyes', role: 'veterinarian', isActive: true
-  }]} />);
+const renderModal = (form = regularForm, setForm = jest.fn()) => render(<ServiceFormModal
+  form={form}
+  setForm={setForm}
+  categories={categories}
+  onClose={jest.fn()}
+  onSubmit={jest.fn(event => event.preventDefault())}
+  loading={false}
+/>);
 
-  expect(screen.getByRole('button', { name: /Ana Reyes Veterinarian/i })).toBeInTheDocument();
-  expect(screen.queryByText(/No active qualified specialist/i)).not.toBeInTheDocument();
+test('keeps only Primary Details and Price Rules while removing legacy sections and home services', () => {
+  renderModal();
+  expect(screen.getByText('Primary Details')).toBeInTheDocument();
+  expect(screen.getByText('Price Rules / Configuration')).toBeInTheDocument();
+  expect(screen.queryByText(/Advanced Options/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Add-ons/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Staff$/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Images$/i)).not.toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Home Services' })).not.toBeInTheDocument();
 });
 
-test('shows supported veterinary staffType specialists for compatible Health & Wellness services', () => {
-  render(<ServiceFormModal {...props} form={{ ...form, name: 'Diagnostic Laboratory Test', subCategory: 'Laboratory Testing' }} staff={[{
-    _id: 'nurse-1', firstName: 'Mia', lastName: 'Santos', role: 'staff', staffType: 'veterinary_nurse', isActive: true
-  }, {
-    _id: 'lab-1', firstName: 'Leo', lastName: 'Cruz', role: 'staff', staffType: 'veterinary_laboratory_technician', isActive: true
-  }]} />);
-
-  expect(screen.getByRole('button', { name: /Mia Santos Veterinary Nurse/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /Leo Cruz Veterinary Laboratory Technician/i })).toBeInTheDocument();
+test('shows fixed service pricing for regular services', () => {
+  renderModal();
+  expect(screen.getByLabelText(/Service Price/)).toHaveValue(500);
+  expect(screen.getByRole('button', { name: /Save Service/i })).toBeEnabled();
+  expect(screen.queryByLabelText(/Price per Night/i)).not.toBeInTheDocument();
 });
 
-test('distinguishes loading, API error, and a genuine empty specialist result', () => {
-  const { rerender } = render(<ServiceFormModal {...props} staff={[]} staffLoading />);
-  expect(screen.getByRole('status')).toHaveTextContent('Loading qualified staff');
-
-  rerender(<ServiceFormModal {...props} staff={[]} staffError="Unable to load the Store staff directory." />);
-  expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the Store staff directory');
-
-  rerender(<ServiceFormModal {...props} staff={[]} />);
-  expect(screen.getByText(/No active qualified specialist is currently available/i)).toBeInTheDocument();
-});
-
-test('keeps Service Advisor participation an explicit seller opt-in in the compact form', () => {
+test('shows configurable per-night rates and stay limits for boarding services', () => {
+  const boardingForm = {
+    ...regularForm,
+    category: 'boarding_hotel',
+    subCategory: 'Pet Boarding',
+    price: 450,
+    pricingConfiguration: {
+      pricingBasis: 'per_night', pricePerNight: 450, petSizePricingEnabled: false,
+      petSizeRates: { small: 400, medium: 500, large: 600 }, minimumNights: 1, maximumNights: 10
+    }
+  };
   const setForm = jest.fn();
-  render(<ServiceFormModal {...props} setForm={setForm} staff={[]} />);
-
-  const optIn = screen.getByRole('switch', { name: /Include in Service Advisor recommendations/i });
-  expect(optIn).toHaveAttribute('aria-checked', 'false');
-  fireEvent.click(optIn);
-
+  renderModal(boardingForm, setForm);
+  expect(screen.getByDisplayValue('Per Night')).toBeInTheDocument();
+  expect(screen.getByLabelText(/Price per Night/)).toHaveValue(450);
+  expect(screen.queryByLabelText(/^Duration/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/Minimum Stay/)).toHaveValue(1);
+  fireEvent.click(screen.getByRole('switch', { name: /Use pet size pricing/i }));
   const update = setForm.mock.calls.at(-1)[0];
-  expect(update(form).recommendationCriteria).toEqual({ enabled: true, applicablePetTypes: ['any'] });
+  expect(update(boardingForm).pricingConfiguration.petSizePricingEnabled).toBe(true);
 });

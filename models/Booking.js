@@ -83,6 +83,16 @@ const bookingSchema = new mongoose.Schema({
     }
   },
 
+  boardingStay: {
+    checkInDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
+    checkOutDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
+    numberOfNights: { type: Number, min: 1 },
+    pricingBasis: { type: String, enum: ['per_night'] },
+    petSize: { type: String, enum: ['small', 'medium', 'large', 'standard'] },
+    applicableNightlyRate: { type: Number, min: 0 },
+    subtotal: { type: Number, min: 0 }
+  },
+
   // ── Selected Add-Ons ──────────────────────────
   selectedAddOns: [{
     addOnId:  { type: mongoose.Schema.Types.ObjectId },
@@ -102,6 +112,10 @@ const bookingSchema = new mongoose.Schema({
   // snapshot is written only when the customer accepts the proposal for payment.
   pricingBreakdown: {
     calculationVersion: { type: Number },
+    pricingBasis: { type: String, enum: ['fixed', 'per_night'], default: 'fixed' },
+    numberOfNights: { type: Number, min: 1 },
+    applicableNightlyRate: { type: Number, min: 0 },
+    boardingPetSize: { type: String },
     basePrice:        { type: Number, default: 0 },
     sizeSurcharge:    { type: Number, default: 0 },
     weightSurcharge:  { type: Number, default: 0 },

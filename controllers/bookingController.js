@@ -219,11 +219,8 @@ const createBooking = async (req, res) => {
       pet,
       bookingDate,
       startTime,
-      isHomeService,
-      serviceAddress,
       notes,
       voucherCode,
-      selectedAddOns,
       selectedConditions,
       petProfileId,
       serviceIntake,
@@ -262,22 +259,31 @@ const createBooking = async (req, res) => {
 
     const preparedIntake = prepareServiceIntake(service, serviceIntake);
     if (preparedIntake.error) return res.status(400).json({ message: preparedIntake.error });
-    // Check if home service is available
-    if (isHomeService && !service.homeServiceAvailable) {
-      return res.status(400).json({ message: 'Home service is not available for this service' });
+    const boardingDetails = preparedIntake.value?.kind === 'boarding' ? preparedIntake.value.details : null;
+    if (boardingDetails && boardingDetails.checkInDate !== bookingDate) {
+      return res.status(400).json({ message: 'Booking date must match the selected boarding check-in date.' });
     }
 
     // ── Dynamic Pricing Engine ──────────────────────────────────────
     const { breakdown, resolvedAddOns } = calculateServicePrice(
       service,
       bookingPet,
-      { date: bookingDate, startTime, isHomeService },
-      selectedAddOns || [],
+      {
+        date: bookingDate,
+        startTime,
+        isHomeService: false,
+        checkInDate: boardingDetails?.checkInDate,
+        checkOutDate: boardingDetails?.checkOutDate
+      },
+      [],
       selectedConditions || []
     );
 
-    const serviceDuration = Number(service.duration || 0)
-      + resolvedAddOns.reduce((total, addOn) => total + Number(addOn.duration || 0), 0);
+    // Boarding duration is the customer's date range. The store slot duration is
+    // used only for the check-in appointment and never as the stay duration.
+    const serviceDuration = service.category === 'boarding_hotel'
+      ? Number(service.store?.bookingSettings?.slotDuration || 60)
+      : Number(service.duration || 0);
     const scheduleCheck = validateServiceSchedule({
       service,
       store: service.store,
@@ -404,6 +410,15 @@ const createBooking = async (req, res) => {
       pet: bookingPet,
       petProfile: linkedPetProfile?._id || null,
       serviceIntake: preparedIntake.value,
+      boardingStay: boardingDetails ? {
+        checkInDate: boardingDetails.checkInDate,
+        checkOutDate: boardingDetails.checkOutDate,
+        numberOfNights: breakdown.numberOfNights,
+        pricingBasis: 'per_night',
+        petSize: breakdown.boardingPetSize,
+        applicableNightlyRate: breakdown.applicableNightlyRate,
+        subtotal: breakdown.subtotal
+      } : undefined,
       selectedAddOns: resolvedAddOns,
       selectedConditions: resolvedConditions,
       pricingBreakdown: breakdown,
@@ -411,8 +426,7 @@ const createBooking = async (req, res) => {
       bookingLocalDate: bookingDate,
       startTime,
       endTime: scheduleCheck.endTime,
-      isHomeService,
-      serviceAddress: isHomeService ? serviceAddress : undefined,
+      isHomeService: false,
       totalPrice: breakdown.finalPrice,
       paymentMethod: 'pending',
       voucher: appliedVoucherId,
@@ -580,7 +594,7 @@ const createBooking = async (req, res) => {
     }
   } catch (error) {
     console.error('❌ Create booking error:', error);
-    res.status(500).json({ message: error.message || 'Server error' });
+    res.status(error.statusCode || 500).json({ message: error.message || 'Server error' });
   }
 };
 
@@ -766,7 +780,7 @@ const getAvailableServiceStaff = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ message: errors.array().map(error => error.msg).join(', '), errors: errors.array() });
     }
-    const { serviceId, bookingDate, startTime, selectedAddOns = [] } = req.body;
+    const { serviceId, bookingDate, startTime } = req.body;
     const service = await Service.findById(serviceId).populate('store');
     if (!service || !service.isActive || service.isDeleted || !service.store || !service.store.isActive
         || service.store.isDeleted || service.store.verificationStatus !== 'verified') {
@@ -779,11 +793,9 @@ const getAvailableServiceStaff = async (req, res) => {
     ))).select('_id');
     if (!visibleStore) return res.status(404).json({ message: 'Service not found or unavailable.' });
 
-    const requestedAddOns = new Set((selectedAddOns || []).map(String));
-    const addOnDuration = (service.addOns || [])
-      .filter(addOn => addOn.isActive !== false && requestedAddOns.has(String(addOn._id)))
-      .reduce((total, addOn) => total + Number(addOn.duration || 0), 0);
-    const duration = Number(service.duration || 0) + addOnDuration;
+    const duration = service.category === 'boarding_hotel'
+      ? Number(service.store?.bookingSettings?.slotDuration || 60)
+      : Number(service.duration || 0);
     const scheduleCheck = validateServiceSchedule({
       service,
       store: service.store,
@@ -875,7 +887,9 @@ const assignBookingStaff = async (req, res) => {
 
     const proposalInstructions = String(req.body.specialInstructions || '').trim();
     if (proposalInstructions.length > 2000) return res.status(400).json({ message: 'Special instructions must be 2,000 characters or fewer.' });
-    const requestedDuration = Number(req.body.estimatedDurationMinutes || service.duration);
+    const requestedDuration = Number(req.body.estimatedDurationMinutes || (service.category === 'boarding_hotel'
+      ? store.bookingSettings?.slotDuration || 60
+      : service.duration));
     if (!Number.isInteger(requestedDuration) || requestedDuration < 1 || requestedDuration > 1440) {
       return res.status(400).json({ message: 'Estimated duration must be between 1 and 1,440 minutes.' });
     }

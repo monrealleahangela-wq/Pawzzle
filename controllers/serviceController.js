@@ -21,13 +21,44 @@ const DEFAULT_REQUIREMENTS = [
 
 const SERVICE_MUTABLE_FIELDS = [
   'name', 'description', 'category', 'subCategory', 'duration', 'bufferTime', 'price',
-  'homeServiceAvailable', 'homeServicePrice', 'maxPetsPerSession', 'requirements', 'images',
-  'pricingRules', 'addOns', 'bookingRules', 'assignedStaff', 'schedule', 'recommendationCriteria', 'isActive'
+  'maxPetsPerSession', 'requirements', 'pricingConfiguration', 'bookingRules',
+  'recommendationCriteria', 'isActive'
 ];
 
-const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingRules addOns bookingRules assignedStaff schedule homeServiceAvailable homeServicePrice maxPetsPerSession requirements images ratings isActive isDeleted';
+const PUBLIC_SERVICE_FIELDS = 'name description store category subCategory duration bufferTime price pricingConfiguration pricingRules bookingRules assignedStaff schedule maxPetsPerSession requirements images ratings isActive isDeleted';
 const PUBLIC_SERVICE_STORE_FIELDS = 'name logo contactInfo.address businessHours bookingSettings taxConfiguration refundPolicy verificationStatus';
 const DIRECT_SERVICE_STAFF_ROLES = ['service_staff', ...SPECIALIZED_STAFF_ROLES];
+
+const normalizePricingConfiguration = (category, price, value = {}) => {
+  if (category !== 'boarding_hotel') {
+    return { pricingBasis: 'fixed', pricePerNight: 0, petSizePricingEnabled: false, minimumNights: 0, maximumNights: 0 };
+  }
+  const hasPerNightConfiguration = value.pricingBasis === 'per_night';
+  const configuration = {
+    pricingBasis: 'per_night',
+    pricePerNight: Number(hasPerNightConfiguration ? value.pricePerNight : (price ?? 0)),
+    petSizePricingEnabled: hasPerNightConfiguration && value.petSizePricingEnabled === true,
+    petSizeRates: {
+      small: Number(value.petSizeRates?.small ?? 0),
+      medium: Number(value.petSizeRates?.medium ?? 0),
+      large: Number(value.petSizeRates?.large ?? 0)
+    },
+    minimumNights: Number(value.minimumNights || 0),
+    maximumNights: Number(value.maximumNights || 0)
+  };
+  const numericValues = [configuration.pricePerNight, configuration.minimumNights, configuration.maximumNights];
+  if (numericValues.some(item => !Number.isFinite(item) || item < 0)) {
+    throw Object.assign(new Error('Boarding prices and stay limits must be valid non-negative numbers.'), { statusCode: 400 });
+  }
+  if (configuration.petSizePricingEnabled
+      && Object.values(configuration.petSizeRates).some(item => !Number.isFinite(item) || item < 0)) {
+    throw Object.assign(new Error('Enter valid nightly rates for small, medium, and large pets.'), { statusCode: 400 });
+  }
+  if (configuration.maximumNights > 0 && configuration.minimumNights > configuration.maximumNights) {
+    throw Object.assign(new Error('Maximum stay must be greater than or equal to minimum stay.'), { statusCode: 400 });
+  }
+  return configuration;
+};
 
 const validateAssignedStaff = async (assignedStaff = [], storeId, serviceData) => {
   const ids = [...new Set((assignedStaff || []).map(String).filter(Boolean))];
@@ -92,16 +123,10 @@ const createService = async (req, res) => {
       duration,
       bufferTime,
       price,
-      homeServiceAvailable,
-      homeServicePrice,
       maxPetsPerSession,
       requirements,
-      images,
-      pricingRules,
-      addOns,
+      pricingConfiguration,
       bookingRules,
-      assignedStaff,
-      schedule,
       recommendationCriteria
     } = req.body;
 
@@ -136,8 +161,8 @@ const createService = async (req, res) => {
       authoritativeSubscription: subscriptionContext?.authoritativeSubscription
     });
 
-    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, req.params.storeId, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
+    const normalizedPricing = normalizePricingConfiguration(category, price, pricingConfiguration);
     const service = new Service({
       name,
       description,
@@ -147,17 +172,14 @@ const createService = async (req, res) => {
       subCategory,
       duration,
       bufferTime: bufferTime || 0,
-      price,
-      homeServiceAvailable,
-      homeServicePrice,
+      price: category === 'boarding_hotel' && normalizedPricing.petSizePricingEnabled
+        ? Math.min(...Object.values(normalizedPricing.petSizeRates))
+        : (category === 'boarding_hotel' ? normalizedPricing.pricePerNight : price),
       maxPetsPerSession,
       requirements: requirementsStr,
-      images,
-      pricingRules: pricingRules || {},
-      addOns: addOns || [],
+      pricingConfiguration: normalizedPricing,
       bookingRules: bookingRules || {},
-      assignedStaff: validatedAssignedStaff,
-      schedule: schedule || {},
+      assignedStaff: [],
       recommendationCriteria: validatedRecommendationCriteria
     });
 
@@ -195,16 +217,10 @@ const createAdminService = async (req, res) => {
       duration,
       bufferTime,
       price,
-      homeServiceAvailable,
-      homeServicePrice,
       maxPetsPerSession,
       requirements,
-      images,
-      pricingRules,
-      addOns,
+      pricingConfiguration,
       bookingRules,
-      assignedStaff,
-      schedule,
       recommendationCriteria
     } = req.body;
 
@@ -271,8 +287,8 @@ const createAdminService = async (req, res) => {
     await assertCanActivateListing(serviceStore, {
       authoritativeSubscription: subscriptionContext?.authoritativeSubscription
     });
-    const validatedAssignedStaff = await validateAssignedStaff(assignedStaff, serviceStoreId, { name, description, category, subCategory });
     const validatedRecommendationCriteria = normalizeRecommendationCriteria(recommendationCriteria) || {};
+    const normalizedPricing = normalizePricingConfiguration(category, price, pricingConfiguration);
     const service = new Service({
       name,
       description,
@@ -282,18 +298,15 @@ const createAdminService = async (req, res) => {
       subCategory,
       duration,
       bufferTime: bufferTime || 0,
-      price,
-      homeServiceAvailable,
-      homeServicePrice,
+      price: category === 'boarding_hotel' && normalizedPricing.petSizePricingEnabled
+        ? Math.min(...Object.values(normalizedPricing.petSizeRates))
+        : (category === 'boarding_hotel' ? normalizedPricing.pricePerNight : price),
       maxPetsPerSession,
       requirements: requirementsStr,
-      images,
       createdBy: req.user._id,
-      pricingRules: pricingRules || {},
-      addOns: addOns || [],
+      pricingConfiguration: normalizedPricing,
       bookingRules: bookingRules || {},
-      assignedStaff: validatedAssignedStaff,
-      schedule: schedule || {},
+      assignedStaff: [],
       recommendationCriteria: validatedRecommendationCriteria
     });
 
@@ -338,17 +351,22 @@ const updateService = async (req, res) => {
     }
 
     const updates = Object.fromEntries(SERVICE_MUTABLE_FIELDS.filter(field => req.body[field] !== undefined).map(field => [field, req.body[field]]));
+    const nextCategory = req.body.category ?? service.category;
+    if (req.body.pricingConfiguration !== undefined || req.body.price !== undefined || req.body.category !== undefined) {
+      updates.pricingConfiguration = normalizePricingConfiguration(
+        nextCategory,
+        req.body.price ?? service.price,
+        req.body.pricingConfiguration ?? service.pricingConfiguration
+      );
+      if (nextCategory === 'boarding_hotel') {
+        updates.price = updates.pricingConfiguration.petSizePricingEnabled
+          ? Math.min(...Object.values(updates.pricingConfiguration.petSizeRates))
+          : updates.pricingConfiguration.pricePerNight;
+      }
+    }
     if (req.body.requirements && Array.isArray(req.body.requirements)) { updates.requirements = req.body.requirements.join(', '); }
     if (req.body.recommendationCriteria !== undefined) {
       updates.recommendationCriteria = normalizeRecommendationCriteria(req.body.recommendationCriteria);
-    }
-    if (req.body.assignedStaff !== undefined) {
-      updates.assignedStaff = await validateAssignedStaff(req.body.assignedStaff, service.store._id, {
-        name: req.body.name ?? service.name,
-        description: req.body.description ?? service.description,
-        category: req.body.category ?? service.category,
-        subCategory: req.body.subCategory ?? service.subCategory
-      });
     }
     if (service.isActive === false && updates.isActive === true) {
       const subscriptionContext = await resolveSubscriptionContext(req.user);
@@ -409,13 +427,11 @@ const deleteService = async (req, res) => {
 // Get all services (public)
 const getAllServices = async (req, res) => {
   try {
-    const { category, city, homeService, search, page = 1, limit = 20 } = req.query;
+    const { category, city, search, page = 1, limit = 20 } = req.query;
 
     const filter = { isActive: true, isDeleted: { $ne: true } };
 
     if (category) filter.category = category;
-    if (homeService === 'true') filter.homeServiceAvailable = true;
-
     // Search: match name, description, or category
     if (search && search !== '') {
       filter.$or = [
@@ -500,7 +516,7 @@ const getServiceById = async (req, res) => {
 // POST /api/services/calculate-price
 const calculatePrice = async (req, res) => {
   try {
-    const { serviceId, pet, bookingDate, startTime, isHomeService, selectedAddOns, selectedConditions } = req.body;
+    const { serviceId, pet, bookingDate, startTime, checkInDate, checkOutDate, selectedConditions } = req.body;
 
     if (!serviceId) {
       return res.status(400).json({ message: 'Service ID is required' });
@@ -514,8 +530,8 @@ const calculatePrice = async (req, res) => {
     const { breakdown, resolvedAddOns } = calculateServicePrice(
       service,
       pet || {},
-      { date: bookingDate, startTime, isHomeService },
-      selectedAddOns || [],
+      { date: bookingDate, startTime, isHomeService: false, checkInDate, checkOutDate },
+      [],
       selectedConditions || []
     );
     const taxReady = service.store.taxConfiguration?.isConfigured === true;
@@ -533,15 +549,15 @@ const calculatePrice = async (req, res) => {
         ? { ...breakdown, ...taxBreakdown, finalPrice: taxBreakdown.finalTotal }
         : { ...breakdown, finalPrice: breakdown.subtotal },
       resolvedAddOns,
-      availableAddOns: (service.addOns || []).filter(a => a.isActive),
+      availableAddOns: [],
       availableConditions: service.pricingRules?.condition?.enabled
         ? (service.pricingRules.condition.conditions || [])
         : []
     });
   } catch (error) {
     console.error('Calculate price error:', error);
-    res.status(error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? 409 : 500).json({
-      message: error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? error.message : 'Server error'
+    res.status(error.statusCode || (error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? 409 : 500)).json({
+      message: error.statusCode || error.code === 'STORE_TAX_VERIFICATION_REQUIRED' ? error.message : 'Server error'
     });
   }
 };

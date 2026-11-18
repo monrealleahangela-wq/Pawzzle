@@ -41,10 +41,23 @@ const recalculateBooking = async (booking, service, store, { includeAuthoritativ
   const { breakdown, resolvedAddOns } = calculateServicePrice(
     service,
     booking.pet || {},
-    { date: booking.bookingDate, startTime: booking.startTime, isHomeService: booking.isHomeService },
-    (booking.selectedAddOns || []).map(item => item.addOnId),
+    {
+      date: booking.bookingDate,
+      startTime: booking.startTime,
+      isHomeService: false,
+      checkInDate: booking.boardingStay?.checkInDate || booking.serviceIntake?.details?.get?.('checkInDate') || booking.serviceIntake?.details?.checkInDate,
+      checkOutDate: booking.boardingStay?.checkOutDate || booking.serviceIntake?.details?.get?.('checkOutDate') || booking.serviceIntake?.details?.checkOutDate
+    },
+    service.category === 'boarding_hotel' ? [] : (booking.selectedAddOns || []).map(item => item.addOnId),
     (booking.selectedConditions || []).map(item => item.condition)
   );
+  if (service.category === 'boarding_hotel' && booking.boardingStay) {
+    booking.boardingStay.numberOfNights = breakdown.numberOfNights;
+    booking.boardingStay.pricingBasis = 'per_night';
+    booking.boardingStay.petSize = breakdown.boardingPetSize;
+    booking.boardingStay.applicableNightlyRate = breakdown.applicableNightlyRate;
+    booking.boardingStay.subtotal = breakdown.subtotal;
+  }
 
   let discountAmount = 0;
   if (booking.voucher) {

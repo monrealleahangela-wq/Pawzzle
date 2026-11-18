@@ -100,8 +100,14 @@ const ServiceManagement = () => {
     duration: 30,
     bufferTime: 0,
     price: 0,
-    homeServiceAvailable: false,
-    homeServicePrice: 0,
+    pricingConfiguration: {
+      pricingBasis: 'fixed',
+      pricePerNight: 0,
+      petSizePricingEnabled: false,
+      petSizeRates: { small: 0, medium: 0, large: 0 },
+      minimumNights: 0,
+      maximumNights: 0
+    },
     maxPetsPerSession: 1,
     isActive: true,
     images: [],
@@ -202,18 +208,41 @@ const ServiceManagement = () => {
     if (!formData.name?.trim() || !formData.category || !formData.subCategory || !formData.description?.trim()) {
       return toast.warn('Complete the required service information.');
     }
-    if (Number(formData.duration) < 15) return toast.warn('Service duration must be at least 15 minutes.');
-    if (formData.price === '' || Number(formData.price) < 0) return toast.warn('Enter a valid service price.');
-    if (!formData.images?.length) return toast.warn('A service image is required.');
+    const isBoarding = formData.category === 'boarding_hotel';
+    if (!isBoarding && Number(formData.duration) < 15) return toast.warn('Service duration must be at least 15 minutes.');
+    if (!isBoarding && (formData.price === '' || Number(formData.price) < 0)) return toast.warn('Enter a valid service price.');
+    if (isBoarding) {
+      const configuration = formData.pricingConfiguration || {};
+      const ratesValid = configuration.petSizePricingEnabled
+        ? ['small', 'medium', 'large'].every(size => configuration.petSizeRates?.[size] !== '' && Number(configuration.petSizeRates?.[size]) >= 0)
+        : configuration.pricePerNight !== '' && Number(configuration.pricePerNight) >= 0;
+      if (!ratesValid) return toast.warn('Enter valid boarding nightly rates.');
+      if (configuration.maximumNights && Number(configuration.maximumNights) < Number(configuration.minimumNights || 0)) {
+        return toast.warn('Maximum stay cannot be less than minimum stay.');
+      }
+    }
     setSubmitting(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const serviceData = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        subCategory: formData.subCategory,
+        duration: isBoarding ? 0 : Number(formData.duration),
+        bufferTime: Number(formData.bufferTime || 0),
+        price: isBoarding
+          ? Number(formData.pricingConfiguration?.pricePerNight || formData.price || 0)
+          : Number(formData.price),
+        pricingConfiguration: formData.pricingConfiguration,
+        isActive: Boolean(formData.isActive),
+        recommendationCriteria: formData.recommendationCriteria
+      };
       if (editingService) {
-        await adminServiceService.updateService(editingService._id, formData);
+        await adminServiceService.updateService(editingService._id, serviceData);
         toast.success('Service updated');
       } else {
-        const serviceData = { ...formData, createdBy: user._id || user.id };
-        await adminServiceService.createService(serviceData);
+        await adminServiceService.createService({ ...serviceData, createdBy: user._id || user.id });
         toast.success('Service created');
       }
       setShowModal(false);
@@ -248,6 +277,16 @@ const ServiceManagement = () => {
         timeBased: { ...initialFormState.pricingRules.timeBased, ...(service.pricingRules?.timeBased || {}) }
       },
       bookingRules: { ...initialFormState.bookingRules, ...(service.bookingRules || {}) },
+      pricingConfiguration: {
+        ...initialFormState.pricingConfiguration,
+        ...(service.pricingConfiguration || (service.category === 'boarding_hotel'
+          ? { pricingBasis: 'per_night', pricePerNight: service.price }
+          : {})),
+        petSizeRates: {
+          ...initialFormState.pricingConfiguration.petSizeRates,
+          ...(service.pricingConfiguration?.petSizeRates || {})
+        }
+      },
       addOns: service.addOns || [],
       assignedStaff: service.assignedStaff?.map(s => s._id || s) || [],
       schedule: { ...initialFormState.schedule, ...(service.schedule || {}) }
@@ -519,14 +558,6 @@ const ServiceManagement = () => {
                       DYNAMIC PRICING
                     </span>
                   )}
-                  {service.addOns?.length > 0 && (
-                    <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-purple-500/90 text-white">
-                      +{service.addOns.length} ADD-ONS
-                    </span>
-                  )}
-                  {service.homeServiceAvailable && (
-                    <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/90 text-white">HOME</span>
-                  )}
                 </div>
                 <div role="heading" aria-level="3" className="text-base font-black uppercase leading-tight tracking-tight text-white line-clamp-2 break-words">{service.name}</div>
               </div>
@@ -540,12 +571,12 @@ const ServiceManagement = () => {
               {/* Stats row */}
               <div className="mt-auto grid grid-cols-3 gap-1 border-t border-slate-100 py-2.5">
                 <div className="text-center">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Base Price</p>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">{service.category === 'boarding_hotel' ? 'From / Night' : 'Price'}</p>
                   <p className="text-[13px] font-black text-slate-900 tracking-tight truncate">₱{(service.price || 0).toLocaleString()}</p>
                 </div>
                 <div className="text-center border-x border-slate-100">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Duration</p>
-                  <p className="text-[13px] font-black text-slate-900 tracking-tight">{service.duration}<span className="text-[9px] text-slate-400">m</span></p>
+                  <p className="text-[13px] font-black text-slate-900 tracking-tight">{service.category === 'boarding_hotel' ? 'Custom' : <>{service.duration}<span className="text-[9px] text-slate-400">m</span></>}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Staff</p>
@@ -574,20 +605,15 @@ const ServiceManagement = () => {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Compact service workflow; the existing full editor remains available for advanced fields. */}
+      {/* Compact service workflow. Removed legacy sections are intentionally not exposed. */}
       {showModal && !showAdvancedServiceEditor && <ServiceFormModal
         editingService={editingService}
         form={formData}
         setForm={setFormData}
         categories={categories}
-        staff={storeStaff}
-        staffLoading={staffLoading}
-        staffError={staffError}
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
-        onImageUpload={handleImageUpload}
         loading={submitting}
-        onAdvanced={() => { setWizardStep(0); setShowAdvancedServiceEditor(true); }}
       />}
 
       {/* WIZARD MODAL */}
