@@ -14,6 +14,7 @@ const {
   compareIdentityFaces
 } = require('../utils/identityVerification');
 const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
+const { requiresIdentityVerification } = require('../config/permissions');
 const { __test: authControllerTest } = require('../controllers/authController');
 
 test('government ID types and registration identity fields are constrained', () => {
@@ -139,6 +140,17 @@ test('verified identity is mandatory while only recovery endpoints remain reacha
   assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/orders', path: '/' }), false);
 });
 
+test('platform administrators are exempt from the one-time identity gate', () => {
+  assert.equal(requiresIdentityVerification({ role: 'super_admin' }), false);
+  assert.equal(requiresIdentityVerification({ role: 'platform_admin' }), false);
+  assert.equal(requiresIdentityVerification({ role: 'customer' }), true);
+  assert.equal(requiresIdentityVerification({ role: 'admin' }), true);
+  assert.equal(requiresIdentityVerification({
+    role: 'customer',
+    identityVerification: { status: 'verified' }
+  }), false);
+});
+
 test('login summaries expose identity state without exposing the encrypted ID', () => {
   const summary = authControllerTest.userSummary({
     _id: 'user-1', email: 'user@example.com', role: 'customer',
@@ -156,10 +168,12 @@ test('HTTP and socket feature access fail closed until face matching succeeds', 
   const sockets = fs.readFileSync(path.join(__dirname, '../services/socketAuthorization.js'), 'utf8');
   assert.match(middleware, /select\('\+identityVerification'\)/);
   assert.match(middleware, /IDENTITY_VERIFICATION_REQUIRED/);
+  assert.match(middleware, /requiresIdentityVerification\(user\)/);
   assert.match(routes, /router\.post\('\/identity\/verify',[\s\S]*authenticate[\s\S]*authRateLimits\.identityVerification[\s\S]*uploadRegistrationIdentity[\s\S]*verifyCurrentUserIdentity/);
   assert.match(controller, /policyVersion: 'identity-access-v1'/);
   assert.match(controller, /file\.buffer\.fill\(0\)/);
   assert.match(sockets, /Identity verification required/);
+  assert.match(sockets, /requiresIdentityVerification\(user\)/);
 });
 
 test('identity verification is idempotent for accounts already verified in the database', () => {

@@ -4,7 +4,13 @@ const Delivery = require('../models/Delivery');
 const Conversation = require('../models/Conversation');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
-const { isPlatformAdmin, isStoreAdmin, isOperationalStaff, hasPermission } = require('../config/permissions');
+const {
+  isPlatformAdmin,
+  isStoreAdmin,
+  isOperationalStaff,
+  hasPermission,
+  requiresIdentityVerification
+} = require('../config/permissions');
 const { canAccessStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
 const { attachStoreRolePolicy } = require('./rolePermissionService');
@@ -22,7 +28,7 @@ const authenticateSocket = async (socket, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.id).select('+identityVerification');
       if (!user || !user.isActive || user.isDeleted) return next(new Error('Authentication failed'));
-      if (user.identityVerification?.status !== 'verified') {
+      if (requiresIdentityVerification(user)) {
         return next(new Error('Identity verification required'));
       }
       if (requiresPlatformVerification(user) && getProfessionalVerificationStatus(user) !== 'verified') {

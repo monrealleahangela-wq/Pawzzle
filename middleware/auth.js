@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const {
   hasPermission, getEffectivePermissions, normalizeRole,
-  isPlatformAdmin, isStoreAdmin, isOperationalStaff
+  isPlatformAdmin, isStoreAdmin, isOperationalStaff, requiresIdentityVerification
 } = require('../config/permissions');
 const { attachStoreRolePolicy } = require('../services/rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
@@ -41,7 +41,7 @@ const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
-    if (!hasVerifiedIdentity(user) && !isIdentityRecoveryRoute(req)) {
+    if (requiresIdentityVerification(user) && !isIdentityRecoveryRoute(req)) {
       return res.status(403).json({
         message: 'Verify your government ID and complete the live face match before using Pawzzle features.',
         code: 'IDENTITY_VERIFICATION_REQUIRED',

@@ -36,3 +36,17 @@ test('allows protected features after identity verification', () => {
   renderProtected();
   expect(screen.getByText('Protected orders')).toBeVisible();
 });
+
+test.each(['super_admin', 'platform_admin'])(
+  'allows an unverified %s to use protected platform administration features',
+  role => {
+    mockAuthState = {
+      isAuthenticated: true,
+      loading: false,
+      user: { role, identityVerificationStatus: null }
+    };
+    renderProtected();
+    expect(screen.getByText('Protected orders')).toBeVisible();
+    expect(screen.queryByText('Identity verification required')).not.toBeInTheDocument();
+  }
+);
