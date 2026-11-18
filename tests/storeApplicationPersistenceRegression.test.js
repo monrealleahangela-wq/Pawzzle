@@ -7,6 +7,7 @@ const {
   applicationValidationErrors,
   appendApplicationReviewEvent,
   buildApplicationData,
+  buildApplicationDocumentReview,
   buildOriginalApplicationSelector,
   buildResubmissionUpdateFilter,
   resetApplicationReviewState,
@@ -58,6 +59,50 @@ test('approved permit and barangay expiry dates seed compliance monitoring', () 
   const controller = read('controllers/storeApplicationController.js');
   assert.match(controller, /requirementKey: 'mayors_permit'[\s\S]*?expirationDate: application\.businessLicense\?\.expiryDate/);
   assert.match(controller, /requirementKey: 'barangay_clearance'[\s\S]*?expirationDate: application\.barangayClearance\?\.expiryDate/);
+});
+
+test('document assessment remains advisory and detects mismatched or expired evidence', () => {
+  const data = buildApplicationData(body(), '64b000000000000000000001');
+  data.registeredBusinessName = 'Pawzzle Store OPC';
+  data.businessRegistration.registeredName = 'Different Store';
+  data.businessLicense.expiryDate = '2026-01-01';
+  const review = buildApplicationDocumentReview(data, {}, new Date('2026-11-19T00:00:00.000Z'));
+  assert.equal(review.status, 'needs_attention');
+  assert.equal(review.manualApprovalRequired, true);
+  assert.ok(review.checks.some(check => check.status === 'mismatch'));
+  assert.ok(review.checks.some(check => check.status === 'expired'));
+});
+
+test('document assessment persists safe suggested values and discrepancy notes for admin review', () => {
+  const data = buildApplicationData(body(), '64b000000000000000000001');
+  const review = buildApplicationDocumentReview(data, {
+    businessRegistration: {
+      status: 'review',
+      fields: { 'businessRegistration.certificateNumber': 'SEC-123' },
+      issues: [{ status: 'mismatch', field: 'businessRegistration.registeredName' }]
+    }
+  });
+  assert.deepEqual(review.extractedInformation[0], {
+    documentKey: 'businessRegistration',
+    field: 'businessRegistration.certificateNumber',
+    label: 'Registration number',
+    value: 'SEC-123'
+  });
+  assert.ok(review.checks.some(check => check.status === 'mismatch'));
+  assert.equal(review.manualApprovalRequired, true);
+});
+
+test('draft endpoint and activity evidence are owner-authenticated but never auto-approved', () => {
+  const routes = read('routes/storeApplications.js');
+  const controller = read('controllers/storeApplicationController.js');
+  assert.match(routes, /router\.post\('\/draft', authenticate, upload\.fields\(applicationUploadFields\), saveApplicationDraft\)/);
+  assert.match(routes, /router\.patch\('\/my-application\/withdraw', authenticate, withdrawApplication\)/);
+  assert.match(controller, /applicationData\.status = 'draft'/);
+  assert.match(controller, /application\.status = 'withdrawn'/);
+  assert.match(controller, /application\.status = 'pending_review'/);
+  assert.match(controller, /manualApprovalRequired: true/);
+  assert.doesNotMatch(controller, /documentReview[\s\S]{0,200}status\s*=\s*'approved'/);
+  assert.match(controller, /activityDocuments[\s\S]*requiredForOperation: true/);
 });
 
 test('browser payload cannot assign workflow, ownership, review, or document URL fields', () => {

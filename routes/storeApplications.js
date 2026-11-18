@@ -4,6 +4,8 @@ const router = express.Router();
 
 const {
   submitApplication,
+  saveApplicationDraft,
+  withdrawApplication,
   getAllApplications,
   getApplicationById,
   reviewApplication,
@@ -66,13 +68,12 @@ const applicationValidation = [
 ];
 
 const reviewValidation = [
-  body('status').isIn(['approved', 'rejected', 'requires_more_info']).withMessage('Invalid status'),
+  body('status').isIn(['under_review', 'approved', 'rejected', 'requires_more_info']).withMessage('Invalid status'),
   body('reviewNotes').optional().trim(),
   body('rejectionReason').optional().trim()
 ];
 
-// Protected routes
-router.post('/', authenticate, upload.fields([
+const applicationUploadFields = [
   { name: 'licenseDocument', maxCount: 1 },
   { name: 'insuranceDocument', maxCount: 1 },
   { name: 'certificationDocuments', maxCount: 10 },
@@ -82,8 +83,16 @@ router.post('/', authenticate, upload.fields([
   { name: 'birRegistration', maxCount: 1 },
   { name: 'barangayClearance', maxCount: 1 },
   { name: 'storeLogo', maxCount: 1 },
-  { name: 'mayorsPermit', maxCount: 1 }
-]), submitApplication);
+  { name: 'storefrontPhotos', maxCount: 5 },
+  { name: 'mayorsPermit', maxCount: 1 },
+  { name: 'petActivityDocuments', maxCount: 5 },
+  { name: 'productActivityDocuments', maxCount: 5 },
+  { name: 'serviceActivityDocuments', maxCount: 5 }
+];
+
+// Protected routes
+router.post('/', authenticate, upload.fields(applicationUploadFields), submitApplication);
+router.post('/draft', authenticate, upload.fields(applicationUploadFields), saveApplicationDraft);
 
 router.post(
   '/ocr/extract',
@@ -95,6 +104,7 @@ router.post(
 );
 
 router.get('/my-application', authenticate, getUserApplication);
+router.patch('/my-application/withdraw', authenticate, withdrawApplication);
 router.get('/compliance/my-store', authenticate, storeOwnerOnly, getMyCompliance);
 router.get('/compliance/my-store/documents/:requirementKey', authenticate, storeOwnerOnly, getCurrentComplianceDocument);
 router.post('/compliance/my-store/requests', authenticate, storeOwnerOnly, upload.fields([

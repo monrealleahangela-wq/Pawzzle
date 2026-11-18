@@ -38,6 +38,85 @@ const DOCUMENT_PROFILES = Object.freeze({
   ]
 });
 
+const FIELD_LABELS = Object.freeze({
+  'businessRegistration.certificateNumber': 'Registration number',
+  'businessRegistration.registeredName': 'Registered business name',
+  'businessRegistration.registrationDate': 'Registration date',
+  'businessRegistration.expirationDate': 'Registration expiration date',
+  'businessLicense.number': 'Business permit number',
+  'businessLicense.issuingAuthority': 'Permit issuing authority',
+  'businessLicense.issueDate': 'Business permit issue date',
+  'businessLicense.expiryDate': 'Business permit expiration date',
+  'barangayClearance.number': 'Barangay clearance number',
+  'barangayClearance.issuingBarangay': 'Issuing barangay',
+  'barangayClearance.issueDate': 'Barangay clearance issue date',
+  'barangayClearance.expiryDate': 'Barangay clearance expiration date',
+  'taxProfile.tin': 'Tax identification number',
+  'taxProfile.branchCode': 'BIR branch code',
+  'taxProfile.registeredName': 'BIR registered business name',
+  'taxProfile.lineOfBusiness': 'Registered line of business',
+  'taxProfile.declaredTaxStatus': 'Registered tax type'
+});
+
+const normalizedComparable = value => String(value || '')
+  .normalize('NFKD')
+  .toLowerCase()
+  .replace(/[^a-z0-9]/g, '');
+
+const extractionReview = (extraction, expectedValues = {}, now = new Date()) => {
+  const fields = extraction?.fields || {};
+  const issues = [];
+  const readFields = Object.keys(fields);
+
+  if (!readFields.length) {
+    issues.push({
+      status: 'unreadable',
+      label: 'Document readability',
+      message: 'No reliable details could be read. Upload a clearer image or enter the details manually.'
+    });
+  } else if (extraction.reviewRequired?.length) {
+    issues.push({
+      status: 'needs_review',
+      label: 'Document readability',
+      message: 'Some details could not be read clearly. Compare every suggested value with the document.'
+    });
+  }
+
+  for (const [field, result] of Object.entries(fields)) {
+    const expected = expectedValues?.[field];
+    if (!expected || !result?.value) continue;
+    if (normalizedComparable(expected) !== normalizedComparable(result.value)) {
+      issues.push({
+        status: 'mismatch',
+        field,
+        label: FIELD_LABELS[field] || 'Document information',
+        message: `${FIELD_LABELS[field] || 'A document value'} does not match the information currently entered.`
+      });
+    }
+  }
+
+  const expirationField = Object.keys(fields).find(field => /(?:expirationDate|expiryDate)$/.test(field));
+  if (expirationField) {
+    const expiration = new Date(`${fields[expirationField].value}T23:59:59.999Z`);
+    if (!Number.isNaN(expiration.getTime()) && expiration <= now) {
+      issues.push({
+        status: 'expired',
+        field: expirationField,
+        label: FIELD_LABELS[expirationField] || 'Document expiration date',
+        message: 'This document appears to be expired. Upload a current copy before submitting.'
+      });
+    }
+  }
+
+  return {
+    status: issues.length ? 'needs_attention' : 'ready_for_review',
+    message: issues.length
+      ? 'This document needs your attention before submission.'
+      : 'The readable details are ready for your review.',
+    issues
+  };
+};
+
 const matchesImageSignature = (buffer, mimeType) => {
   if (!Buffer.isBuffer(buffer)) return false;
   if (mimeType === 'image/jpeg') {
@@ -52,7 +131,7 @@ const matchesImageSignature = (buffer, mimeType) => {
 const getConfidenceThreshold = configured => {
   const value = Number(configured ?? process.env.STORE_DOCUMENT_OCR_CONFIDENCE_THRESHOLD ?? 85);
   if (!Number.isFinite(value) || value < 70 || value > 100) {
-    throw configurationError('Store document OCR configuration is invalid.', 'STORE_DOCUMENT_OCR_INVALID_THRESHOLD');
+    throw configurationError('The secure document check is not configured correctly.', 'STORE_DOCUMENT_OCR_INVALID_THRESHOLD');
   }
   return value;
 };
@@ -60,7 +139,7 @@ const getConfidenceThreshold = configured => {
 const createTextractClient = () => {
   const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
   if (!region) {
-    throw configurationError('Store document OCR is temporarily unavailable.', 'STORE_DOCUMENT_OCR_NOT_CONFIGURED');
+    throw configurationError('The secure document check is temporarily unavailable.', 'STORE_DOCUMENT_OCR_NOT_CONFIGURED');
   }
   return new TextractClient({ region });
 };
@@ -123,14 +202,14 @@ const mapTextractError = error => {
   if (['BadDocumentException', 'UnsupportedDocumentException', 'DocumentTooLargeException', 'InvalidParameterException'].includes(error?.name)) {
     return inputError('Use a clear, single-page JPG or PNG image of the document.', 'STORE_DOCUMENT_OCR_UNUSABLE_IMAGE');
   }
-  return configurationError('Store document OCR is temporarily unavailable.', 'STORE_DOCUMENT_OCR_UNAVAILABLE');
+  return configurationError('The secure document check is temporarily unavailable.', 'STORE_DOCUMENT_OCR_UNAVAILABLE');
 };
 
 const extractStoreDocument = async ({ documentType, buffer, mimeType }, options = {}) => {
   const profile = DOCUMENT_PROFILES[documentType];
   if (!profile) throw inputError('Select a supported store document type.', 'STORE_DOCUMENT_OCR_UNSUPPORTED_TYPE');
   if (!matchesImageSignature(buffer, mimeType)) {
-    throw inputError('OCR requires a valid JPG or PNG image.', 'STORE_DOCUMENT_OCR_INVALID_IMAGE');
+    throw inputError('Choose a valid JPG or PNG document image.', 'STORE_DOCUMENT_OCR_INVALID_IMAGE');
   }
   const threshold = getConfidenceThreshold(options.confidenceThreshold);
   const client = options.client || createTextractClient();
@@ -189,10 +268,12 @@ const extractStoreDocument = async ({ documentType, buffer, mimeType }, options 
 
 module.exports = {
   DOCUMENT_PROFILES,
+  FIELD_LABELS,
   matchesImageSignature,
   getConfidenceThreshold,
   normalizeDate,
   normalizeValue,
   queryResultsByAlias,
+  extractionReview,
   extractStoreDocument
 };

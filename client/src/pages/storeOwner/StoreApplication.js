@@ -20,6 +20,7 @@ import {
 import {
   applyStoreDocumentExtraction,
   canOcrStoreDocument,
+  expectedStoreDocumentValues,
   STORE_DOCUMENT_OCR_TYPES
 } from '../../utils/storeDocumentOcr';
 
@@ -44,7 +45,11 @@ const StoreApplication = () => {
     barangayClearance: null,
     mayorsPermit: null,
     storeLogo: null,
-    authorityDocument: null
+    authorityDocument: null,
+    storefrontPhotos: [],
+    petActivityDocuments: [],
+    productActivityDocuments: [],
+    serviceActivityDocuments: []
   });
 
   useEffect(() => {
@@ -138,7 +143,7 @@ const StoreApplication = () => {
     if (!canOcrStoreDocument(file)) {
       setDocumentOcr(prev => ({
         ...prev,
-        [fileType]: { status: 'unsupported', message: 'Auto-extraction supports JPG and PNG. Enter details manually for this file.' }
+        [fileType]: { status: 'unsupported', message: 'Secure document reading supports JPG and PNG. Enter details manually for this file.' }
       }));
       return;
     }
@@ -146,18 +151,25 @@ const StoreApplication = () => {
     ocrRequestIds.current[fileType] = requestId;
     setDocumentOcr(prev => ({ ...prev, [fileType]: { status: 'reading', message: 'Reading document securely...' } }));
     try {
-      const response = await storeApplicationService.extractDocument(file, documentType);
+      const response = await storeApplicationService.extractDocument(
+        file,
+        documentType,
+        expectedStoreDocumentValues(formData, documentType)
+      );
       if (ocrRequestIds.current[fileType] !== requestId) return;
       const extraction = response.data?.extraction;
       const fieldCount = Object.keys(extraction?.fields || {}).length;
       setFormData(prev => applyStoreDocumentExtraction(prev, extraction));
+      const review = extraction?.review;
       setDocumentOcr(prev => ({
         ...prev,
         [fileType]: {
-          status: fieldCount ? 'complete' : 'review',
-          message: fieldCount
-            ? `${fieldCount} field${fieldCount === 1 ? '' : 's'} extracted. Review the values before submitting.`
-            : 'No high-confidence fields were found. Enter the details manually.'
+          status: review?.status === 'needs_attention' ? 'review' : (fieldCount ? 'complete' : 'unreadable'),
+          message: review?.message || (fieldCount
+            ? `${fieldCount} field${fieldCount === 1 ? '' : 's'} suggested. Review the values before submitting.`
+            : 'The document could not be read clearly. Enter the details manually.'),
+          issues: review?.issues || [],
+          fields: Object.fromEntries(Object.entries(extraction?.fields || {}).map(([field, result]) => [field, result?.value || '']))
         }
       }));
       if (fieldCount) toast.success(`${fieldCount} document field${fieldCount === 1 ? '' : 's'} extracted for review.`);
@@ -167,9 +179,63 @@ const StoreApplication = () => {
         ...prev,
         [fileType]: {
           status: 'error',
-          message: error.response?.data?.message || 'Auto-extraction was unavailable. Enter the details manually.'
+          message: error.response?.data?.message || 'The secure document check was unavailable. Enter the details manually.'
         }
       }));
+    }
+  };
+
+  const handleMultipleFiles = (fileType, selectedFiles) => {
+    const nextFiles = Array.from(selectedFiles || []).slice(0, 5);
+    setFiles(prev => ({ ...prev, [fileType]: nextFiles }));
+    if (nextFiles.length) setFieldErrors(prev => {
+      if (!prev[fileType]) return prev;
+      const next = { ...prev };
+      delete next[fileType];
+      return next;
+    });
+  };
+
+  const buildMultipartApplication = () => {
+    const payload = new FormData();
+    Object.keys(formData).forEach(key => {
+      if (typeof formData[key] === 'object') payload.append(key, JSON.stringify(formData[key]));
+      else payload.append(key, formData[key]);
+    });
+    payload.append('documentReview', JSON.stringify(documentOcr));
+    Object.entries(files).forEach(([field, value]) => {
+      if (Array.isArray(value)) value.forEach(file => payload.append(field, file));
+      else if (value) payload.append(field, value);
+    });
+    return payload;
+  };
+
+  const handleSaveDraft = async () => {
+    setLoading(true);
+    try {
+      const response = await storeApplicationService.saveDraft(buildMultipartApplication());
+      const saved = response.data?.application;
+      setApplication(saved || null);
+      setDocumentAvailability(saved?.documentAvailability || documentAvailability);
+      toast.success('Draft saved. You can continue it at any time.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to save the draft.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!window.confirm('Withdraw this store application? It will no longer be reviewed.')) return;
+    setLoading(true);
+    try {
+      const response = await storeApplicationService.withdrawApplication();
+      setApplication(response.data?.application || application);
+      toast.success('Application withdrawn.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to withdraw the application.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -238,25 +304,7 @@ const StoreApplication = () => {
     if (!validateAndShowErrors()) return;
     setLoading(true);
     try {
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (typeof formData[key] === 'object') {
-          formDataToSend.append(key, JSON.stringify(formData[key]));
-        } else {
-          formDataToSend.append(key, formData[key]);
-        }
-      });
-
-      if (files.licenseDocument) formDataToSend.append('licenseDocument', files.licenseDocument);
-      if (files.governmentId) formDataToSend.append('governmentId', files.governmentId);
-      if (files.businessRegistration) formDataToSend.append('businessRegistration', files.businessRegistration);
-      if (files.birRegistration) formDataToSend.append('birRegistration', files.birRegistration);
-      if (files.barangayClearance) formDataToSend.append('barangayClearance', files.barangayClearance);
-      if (files.mayorsPermit) formDataToSend.append('mayorsPermit', files.mayorsPermit);
-      if (files.storeLogo) formDataToSend.append('storeLogo', files.storeLogo);
-      if (files.authorityDocument) formDataToSend.append('authorityDocument', files.authorityDocument);
-
-      const response = await storeApplicationService.submitApplication(formDataToSend);
+      const response = await storeApplicationService.submitApplication(buildMultipartApplication());
       toast.success('Application submitted successfully!');
       setApplication(response.data?.application || null);
       setDocumentAvailability(response.data?.application?.documentAvailability || documentAvailability);
@@ -281,10 +329,23 @@ const StoreApplication = () => {
       approved: 'bg-emerald-100 text-emerald-800',
       rejected: 'bg-rose-100 text-rose-800',
       requires_more_info: 'bg-secondary-100 text-orange-800',
+      withdrawn: 'bg-slate-200 text-slate-700',
       expansion_pending: 'bg-slate-900 text-white'
     };
     return colors[status] || 'bg-slate-100 text-slate-800';
   };
+
+  const getStatusLabel = status => ({
+    draft: 'Draft',
+    submitted: 'Processing',
+    pending_review: 'Pending Review',
+    under_review: 'Under Review',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    requires_more_info: 'Corrections required',
+    withdrawn: 'Withdrawn',
+    expansion_pending: 'Expansion processing'
+  }[status] || String(status || '').replace(/_/g, ' '));
 
   const handleReapply = () => {
     if (!application) return;
@@ -320,12 +381,13 @@ const StoreApplication = () => {
             <p className="text-slate-400 font-bold text-[8px] uppercase tracking-widest leading-none mt-1">Ref: {application._id}</p>
           </div>
           <span className={`relative z-10 px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] shadow-sm ${getStatusColor(application.status)}`}>
-            {application.status.replace('_', ' ')}
+            {getStatusLabel(application.status)}
           </span>
         </div>
 
         <div className="bg-white rounded-[2rem] p-6 space-y-6 shadow-xl border border-slate-100">
           <StoreApplicationProfileDetails application={application} />
+          {application.documentReview?.checks?.length > 0 && <section className={`rounded-2xl border p-5 ${application.documentReview.status === 'needs_attention' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Document review notes</h3><p className="mt-1 text-[10px] font-medium text-slate-600">These notes help you prepare the application. Final approval always comes from a Platform Administrator.</p><div className="mt-3 space-y-2">{application.documentReview.checks.map((check, index) => <div key={`${check.documentKey}-${index}`} className="rounded-xl bg-white/80 p-3"><span className="text-[8px] font-black uppercase tracking-wider text-slate-500">{check.label}</span><p className={`mt-1 text-[9px] font-bold ${check.status === 'complete' ? 'text-emerald-700' : 'text-amber-800'}`}>{check.message}</p></div>)}</div></section>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -345,7 +407,7 @@ const StoreApplication = () => {
 
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Classification', value: application.businessType.replace('_', ' '), icon: Briefcase },
+                { label: 'Classification', value: application.businessType?.replace(/_/g, ' ') || 'Not selected yet', icon: Briefcase },
                 { label: 'Trust Index', value: `${application.verificationScore}%`, icon: Shield, color: application.verificationScore >= 85 ? 'text-emerald-600' : 'text-primary-600' },
                 { label: 'Frequency', value: `${application.yearsInBusiness || 0} Years`, icon: Check },
                 { label: 'Employees', value: application.numberOfEmployees || 1, icon: Users }
@@ -426,6 +488,12 @@ const StoreApplication = () => {
                  </div>
                )}
             </div>
+          )}
+
+          {['submitted', 'pending_review', 'under_review', 'requires_more_info'].includes(application.status) && (
+            <button type="button" onClick={handleWithdraw} disabled={loading} className="w-full rounded-xl border border-rose-200 px-5 py-3 text-[9px] font-black uppercase tracking-wider text-rose-700 transition hover:bg-rose-50 disabled:opacity-50">
+              Withdraw application
+            </button>
           )}
 
           <div className="space-y-6 pt-10 border-t border-slate-50">
@@ -1060,6 +1128,18 @@ const StoreApplication = () => {
                 </>}
               </div>
             </section>
+            <section data-field="storefrontPhotos" className={`md:col-span-2 rounded-2xl border p-5 ${fieldErrors.storefrontPhotos ? 'border-rose-300 bg-rose-50' : 'border-slate-100 bg-white'}`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><h3 className="text-base font-black text-slate-900">Storefront photos <span className="store-field-label__status">Required</span></h3><p className="mt-1 text-xs text-slate-600">Upload at least two current photos showing the entrance and operating area. You may replace all selected photos before saving.</p></div>
+                <label className="cursor-pointer rounded-xl bg-slate-900 px-5 py-3 text-[9px] font-black uppercase tracking-widest text-white hover:bg-primary-700">
+                  Choose photos
+                  <input aria-label="Storefront photos" type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={(event) => handleMultipleFiles('storefrontPhotos', event.target.files)} />
+                </label>
+              </div>
+              {documentAvailability.storefrontPhotos > 0 && !files.storefrontPhotos.length && <p className="mt-3 text-xs font-bold text-emerald-700">{documentAvailability.storefrontPhotos} saved storefront photo{documentAvailability.storefrontPhotos === 1 ? '' : 's'} retained.</p>}
+              {!!files.storefrontPhotos.length && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">{files.storefrontPhotos.map((file, index) => <figure key={`${file.name}-${file.lastModified}`} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"><img src={URL.createObjectURL(file)} alt={`Storefront preview ${index + 1}`} className="h-24 w-full object-cover" /><figcaption className="truncate px-2 py-1 text-[8px] font-bold text-slate-600">{file.name}</figcaption></figure>)}</div>}
+              {fieldErrors.storefrontPhotos && <p className="mt-3 text-xs font-bold text-rose-700">{fieldErrors.storefrontPhotos}</p>}
+            </section>
           </div>
         )}
 
@@ -1067,7 +1147,7 @@ const StoreApplication = () => {
           <div data-step="4" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
             <div className="store-field-note" role="note">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Upload clear and readable copies of your business documents. Selecting a JPG or PNG sends that image to AWS Textract to suggest form values; review and correct every suggestion before submitting. PDFs and Word files remain manual-entry uploads.</span>
+              <span>Upload clear and readable copies of your business documents. Eligible images are checked securely to suggest form values and identify details that need attention. Review and correct every suggestion before submitting. A Platform Administrator always makes the final decision.</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-6">
@@ -1075,9 +1155,9 @@ const StoreApplication = () => {
                 <div className="space-y-4">
                     { [
                       { id: 'businessRegistration', label: 'DTI / SEC Certificate', required: true },
-                      { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: false },
+                      { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: true },
                       { id: 'birRegistration', label: 'BIR Form 2303', required: formData.taxProfile.birRegistrationStatus === 'registered' },
-                      { id: 'barangayClearance', label: 'Barangay Clearance', required: false }
+                      { id: 'barangayClearance', label: 'Barangay Clearance', required: true }
                     ].map((doc) => (
                       <div key={doc.id} className={`p-4 rounded-2xl border flex items-center justify-between group transition-all ${isFieldBroken(doc.id) ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100 hover:border-primary-200'}`}>
                         <div className="flex items-center gap-3">
@@ -1087,6 +1167,7 @@ const StoreApplication = () => {
                           <div>
                             <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{doc.label} {doc.required ? '*' : '(optional)'}</p>
                             {documentAvailability[doc.id] && !files[doc.id] && <p className="text-[8px] font-bold text-emerald-700">Saved document retained</p>}
+                            {files[doc.id] && <p className="max-w-[220px] truncate text-[8px] font-bold text-emerald-700">{files[doc.id].name}</p>}
                             {isFieldBroken(doc.id) && <p className="text-[9px] text-rose-600 font-black mt-0.5">Please upload a corrected copy.</p>}
                             {documentOcr[doc.id] && <p aria-live="polite" className={`mt-1 max-w-[240px] text-[9px] font-bold leading-4 ${documentOcr[doc.id].status === 'error' ? 'text-rose-600' : documentOcr[doc.id].status === 'reading' ? 'text-primary-700' : 'text-slate-500'}`}>{documentOcr[doc.id].message}</p>}
                           </div>
@@ -1098,8 +1179,23 @@ const StoreApplication = () => {
                       </div>
                     ))}
                 </div>
+                <div className="space-y-3 rounded-2xl border border-primary-100 bg-primary-50 p-4">
+                  <div><h4 className="text-xs font-black text-slate-900">Activity-specific permits and licenses</h4><p className="mt-1 text-[10px] leading-4 text-slate-600">Each selected business activity needs supporting regulatory evidence. You may upload multiple files and replace the selected group before saving.</p></div>
+                  {[
+                    { activity: 'pets', field: 'petActivityDocuments', label: 'Animal activity permit or registration' },
+                    { activity: 'products', field: 'productActivityDocuments', label: 'Product distribution or regulatory permit' },
+                    { activity: 'services', field: 'serviceActivityDocuments', label: 'Service or professional operating permit' }
+                  ].filter(item => formData.operationalModules.includes(item.activity)).map(item => (
+                    <div key={item.field} data-field={item.field} className={`rounded-xl border bg-white p-3 ${fieldErrors[item.field] ? 'border-rose-300' : 'border-slate-100'}`}>
+                      <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-wider text-slate-700">{item.label} *</p>{documentAvailability[item.field] > 0 && !files[item.field].length && <p className="text-[8px] font-bold text-emerald-700">{documentAvailability[item.field]} saved file{documentAvailability[item.field] === 1 ? '' : 's'} retained</p>}</div><label className="shrink-0 cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-[8px] font-black uppercase text-primary-700 hover:bg-primary-700 hover:text-white">Choose files<input aria-label={item.label} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={(event) => handleFileChange(item.field, Array.from(event.target.files || []).slice(0, 5))} /></label></div>
+                      {!!files[item.field].length && <div className="mt-2 grid grid-cols-2 gap-2">{files[item.field].map(file => <div key={`${file.name}-${file.lastModified}`} className="overflow-hidden rounded-lg border border-slate-100 bg-slate-50">{file.type.startsWith('image/') && <img src={URL.createObjectURL(file)} alt={`${item.label} preview`} className="h-16 w-full object-cover" />}<p className="truncate px-2 py-1 text-[8px] font-bold text-slate-500">{file.name}</p></div>)}</div>}
+                      <div className="mt-3 grid grid-cols-2 gap-2"><label className="text-[8px] font-black uppercase text-slate-500">Issue date<input type="date" className="input-premium mt-1 !py-2" value={formData.activityDocumentDetails[item.activity]?.issueDate || ''} onChange={(event) => handleChange(`activityDocumentDetails.${item.activity}.issueDate`, event.target.value)} /></label><label className="text-[8px] font-black uppercase text-slate-500">Expiration date<input type="date" className="input-premium mt-1 !py-2" value={formData.activityDocumentDetails[item.activity]?.expiryDate || ''} onChange={(event) => handleChange(`activityDocumentDetails.${item.activity}.expiryDate`, event.target.value)} /></label></div>
+                      {fieldErrors[item.field] && <p className="mt-2 text-[9px] font-bold text-rose-700">{fieldErrors[item.field]}</p>}
+                    </div>
+                  ))}
+                </div>
                 <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4">
-                  <div><h4 className="text-xs font-black text-slate-900">Mayor's / business permit details</h4><p className="mt-1 text-[10px] text-slate-500">Auto-filled when readable. Leave blank only when no permit was uploaded.</p></div>
+                  <div><h4 className="text-xs font-black text-slate-900">Mayor's / business permit details</h4><p className="mt-1 text-[10px] text-slate-500">Suggested when readable. Confirm every value against the uploaded permit.</p></div>
                   <label className="store-field-label">Permit number<input className="input-premium mt-2" value={formData.businessLicense.number} onChange={(e) => handleChange('businessLicense.number', e.target.value)} /></label>
                   <label className="store-field-label">Issuing city, municipality, or authority<input className="input-premium mt-2" value={formData.businessLicense.issuingAuthority} onChange={(e) => handleChange('businessLicense.issuingAuthority', e.target.value)} /></label>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="store-field-label">Issue date<input type="date" className="input-premium mt-2" value={formData.businessLicense.issueDate} onChange={(e) => handleChange('businessLicense.issueDate', e.target.value)} /></label><label className="store-field-label">Expiration date<input type="date" className="input-premium mt-2" value={formData.businessLicense.expiryDate} onChange={(e) => handleChange('businessLicense.expiryDate', e.target.value)} /></label></div>
@@ -1171,6 +1267,11 @@ const StoreApplication = () => {
             </div>
 
             <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h4 className="text-sm font-black text-slate-900">Document review</h4>
+                <p className="mt-1 text-[10px] leading-4 text-slate-500">These automated checks only help identify items to review. A Platform Administrator always makes the final approval decision.</p>
+                {Object.keys(documentOcr).length ? <ul className="mt-3 space-y-2">{Object.values(documentOcr).map((result, index) => <li key={index} className={`rounded-lg px-3 py-2 text-[9px] font-bold ${['review', 'unreadable', 'error'].includes(result.status) ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{result.message}</li>)}</ul> : <p className="mt-3 text-[9px] font-bold text-slate-500">Uploaded image documents will show their review notes here.</p>}
+              </div>
               <h3 className="text-base font-black text-slate-900">Final review and declaration</h3>
               <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information I provided is accurate and matches my uploaded documents. I understand that Pawzzle administrators will verify these details before approving the store.</p>
               <label className="store-field-label">Your full legal name <span className="store-field-label__status">Required</span><input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-2 bg-white" placeholder="Enter your full legal name as your signature" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
@@ -1183,20 +1284,19 @@ const StoreApplication = () => {
               </label>
             </div>
 
-            <button 
-              type={user.role === 'admin' ? 'button' : 'submit'}
-              onClick={user.role === 'admin' ? handleExpansionRequest : undefined}
-              disabled={loading} 
-              className="w-full py-6 bg-primary-600 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.4em] hover:bg-slate-900 transition-all shadow-2xl shadow-primary-200 disabled:opacity-50 active:scale-95"
-            >
-              {loading ? 'Submitting application...' : user.role === 'admin' ? 'Submit expansion request' : 'Submit application for review'}
-            </button>
+            <div className="grid gap-3 sm:grid-cols-[0.35fr_1fr]">
+              {user.role !== 'admin' && <button type="button" onClick={handleSaveDraft} disabled={loading} className="rounded-[2rem] border border-slate-200 bg-white py-5 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:border-primary-400 hover:text-primary-700 disabled:opacity-50">Save as draft</button>}
+              <button type={user.role === 'admin' ? 'button' : 'submit'} onClick={user.role === 'admin' ? handleExpansionRequest : undefined} disabled={loading} className="rounded-[2rem] bg-primary-600 py-6 text-xs font-black uppercase tracking-[0.3em] text-white shadow-2xl shadow-primary-200 transition-all hover:bg-slate-900 disabled:opacity-50 active:scale-95">
+                {loading ? 'Saving...' : user.role === 'admin' ? 'Submit expansion request' : 'Submit application for review'}
+              </button>
+            </div>
           </div>
         )}
 
         {currentStep > 0 && (
           <div className="store-application-navigation flex items-center justify-between rounded-2xl border border-slate-100 bg-white/90 p-1.5 shadow-sm backdrop-blur-md sm:rounded-full sm:p-2">
             <button type="button" onClick={() => setCurrentStep(prev => prev - 1)} className="store-application-navigation__back h-11 rounded-xl px-4 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all hover:bg-slate-50 sm:h-12 sm:rounded-full sm:px-8">Back</button>
+            {user.role !== 'admin' && <button type="button" onClick={handleSaveDraft} disabled={loading} className="hidden rounded-full border border-slate-200 px-4 py-3 text-[8px] font-black uppercase tracking-wider text-slate-600 hover:border-primary-300 hover:text-primary-700 disabled:opacity-50 sm:block">Save draft</button>}
             <div className="store-application-navigation__steps flex gap-1.5 sm:gap-2">
               {[0, 1, 2, 3, 4, 5].map(s => <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${currentStep === s ? 'bg-primary-600 w-6' : 'bg-slate-200'}`} />)}
             </div>

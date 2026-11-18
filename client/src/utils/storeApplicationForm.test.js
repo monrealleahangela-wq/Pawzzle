@@ -46,7 +46,13 @@ test('hydrates every nested edit section while retaining safe defaults', () => {
 
 test('valid application accepts retained registration evidence without a replacement upload', () => {
   expect(validateStoreApplicationForm(complete(), {
-    files: {}, documentAvailability: { businessRegistration: true }
+    files: {}, documentAvailability: {
+      businessRegistration: true,
+      mayorsPermit: true,
+      barangayClearance: true,
+      storefrontPhotos: 2,
+      productActivityDocuments: 1
+    }
   })).toEqual({});
 });
 
@@ -54,7 +60,7 @@ test('missing fields map to the correct visible step', () => {
   const data = complete();
   data.businessName = '';
   data.contactInfo.address.coordinates = { lat: '', lng: '' };
-  const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true } });
+  const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true, storefrontPhotos: 2, productActivityDocuments: 1 } });
   expect(errors.businessName).toMatch(/required/i);
   expect(errors['contactInfo.address.coordinates']).toMatch(/location/i);
   expect(firstInvalidStep(errors)).toBe(1);
@@ -68,5 +74,11 @@ test('editing a saved application preserves document requirements and reference 
   });
   hydrated.declaration.accepted = true;
   expect(hydrated.references[1].email).toBe('two@example.com');
-  expect(validateStoreApplicationForm(hydrated, { documentAvailability: { businessRegistration: true } })).toEqual({});
+  expect(validateStoreApplicationForm(hydrated, { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true, storefrontPhotos: 2, productActivityDocuments: 1 } })).toEqual({});
+});
+
+test('selected business activities require matching evidence and storefront photos', () => {
+  const errors = validateStoreApplicationForm(complete(), { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true } });
+  expect(errors.storefrontPhotos).toMatch(/two storefront photos/i);
+  expect(errors.productActivityDocuments).toMatch(/product distribution/i);
 });

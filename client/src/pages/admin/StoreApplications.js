@@ -39,6 +39,10 @@ const StoreApplications = () => {
     { id: 'licenseDocument', label: 'Mayor\'s Permit' },
     { id: 'birRegistration', label: 'BIR 2303' },
     { id: 'barangayClearance', label: 'Brgy Clearance' },
+    { id: 'storefrontPhotos', label: 'Storefront Photos' },
+    { id: 'petActivityDocuments', label: 'Animal Activity Permit' },
+    { id: 'productActivityDocuments', label: 'Product Regulatory Permit' },
+    { id: 'serviceActivityDocuments', label: 'Service Operating Permit' },
     { id: 'address', label: 'Address' },
     { id: 'paymentInfo', label: 'Payment/Bank' },
     { id: 'references', label: 'References' }
@@ -147,10 +151,14 @@ const StoreApplications = () => {
   const getStatusProps = (status) => {
     const props = {
       pending: { color: 'primary', label: 'Under Review' },
+      draft: { color: 'slate', label: 'Draft' },
+      submitted: { color: 'amber', label: 'Processing' },
+      pending_review: { color: 'amber', label: 'Pending Review' },
       under_review: { color: 'primary', label: 'Under Review' },
       approved: { color: 'emerald', label: 'Approved' },
       rejected: { color: 'rose', label: 'Rejected' },
-      requires_more_info: { color: 'blue', label: 'Need Info' },
+      requires_more_info: { color: 'blue', label: 'Needs Revision' },
+      withdrawn: { color: 'slate', label: 'Withdrawn' },
       expansion_pending: { color: 'amber', label: 'Expansion' }
     };
     return props[status] || { color: 'slate', label: 'UNKNOWN' };
@@ -209,8 +217,10 @@ const StoreApplications = () => {
              >
                 <option value="" className="bg-slate-900 text-white font-black">ALL STATUSES</option>
                  <option value="pending" className="bg-slate-900 text-white font-black">PENDING</option>
+                 <option value="pending_review" className="bg-slate-900 text-white font-black">PENDING REVIEW</option>
                  <option value="under_review" className="bg-slate-900 text-white font-black">UNDER REVIEW</option>
                  <option value="requires_more_info" className="bg-slate-900 text-white font-black">NEED INFO</option>
+                 <option value="withdrawn" className="bg-slate-900 text-white font-black">WITHDRAWN</option>
                  <option value="approved" className="bg-slate-900 text-white font-black">APPROVED</option>
                  <option value="rejected" className="bg-slate-900 text-white font-black">REJECTED</option>
              </select>
@@ -543,7 +553,14 @@ const StoreApplications = () => {
                     <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-2">
                        Verification Documents
                     </h3>
+                    <div className={`mb-6 rounded-2xl border p-5 ${selectedApplication.documentReview?.status === 'needs_attention' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
+                      <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><div><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Automated document review</h4><p className="mt-1 text-[9px] font-bold text-slate-600">These checks only assist review. A Platform Administrator must inspect the original files and make the final decision.</p></div></div>
+                      <div className="mt-4 space-y-2">{(selectedApplication.documentReview?.checks || []).map((check, index) => <div key={`${check.documentKey}-${index}`} className="rounded-xl bg-white/80 p-3"><span className="text-[8px] font-black uppercase tracking-wider text-slate-500">{check.label}</span><p className={`mt-1 text-[9px] font-bold ${check.status === 'complete' ? 'text-emerald-700' : 'text-amber-800'}`}>{check.message}</p></div>)}</div>
+                      {!!selectedApplication.documentReview?.extractedInformation?.length && <div className="mt-4 rounded-xl bg-white/80 p-4"><h5 className="text-[8px] font-black uppercase tracking-widest text-slate-500">Suggested document details</h5><dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{selectedApplication.documentReview.extractedInformation.map((item, index) => <div key={`${item.documentKey}-${item.field}-${index}`} className="rounded-lg border border-slate-100 p-2"><dt className="text-[7px] font-black uppercase text-slate-400">{item.label}</dt><dd className="mt-1 break-words text-[9px] font-bold text-slate-800">{item.value}</dd></div>)}</dl></div>}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {(selectedApplication.storefrontPhotoUrls || []).map((url, index) => <a key={`storefront-${index}`} href={getImageUrl(url)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-6 hover:border-primary-500"><div className="flex items-center gap-4"><Camera className="h-5 w-5 text-primary-600" /><div><p className="text-[10px] font-black uppercase text-slate-900">Storefront photo {index + 1}</p><p className="text-[8px] font-bold uppercase text-slate-400">Location evidence</p></div></div><ExternalLink className="h-4 w-4 text-slate-300" /></a>)}
+                      {(selectedApplication.activityDocuments || []).map((document, index) => document.documentUrl && <a key={`activity-${index}`} href={getImageUrl(document.documentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-6 hover:border-primary-500"><div className="flex items-center gap-4"><Briefcase className="h-5 w-5 text-primary-600" /><div><p className="text-[10px] font-black uppercase text-slate-900">{document.label}</p><p className="text-[8px] font-bold uppercase text-slate-400">{document.activity} supporting file</p></div></div><ExternalLink className="h-4 w-4 text-slate-300" /></a>)}
                       {/* Mayor's Permit */}
                       {selectedApplication.mayorsPermitUrl && (
                         <a 
@@ -773,6 +790,7 @@ const StoreApplications = () => {
                       </div>
                     </div>
 
+                    {selectedApplication.status === 'pending_review' && <button onClick={() => handleReview(selectedApplication._id, 'under_review', 'A Platform Administrator started reviewing this application.')} className="mb-2 w-full rounded-xl border border-primary-200 bg-primary-50 py-3 text-[9px] font-black uppercase tracking-wider text-primary-800 hover:bg-primary-100">Start review</button>}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <button
                         onClick={() => handleReview(selectedApplication._id, 'approved', reviewForm.reviewNotes)}
@@ -786,7 +804,12 @@ const StoreApplications = () => {
                             toast.warning('Please select at least one field requiring correction');
                             return;
                           }
-                          handleReview(selectedApplication._id, 'requires_more_info', reviewForm.reviewNotes, '', reviewForm.requiredCorrections);
+                          const revisionReason = reviewForm.reviewNotes || reviewForm.rejectionReason;
+                          if (!revisionReason) {
+                            toast.warning('Please explain what the applicant must revise');
+                            return;
+                          }
+                          handleReview(selectedApplication._id, 'requires_more_info', revisionReason, '', reviewForm.requiredCorrections);
                         }}
                         className="py-3.5 bg-secondary-500 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] hover:bg-primary-600 transition-all shadow-sm flex items-center justify-center gap-2"
                       >

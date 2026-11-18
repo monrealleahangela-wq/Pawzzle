@@ -19,6 +19,11 @@ export const createStoreApplicationForm = user => ({
   supplierNeeds: false,
   inventoryPlans: '',
   productCategories: [],
+  activityDocumentDetails: {
+    pets: { issueDate: '', expiryDate: '' },
+    products: { issueDate: '', expiryDate: '' },
+    services: { issueDate: '', expiryDate: '' }
+  },
   businessName: '',
   tradeName: '',
   registeredBusinessName: '',
@@ -84,6 +89,11 @@ export const hydrateStoreApplicationForm = (application, user) => {
   const alternativePaymentMethod = paymentInfo.alternativePaymentMethod || {};
   const representative = application?.representative || {};
   const staffing = application?.staffingConfiguration || {};
+  const activityDocuments = application?.activityDocuments || [];
+  const activityDocumentDetails = Object.fromEntries(['pets', 'products', 'services'].map(activity => {
+    const document = activityDocuments.find(item => item.activity === activity) || {};
+    return [activity, { issueDate: dateInputValue(document.issueDate), expiryDate: dateInputValue(document.expiryDate) }];
+  }));
 
   return {
     ...defaults,
@@ -94,6 +104,7 @@ export const hydrateStoreApplicationForm = (application, user) => {
     supplierNeeds: application?.supplierNeeds ?? defaults.supplierNeeds,
     inventoryPlans: application?.inventoryPlans || '',
     productCategories: application?.productCategories || [],
+    activityDocumentDetails: { ...defaults.activityDocumentDetails, ...activityDocumentDetails },
     businessName: application?.businessName || '',
     tradeName: application?.tradeName || application?.businessName || '',
     registeredBusinessName: application?.registeredBusinessName || registration.registeredName || '',
@@ -175,6 +186,7 @@ export const STORE_APPLICATION_FIELD_STEPS = {
   'contactInfo.address.province': 3,
   'contactInfo.address.zipCode': 3,
   'contactInfo.address.coordinates': 3,
+  storefrontPhotos: 3,
   'businessRegistration.authority': 3,
   'businessRegistration.certificateNumber': 3,
   'businessRegistration.registeredName': 3,
@@ -191,6 +203,11 @@ export const STORE_APPLICATION_FIELD_STEPS = {
   'taxProfile.declaredTaxStatus': 3,
   businessRegistration: 4,
   birRegistration: 4,
+  mayorsPermit: 4,
+  barangayClearance: 4,
+  petActivityDocuments: 4,
+  productActivityDocuments: 4,
+  serviceActivityDocuments: 4,
   references: 5,
   'declaration.applicantName': 5,
   'declaration.accepted': 5
@@ -244,6 +261,27 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
   }
   if (!files.businessRegistration && !documentAvailability.businessRegistration) {
     errors.businessRegistration = 'Business registration document is required.';
+  }
+  if (!files.mayorsPermit && !documentAvailability.mayorsPermit) {
+    errors.mayorsPermit = "Mayor's or business permit is required.";
+  }
+  if (!files.barangayClearance && !documentAvailability.barangayClearance) {
+    errors.barangayClearance = 'Barangay clearance is required.';
+  }
+  const storefrontPhotos = Array.isArray(files.storefrontPhotos) ? files.storefrontPhotos.length : 0;
+  if (storefrontPhotos + Number(documentAvailability.storefrontPhotos || 0) < 2) {
+    errors.storefrontPhotos = 'Upload at least two storefront photos.';
+  }
+  const activityDocumentFields = {
+    pets: ['petActivityDocuments', 'Animal activity permit or registration'],
+    products: ['productActivityDocuments', 'Product distribution or regulatory permit'],
+    services: ['serviceActivityDocuments', 'Service or professional operating permit']
+  };
+  for (const activity of data.operationalModules || []) {
+    const [field, label] = activityDocumentFields[activity] || [];
+    if (!field) continue;
+    const selected = Array.isArray(files[field]) ? files[field].length : 0;
+    if (selected + Number(documentAvailability[field] || 0) < 1) errors[field] = `${label} is required.`;
   }
   if (data.taxProfile?.birRegistrationStatus === 'registered') {
     for (const [field, value, message] of [

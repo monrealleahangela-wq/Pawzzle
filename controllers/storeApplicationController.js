@@ -8,6 +8,7 @@ const { createNotification } = require('./notificationController');
 const { uploadDoc, cloudinary } = require('../middleware/upload');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { isPlatformAdmin } = require('../config/permissions');
+const { FIELD_LABELS } = require('../utils/storeDocumentOcr');
 
 const BUSINESS_STRUCTURES = [
   'single_proprietorship', 'sole_proprietorship', 'one_person_corporation',
@@ -16,6 +17,11 @@ const BUSINESS_STRUCTURES = [
 const REGISTRATION_AUTHORITIES = ['dti', 'sec', 'cda', 'other'];
 const DECLARED_TAX_STATUSES = ['vat_registered', 'non_vat_registered'];
 const BUSINESS_TYPES = ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'];
+const ACTIVITY_DOCUMENTS = Object.freeze({
+  pets: { field: 'petActivityDocuments', label: 'Animal activity permit or registration' },
+  products: { field: 'productActivityDocuments', label: 'Product distribution or regulatory permit' },
+  services: { field: 'serviceActivityDocuments', label: 'Service or professional operating permit' }
+});
 
 const optionalInteger = (value, fallback) => {
   if (value === undefined || value === null || value === '') return fallback;
@@ -126,6 +132,18 @@ const applicationValidationErrors = (data, files = {}) => {
   required(registration.certificateNumber, 'businessRegistration.certificateNumber', 'Registration number is required.');
   required(registration.registeredName, 'businessRegistration.registeredName', 'Registered name is required.');
   if (!registration.documentUrl && !files.businessRegistration) errors.push({ field: 'businessRegistration', msg: 'Business registration document is required.' });
+  if (!data.mayorsPermitUrl && !files.mayorsPermit) errors.push({ field: 'mayorsPermit', msg: "Mayor's or business permit is required." });
+  if (!data.barangayClearanceUrl && !files.barangayClearance) errors.push({ field: 'barangayClearance', msg: 'Barangay clearance is required.' });
+  const storefrontPhotoCount = (data.storefrontPhotoUrls || []).length + (files.storefrontPhotos || []).length;
+  if (storefrontPhotoCount < 2) errors.push({ field: 'storefrontPhotos', msg: 'Upload at least two storefront photos.' });
+  for (const activity of data.operationalModules || []) {
+    const requirement = ACTIVITY_DOCUMENTS[activity];
+    if (!requirement) continue;
+    const retained = (data.activityDocuments || []).some(document => document.activity === activity && document.documentUrl);
+    if (!retained && !(files[requirement.field] || []).length) {
+      errors.push({ field: requirement.field, msg: `${requirement.label} is required for the selected activity.` });
+    }
+  }
 
   if (!['registered', 'not_registered', 'pending_registration'].includes(tax.birRegistrationStatus)) {
     errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'Select the current BIR registration status.' });
@@ -165,7 +183,8 @@ const applicationValidationErrors = (data, files = {}) => {
 
 const applicationQueryWithPrivateFields = query => query.select([
   '+taxProfile.tin', '+taxProfile.branchCode', '+taxProfile.corDocumentUrl',
-  '+businessRegistration.documentUrl', '+representative.authorityDocumentUrl'
+  '+businessRegistration.documentUrl', '+representative.authorityDocumentUrl',
+  '+storefrontPhotoUrls', '+activityDocuments.documentUrl'
 ].join(' '));
 
 const toApplicationResponse = (application, { includeDocuments = false, includeSensitiveFields = false } = {}) => {
@@ -180,7 +199,11 @@ const toApplicationResponse = (application, { includeDocuments = false, includeS
     birRegistration: Boolean(object.taxProfile?.corDocumentUrl || object.birRegistrationUrl),
     barangayClearance: Boolean(object.barangayClearanceUrl),
     storeLogo: Boolean(object.storeLogoUrl),
-    mayorsPermit: Boolean(object.mayorsPermitUrl)
+    mayorsPermit: Boolean(object.mayorsPermitUrl),
+    storefrontPhotos: Array.isArray(object.storefrontPhotoUrls) ? object.storefrontPhotoUrls.length : 0,
+    petActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'pets' && document.documentUrl).length,
+    productActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'products' && document.documentUrl).length,
+    serviceActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'services' && document.documentUrl).length
   };
   if (object.taxProfile) {
     object.taxProfile.tinMasked = maskTin(object.taxProfile.tin);
@@ -203,6 +226,8 @@ const toApplicationResponse = (application, { includeDocuments = false, includeS
     delete object.birRegistrationUrl;
     delete object.barangayClearanceUrl;
     delete object.mayorsPermitUrl;
+    delete object.storefrontPhotoUrls;
+    if (Array.isArray(object.activityDocuments)) object.activityDocuments.forEach(document => delete document.documentUrl);
   }
   return object;
 };
@@ -229,7 +254,8 @@ const buildApplicationData = (body, applicantId) => {
     staffTypes: safeParse(body.staffTypes),
     productCategories: safeParse(body.productCategories),
     paymentInfo: safeParse(body.paymentInfo),
-    productsOffered: safeParse(body.productsOffered)
+    productsOffered: safeParse(body.productsOffered),
+    activityDocumentDetails: safeParse(body.activityDocumentDetails)
   };
   const data = {
     applicant: applicantId,
@@ -260,7 +286,7 @@ const buildApplicationData = (body, applicantId) => {
     numberOfEmployees: optionalInteger(body.numberOfEmployees, 1),
     hasPhysicalStore: booleanValue(body.hasPhysicalStore, true)
   };
-  for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered']) {
+  for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered', 'activityDocumentDetails']) {
     if (parsed[key] !== undefined) data[key] = parsed[key];
   }
   for (const key of ['website']) {
@@ -281,6 +307,141 @@ const buildApplicationData = (body, applicantId) => {
   if (data.insurance) delete data.insurance.documentUrl;
   if (Array.isArray(data.certifications)) data.certifications.forEach(certification => delete certification.documentUrl);
   return data;
+};
+
+const uploadedUrl = file => file?.path || file?.secure_url;
+
+const mergeUploadedEvidence = (applicationData, existingApplication, files = {}) => {
+  applicationData.storefrontPhotoUrls = (files.storefrontPhotos || []).length
+    ? files.storefrontPhotos.map(uploadedUrl).filter(Boolean)
+    : (existingApplication?.storefrontPhotoUrls || []);
+  const retained = Array.isArray(existingApplication?.activityDocuments)
+    ? existingApplication.activityDocuments.map(document => document.toObject ? document.toObject() : { ...document })
+    : [];
+  const next = [];
+  for (const [activity, requirement] of Object.entries(ACTIVITY_DOCUMENTS)) {
+    const replacements = files[requirement.field] || [];
+    if (replacements.length) {
+      next.push(...replacements.map(file => ({
+        activity,
+        label: requirement.label,
+        documentUrl: uploadedUrl(file),
+        originalName: file.originalname,
+        issueDate: applicationData.activityDocumentDetails?.[activity]?.issueDate || undefined,
+        expiryDate: applicationData.activityDocumentDetails?.[activity]?.expiryDate || undefined
+      })).filter(document => document.documentUrl));
+    } else {
+      next.push(...retained.filter(document => document.activity === activity).map(document => ({
+        ...document,
+        issueDate: applicationData.activityDocumentDetails?.[activity]?.issueDate || document.issueDate,
+        expiryDate: applicationData.activityDocumentDetails?.[activity]?.expiryDate || document.expiryDate
+      })));
+    }
+  }
+  applicationData.activityDocuments = next;
+  delete applicationData.activityDocumentDetails;
+};
+
+const safeDocumentSignals = value => {
+  const parsed = safeParse(value);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return Object.fromEntries(Object.entries(parsed).slice(0, 20).map(([key, signal]) => [
+    String(key).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 60),
+    {
+      status: String(signal?.status || '').slice(0, 40),
+      fields: Object.fromEntries(Object.entries(signal?.fields || {})
+        .filter(([field, fieldValue]) => FIELD_LABELS[field] && typeof fieldValue === 'string')
+        .slice(0, 20)
+        .map(([field, fieldValue]) => [field, fieldValue.trim().slice(0, 300)])),
+      issues: (Array.isArray(signal?.issues) ? signal.issues : [])
+        .filter(issue => ['needs_review', 'mismatch', 'expired', 'unreadable'].includes(issue?.status))
+        .slice(0, 20)
+        .map(issue => ({
+          status: issue.status,
+          field: FIELD_LABELS[issue.field] ? issue.field : undefined
+        }))
+    }
+  ]));
+};
+
+const buildApplicationDocumentReview = (data, signals = {}, now = new Date()) => {
+  const checks = [];
+  const extractedInformation = [];
+  const add = (documentKey, label, status, message) => checks.push({ documentKey, label, status, message });
+  const evidence = [
+    ['businessRegistration', 'Business registration', Boolean(data.businessRegistration?.documentUrl || data.businessRegistrationUrl)],
+    ['mayorsPermit', "Mayor's or business permit", Boolean(data.mayorsPermitUrl)],
+    ['barangayClearance', 'Barangay clearance', Boolean(data.barangayClearanceUrl)],
+    ['storefrontPhotos', 'Storefront photos', (data.storefrontPhotoUrls || []).length >= 2]
+  ];
+  if (data.taxProfile?.birRegistrationStatus === 'registered') {
+    evidence.push(['birRegistration', 'BIR Certificate of Registration', Boolean(data.taxProfile?.corDocumentUrl || data.birRegistrationUrl)]);
+  }
+  for (const activity of data.operationalModules || []) {
+    const requirement = ACTIVITY_DOCUMENTS[activity];
+    if (!requirement) continue;
+    evidence.push([
+      requirement.field,
+      requirement.label,
+      (data.activityDocuments || []).some(document => document.activity === activity && document.documentUrl)
+    ]);
+  }
+  for (const [key, label, present] of evidence) {
+    add(key, label, present ? 'complete' : 'needs_review', present
+      ? `${label} is attached for manual review.`
+      : `${label} is still missing.`);
+  }
+  const expiryChecks = [
+    ['businessRegistration', 'Business registration', data.businessRegistration?.expirationDate],
+    ['mayorsPermit', "Mayor's or business permit", data.businessLicense?.expiryDate],
+    ['barangayClearance', 'Barangay clearance', data.barangayClearance?.expiryDate]
+  ];
+  for (const [key, label, value] of expiryChecks) {
+    if (value && !Number.isNaN(new Date(value).getTime()) && new Date(value) <= now) {
+      add(key, label, 'expired', `${label} appears to be expired. A current copy must be reviewed.`);
+    }
+  }
+  const registeredName = String(data.registeredBusinessName || '').trim().toLowerCase();
+  const registrationName = String(data.businessRegistration?.registeredName || '').trim().toLowerCase();
+  if (registeredName && registrationName && registeredName !== registrationName) {
+    add('businessRegistration', 'Business registration', 'mismatch', 'The registered business name does not match the application.');
+  }
+  const taxName = String(data.taxProfile?.registeredName || '').trim().toLowerCase();
+  if (data.taxProfile?.birRegistrationStatus === 'registered' && registeredName && taxName && registeredName !== taxName) {
+    add('birRegistration', 'BIR Certificate of Registration', 'mismatch', 'The BIR registered name does not match the application.');
+  }
+  for (const [key, signal] of Object.entries(signals)) {
+    for (const [field, value] of Object.entries(signal.fields || {})) {
+      if (!value) continue;
+      extractedInformation.push({ documentKey: key, field, label: FIELD_LABELS[field], value });
+    }
+    for (const issue of signal.issues || []) {
+      const label = FIELD_LABELS[issue.field] || 'Document readability';
+      const messages = {
+        mismatch: `${label} does not match the information entered in the application.`,
+        expired: 'The document appears to be expired. Upload a current copy before submission.',
+        unreadable: 'The document could not be read clearly. A person must inspect the original file.',
+        needs_review: 'Some document details need to be compared with the original file.'
+      };
+      add(key, label, issue.status, messages[issue.status]);
+    }
+    if (!(signal.issues || []).length && ['error', 'review', 'needs_attention', 'unreadable'].includes(signal.status)) {
+      add(key, 'Uploaded document', signal.status === 'unreadable' || signal.status === 'error' ? 'unreadable' : 'needs_review',
+        'Some document details could not be read clearly. A person must compare this file with the application.');
+    }
+  }
+  for (const document of data.activityDocuments || []) {
+    if (document.expiryDate && !Number.isNaN(new Date(document.expiryDate).getTime()) && new Date(document.expiryDate) <= now) {
+      add(`${document.activity}ActivityDocuments`, document.label, 'expired', `${document.label} appears to be expired. Upload a current copy.`);
+    }
+  }
+  return {
+    status: checks.some(check => check.status !== 'complete') ? 'needs_attention' : 'ready_for_manual_review',
+    checkedAt: now,
+    manualApprovalRequired: true,
+    checks,
+    extractedInformation
+  };
 };
 
 const taxProfileObject = profile => profile?.toObject ? profile.toObject() : { ...(profile || {}) };
@@ -446,6 +607,16 @@ const submitApplication = async (req, res) => {
     applicationData.businessLicense.documentUrl = req.files?.licenseDocument
       ? undefined
       : existingApplication?.businessLicense?.documentUrl;
+    applicationData.mayorsPermitUrl = req.files?.mayorsPermit
+      ? undefined
+      : existingApplication?.mayorsPermitUrl;
+    applicationData.barangayClearanceUrl = req.files?.barangayClearance
+      ? undefined
+      : existingApplication?.barangayClearanceUrl;
+    applicationData.storeLogoUrl = req.files?.storeLogo
+      ? undefined
+      : existingApplication?.storeLogoUrl;
+    mergeUploadedEvidence(applicationData, existingApplication, req.files || {});
     if (applicationData.insurance || existingApplication?.insurance) {
       const savedInsurance = existingApplication?.insurance?.toObject
         ? existingApplication.insurance.toObject()
@@ -536,6 +707,12 @@ const submitApplication = async (req, res) => {
       }
     }
 
+    applicationData.documentReview = buildApplicationDocumentReview(
+      applicationData,
+      safeDocumentSignals(req.body?.documentReview)
+    );
+    applicationData.draftSavedAt = undefined;
+
     const isResubmission = Boolean(existingApplication && ['requires_more_info', 'rejected', 'draft'].includes(existingApplication.status));
     let application = isResubmission ? existingApplication : new StoreApplication();
     application.set(applicationData);
@@ -547,9 +724,9 @@ const submitApplication = async (req, res) => {
     // pending until a Platform Admin explicitly reviews them.
     application.calculateVerificationScore();
 
-    // All applications now require manual review by Super Admin
-    // We set status to under_review to ensure it appears in the admin dashboard
-    application.status = 'under_review';
+    // A complete submission enters the queue. Only a Platform Admin can move
+    // it into active review and ultimately approve it.
+    application.status = 'pending_review';
     application.reviewNotes = application.verificationScore >= 60 
       ? 'Application submitted and awaiting manual review'
       : 'Application submitted but may require additional documentation due to low verification score';
@@ -639,6 +816,123 @@ const submitApplication = async (req, res) => {
       });
     }
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Save an incomplete application without entering the approval queue. Drafts
+// remain editable by their owner and never grant store access.
+const saveApplicationDraft = async (req, res) => {
+  try {
+    const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne(
+      buildOriginalApplicationSelector(req.user.id)
+    ).sort({ createdAt: -1 }));
+    if (existingApplication && ['under_review', 'pending_review', 'submitted', 'approved'].includes(existingApplication.status)) {
+      return res.status(409).json({ message: 'This application can no longer be changed as a draft.' });
+    }
+
+    const applicationData = buildApplicationData(req.body, req.user.id);
+    if (!applicationData.businessType) delete applicationData.businessType;
+    applicationData.businessRegistration.documentUrl = req.files?.businessRegistration
+      ? undefined
+      : existingApplication?.businessRegistration?.documentUrl;
+    applicationData.taxProfile.corDocumentUrl = req.files?.birRegistration
+      ? undefined
+      : existingApplication?.taxProfile?.corDocumentUrl;
+    applicationData.representative.authorityDocumentUrl = req.files?.authorityDocument
+      ? undefined
+      : existingApplication?.representative?.authorityDocumentUrl;
+    applicationData.businessLicense.documentUrl = req.files?.licenseDocument
+      ? undefined
+      : existingApplication?.businessLicense?.documentUrl;
+    applicationData.mayorsPermitUrl = req.files?.mayorsPermit ? undefined : existingApplication?.mayorsPermitUrl;
+    applicationData.barangayClearanceUrl = req.files?.barangayClearance ? undefined : existingApplication?.barangayClearanceUrl;
+    applicationData.storeLogoUrl = req.files?.storeLogo ? undefined : existingApplication?.storeLogoUrl;
+    mergeUploadedEvidence(applicationData, existingApplication, req.files || {});
+
+    const singleUploads = {
+      licenseDocument: ['businessLicense', 'documentUrl'],
+      businessRegistration: ['businessRegistration', 'documentUrl'],
+      birRegistration: ['taxProfile', 'corDocumentUrl'],
+      authorityDocument: ['representative', 'authorityDocumentUrl']
+    };
+    for (const [field, [section, key]] of Object.entries(singleUploads)) {
+      if (!req.files?.[field]?.[0]) continue;
+      applicationData[section] = { ...(applicationData[section] || {}), [key]: uploadedUrl(req.files[field][0]) };
+    }
+    if (req.files?.businessRegistration?.[0]) applicationData.businessRegistrationUrl = uploadedUrl(req.files.businessRegistration[0]);
+    if (req.files?.birRegistration?.[0]) applicationData.birRegistrationUrl = uploadedUrl(req.files.birRegistration[0]);
+    if (req.files?.mayorsPermit?.[0]) applicationData.mayorsPermitUrl = uploadedUrl(req.files.mayorsPermit[0]);
+    if (req.files?.barangayClearance?.[0]) applicationData.barangayClearanceUrl = uploadedUrl(req.files.barangayClearance[0]);
+    if (req.files?.storeLogo?.[0]) applicationData.storeLogoUrl = uploadedUrl(req.files.storeLogo[0]);
+
+    applicationData.status = 'draft';
+    applicationData.draftSavedAt = new Date();
+    applicationData.documentReview = buildApplicationDocumentReview(
+      applicationData,
+      safeDocumentSignals(req.body?.documentReview)
+    );
+    let application = existingApplication || new StoreApplication();
+    application.set(applicationData);
+    appendApplicationReviewEvent(application, {
+      action: 'draft_saved',
+      actor: req.user.id,
+      notes: 'Applicant saved application progress.'
+    });
+    await application.save({ validateBeforeSave: false });
+    return res.status(existingApplication ? 200 : 201).json({
+      message: 'Draft saved.',
+      application: toApplicationResponse(application, { includeSensitiveFields: true })
+    });
+  } catch (error) {
+    console.error('Save store application draft error:', error);
+    return res.status(500).json({ message: 'Unable to save the draft. Try again.' });
+  }
+};
+
+// Applicants may stop an application that has not been approved. Withdrawal
+// is an audited terminal review state and never changes an existing Store.
+const withdrawApplication = async (req, res) => {
+  try {
+    const application = await StoreApplication.findOne(
+      buildOriginalApplicationSelector(req.user.id)
+    ).sort({ createdAt: -1 });
+    if (!application) return res.status(404).json({ message: 'Store application not found.' });
+    if (application.status === 'approved') {
+      return res.status(409).json({ message: 'An approved store cannot be withdrawn from the application page.' });
+    }
+    if (application.status === 'withdrawn') {
+      return res.status(200).json({
+        message: 'This application is already withdrawn.',
+        application: toApplicationResponse(application, { includeSensitiveFields: true })
+      });
+    }
+    application.status = 'withdrawn';
+    application.reviewNotes = 'The applicant withdrew this store application.';
+    appendApplicationReviewEvent(application, {
+      action: 'withdrawn',
+      actor: req.user.id,
+      notes: 'Applicant withdrew the application.'
+    });
+    await application.save();
+    try {
+      await createNotification({
+        recipient: req.user.id,
+        type: 'store_application',
+        title: 'Store Application Withdrawn',
+        message: 'Your store application has been withdrawn and will no longer be reviewed.',
+        relatedId: application._id,
+        relatedModel: 'StoreApplication'
+      });
+    } catch (notificationError) {
+      console.error('Store application withdrawal notification error:', notificationError);
+    }
+    return res.json({
+      message: 'Application withdrawn.',
+      application: toApplicationResponse(application, { includeSensitiveFields: true })
+    });
+  } catch (error) {
+    console.error('Withdraw store application error:', error);
+    return res.status(500).json({ message: 'Unable to withdraw the application. Try again.' });
   }
 };
 
@@ -824,6 +1118,15 @@ const reviewApplication = async (req, res) => {
     if (application.status === 'approved') {
       return res.status(400).json({ message: 'Application already approved' });
     }
+    if (application.status === 'withdrawn') {
+      return res.status(409).json({ message: 'A withdrawn application cannot be reviewed.' });
+    }
+    if (status === 'rejected' && !String(rejectionReason || '').trim()) {
+      return res.status(400).json({ message: 'A rejection reason is required.' });
+    }
+    if (status === 'requires_more_info' && !String(reviewNotes || rejectionReason || '').trim()) {
+      return res.status(400).json({ message: 'Explain what the applicant must revise.' });
+    }
 
     application.status = status;
     application.reviewNotes = reviewNotes || '';
@@ -840,6 +1143,12 @@ const reviewApplication = async (req, res) => {
     if (status === 'rejected') {
       application.rejectionReason = rejectionReason || '';
     } else if (status === 'approved') {
+      const expiredDocument = application.documentReview?.checks?.find(check => check.status === 'expired');
+      if (expiredDocument) {
+        return res.status(409).json({
+          message: `${expiredDocument.label || 'A required document'} appears expired. Request a current replacement before approval.`
+        });
+      }
       const applicant = await User.findOne({
         _id: application.applicant,
         isActive: { $ne: false },
@@ -870,6 +1179,8 @@ const reviewApplication = async (req, res) => {
           name: application.businessName,
           description: application.businessDescription || 'A new store on Pawzzle.',
           logo: application.storeLogoUrl,
+          coverImage: application.storefrontPhotoUrls?.[0],
+          storefrontPhotos: application.storefrontPhotoUrls || [],
           businessType: application.businessType,
           operationalModules: application.operationalModules || [],
           staffingConfiguration: application.staffingConfiguration,
@@ -924,17 +1235,38 @@ const reviewApplication = async (req, res) => {
                 versions: [{ version: 1, documentUrl: application.taxProfile.corDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: application.taxProfile.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: application.taxProfile.verifiedAt || new Date(), verifiedBy: application.taxProfile.verifiedBy || req.user.id, sourceApplication: application._id }]
               } : null,
               application.mayorsPermitUrl ? {
-                requirementKey: 'mayors_permit', label: "Mayor's / Business Permit", requiredForOperation: false, taxAffecting: false, currentVersion: 1,
+                requirementKey: 'mayors_permit', label: "Mayor's / Business Permit", requiredForOperation: true, taxAffecting: false, currentVersion: 1,
                 versions: [{ version: 1, documentUrl: application.mayorsPermitUrl, issueDate: application.businessLicense?.issueDate, hasExpiration: Boolean(application.businessLicense?.expiryDate), expirationDate: application.businessLicense?.expiryDate, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
               } : null,
               application.barangayClearanceUrl ? {
-                requirementKey: 'barangay_clearance', label: 'Barangay Clearance', requiredForOperation: false, taxAffecting: false, currentVersion: 1,
+                requirementKey: 'barangay_clearance', label: 'Barangay Clearance', requiredForOperation: true, taxAffecting: false, currentVersion: 1,
                 versions: [{ version: 1, documentUrl: application.barangayClearanceUrl, issueDate: application.barangayClearance?.issueDate, hasExpiration: Boolean(application.barangayClearance?.expiryDate), expirationDate: application.barangayClearance?.expiryDate, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
               } : null,
               application.representative?.authorityDocumentUrl ? {
                 requirementKey: 'authority_document', label: 'Proof of Authority', requiredForOperation: true, taxAffecting: false, currentVersion: 1,
                 versions: [{ version: 1, documentUrl: application.representative.authorityDocumentUrl, hasExpiration: false, verificationStatus: 'verified', submittedAt: application.submittedAt || application.createdAt, submittedBy: application.applicant, verifiedAt: new Date(), verifiedBy: req.user.id, sourceApplication: application._id }]
-              } : null
+              } : null,
+              ...(application.activityDocuments || []).map((document, index) => ({
+                requirementKey: `${document.activity}_activity_${index + 1}`,
+                label: document.label,
+                requiredForOperation: true,
+                taxAffecting: false,
+                currentVersion: 1,
+                versions: [{
+                  version: 1,
+                  documentUrl: document.documentUrl,
+                  originalName: document.originalName,
+                  issueDate: document.issueDate,
+                  hasExpiration: Boolean(document.expiryDate),
+                  expirationDate: document.expiryDate,
+                  verificationStatus: 'verified',
+                  submittedAt: application.submittedAt || application.createdAt,
+                  submittedBy: application.applicant,
+                  verifiedAt: new Date(),
+                  verifiedBy: req.user.id,
+                  sourceApplication: application._id
+                }]
+              }))
             ].filter(Boolean),
             restrictionReasons: [], reminderLog: [], auditTrail: [{ event: 'initial_application_approved', actor: req.user.id, at: new Date(), reason: 'Seeded from the approved original Store Application.' }]
           },
@@ -1017,7 +1349,7 @@ const reviewApplication = async (req, res) => {
       recipient: application.applicant,
       sender: req.user.id,
       type: 'store_application',
-      title: `Store Application ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      title: `Store Application ${status.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase())}`,
       message: status === 'approved'
         ? 'Congratulations! Your store application has been approved. You can now access the admin panel.'
         : `Your application has been ${status}. Reason: ${rejectionReason || 'No specific reason provided.'}`,
@@ -1327,6 +1659,8 @@ const getAuditCount = async (req, res) => {
 
 module.exports = {
   submitApplication,
+  saveApplicationDraft,
+  withdrawApplication,
   getAllApplications,
   getApplicationById,
   reviewApplication,
@@ -1348,5 +1682,7 @@ module.exports = {
   resetApplicationReviewState,
   buildOriginalApplicationSelector,
   buildResubmissionUpdateFilter,
+  buildApplicationDocumentReview,
+  mergeUploadedEvidence,
   upload
 };

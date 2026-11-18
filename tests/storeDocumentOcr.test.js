@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const {
   DOCUMENT_PROFILES,
+  extractionReview,
   extractStoreDocument,
   matchesImageSignature,
   normalizeDate
@@ -68,6 +69,20 @@ test('BIR profile has no expiry query and image validation checks file signature
   assert.equal(matchesImageSignature(Buffer.from('not-an-image'), 'image/jpeg'), false);
   assert.equal(normalizeDate('February 29, 2028'), '2028-02-29');
   assert.equal(normalizeDate('February 29, 2027'), '');
+});
+
+test('document review reports friendly mismatches and expired evidence without provider terminology', () => {
+  const review = extractionReview({
+    fields: {
+      'businessRegistration.registeredName': { value: 'Different Trading', confidence: 99 },
+      'businessRegistration.expirationDate': { value: '2026-01-01', confidence: 99 }
+    },
+    reviewRequired: []
+  }, { 'businessRegistration.registeredName': 'Pawzzle Trading' }, new Date('2026-11-19T00:00:00.000Z'));
+  assert.equal(review.status, 'needs_attention');
+  assert.ok(review.issues.some(issue => issue.status === 'mismatch'));
+  assert.ok(review.issues.some(issue => issue.status === 'expired'));
+  assert.doesNotMatch(JSON.stringify(review), /aws|textract|ocr/i);
 });
 
 test('controller clears the in-memory document buffer even when validation fails', async () => {
