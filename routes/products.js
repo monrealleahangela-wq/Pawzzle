@@ -23,7 +23,7 @@ const createProductValidation = [
   body('shortDescription').trim().notEmpty().withMessage('Short description is required'),
   body('price').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
   body('sku').trim().notEmpty().withMessage('SKU is required'),
-  body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
+  body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a whole number of zero or greater'),
   body('images').isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
   body('images.*').custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
   body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Package weight must be greater than zero'),
@@ -49,7 +49,7 @@ const updateProductValidation = [
   body('shortDescription').optional().trim().notEmpty().withMessage('Short description cannot be empty'),
   body('price').optional().isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
   body('sku').optional().trim().notEmpty().withMessage('SKU cannot be empty'),
-  body('stockQuantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer'),
+  body('stockQuantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a whole number of zero or greater'),
   body('images').optional().isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
   body('images.*').optional().custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
   body('weight').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 10000 }).withMessage('Package weight must be greater than zero'),
@@ -68,7 +68,7 @@ const updateProductValidation = [
 ];
 
 const updateStockValidation = [
-  body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a positive integer')
+  body('stockQuantity').isInt({ min: 0 }).withMessage('Stock quantity must be a whole number of zero or greater')
 ];
 
 // Public routes
