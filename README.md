@@ -264,6 +264,9 @@ Make sure to set these environment variables:
 - `MONGODB_URI` - MongoDB connection string
 - `JWT_SECRET` - JWT secret key
 - `NODE_ENV` - Environment (development/production)
+- `IDENTITY_DOCUMENT_ENCRYPTION_KEY` - Dedicated 32-byte identity-document encryption key (hex or Base64)
+- `AWS_REKOGNITION_REGION` - Optional Rekognition override; defaults to `ap-southeast-1`
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` when workload credentials are unavailable
 
 ## Release and Defense Documentation
 
