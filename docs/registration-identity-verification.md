@@ -8,7 +8,7 @@ Required server configuration:
 
 - `IDENTITY_DOCUMENT_ENCRYPTION_KEY`: a dedicated 32-byte key encoded as 64 hexadecimal characters or Base64. Do not reuse `JWT_SECRET`.
 - `AWS_REKOGNITION_REGION` (preferred), `AWS_REGION`, or `AWS_DEFAULT_REGION`: the Rekognition region. If none is supplied, Pawzzle uses `ap-southeast-1` (Singapore), the nearest Rekognition region to the Philippines.
-- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` when the deployment platform does not provide an AWS workload identity. Store both as deployment secrets and grant only `rekognition:CompareFaces`.
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` when the deployment platform does not provide an AWS workload identity. Store both as deployment secrets and grant only `rekognition:CompareFaces`. Render values are trimmed before use, and incomplete, invalid, or unauthorized credentials return distinct safe error codes without exposing secrets.
 - AWS workload credentials granting only `rekognition:CompareFaces`. Use the deployment platform's workload identity or secret manager; do not commit credentials.
 - `IDENTITY_FACE_MATCH_THRESHOLD`: optional value from 80 through 100; defaults to `95`.
 

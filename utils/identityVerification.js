@@ -3,10 +3,14 @@ const { RekognitionClient, CompareFacesCommand } = require('@aws-sdk/client-reko
 
 const DEFAULT_REKOGNITION_REGION = 'ap-southeast-1';
 
-const configurationError = (message, code) => Object.assign(new Error(message), {
-  statusCode: 503,
-  code
-});
+const configurationError = (message, code, cause) => {
+  const error = Object.assign(new Error(message), {
+    statusCode: 503,
+    code
+  });
+  if (cause) Object.defineProperty(error, 'cause', { value: cause });
+  return error;
+};
 
 const getEncryptionKey = (configured = process.env.IDENTITY_DOCUMENT_ENCRYPTION_KEY || process.env.GOVERNMENT_ID_ENCRYPTION_KEY) => {
   const value = String(configured || '').trim();
@@ -65,9 +69,33 @@ const resolveRekognitionRegion = (environment = process.env) => [
   environment.AWS_DEFAULT_REGION
 ].map(value => String(value || '').trim()).find(Boolean) || DEFAULT_REKOGNITION_REGION;
 
-const createRekognitionClient = () => new RekognitionClient({
-  region: resolveRekognitionRegion()
-});
+const resolveRekognitionCredentials = (environment = process.env) => {
+  const accessKeyId = String(environment.AWS_ACCESS_KEY_ID || '').trim();
+  const secretAccessKey = String(environment.AWS_SECRET_ACCESS_KEY || '').trim();
+  const sessionToken = String(environment.AWS_SESSION_TOKEN || '').trim();
+
+  if (!accessKeyId && !secretAccessKey && !sessionToken) return null;
+  if (!accessKeyId || !secretAccessKey) {
+    throw configurationError(
+      'AWS Rekognition credentials are incomplete in Render.',
+      'IDENTITY_FACE_MATCH_CREDENTIALS_INCOMPLETE'
+    );
+  }
+
+  return {
+    accessKeyId,
+    secretAccessKey,
+    ...(sessionToken ? { sessionToken } : {})
+  };
+};
+
+const createRekognitionClient = (environment = process.env) => {
+  const credentials = resolveRekognitionCredentials(environment);
+  return new RekognitionClient({
+    region: resolveRekognitionRegion(environment),
+    ...(credentials ? { credentials } : {})
+  });
+};
 
 const mapFaceMatchError = error => {
   if (['InvalidParameterException', 'InvalidImageFormatException', 'ImageTooLargeException'].includes(error?.name)) {
@@ -76,7 +104,39 @@ const mapFaceMatchError = error => {
       code: 'IDENTITY_IMAGE_UNUSABLE'
     });
   }
-  return configurationError('Identity face matching is temporarily unavailable.', 'IDENTITY_FACE_MATCH_UNAVAILABLE');
+  if (['CredentialsProviderError', 'CredentialsProviderTimeoutError'].includes(error?.name)) {
+    return configurationError(
+      'AWS Rekognition credentials are not configured in Render.',
+      'IDENTITY_FACE_MATCH_CREDENTIALS_MISSING',
+      error
+    );
+  }
+  if (['UnrecognizedClientException', 'InvalidSignatureException', 'ExpiredTokenException'].includes(error?.name)) {
+    return configurationError(
+      'AWS Rekognition rejected the configured credentials. Replace the Render access key pair.',
+      'IDENTITY_FACE_MATCH_CREDENTIALS_INVALID',
+      error
+    );
+  }
+  if (['AccessDeniedException', 'UnauthorizedException'].includes(error?.name)) {
+    return configurationError(
+      'AWS Rekognition permission is missing. Attach rekognition:CompareFaces to the Render IAM user.',
+      'IDENTITY_FACE_MATCH_ACCESS_DENIED',
+      error
+    );
+  }
+  if (['UnknownEndpoint', 'EndpointError', 'InvalidEndpointException'].includes(error?.name)) {
+    return configurationError(
+      'AWS Rekognition cannot be reached in the configured region. Check AWS_REKOGNITION_REGION.',
+      'IDENTITY_FACE_MATCH_REGION_INVALID',
+      error
+    );
+  }
+  return configurationError(
+    'Identity face matching is temporarily unavailable.',
+    'IDENTITY_FACE_MATCH_UNAVAILABLE',
+    error
+  );
 };
 
 const compareIdentityFaces = async (governmentIdImage, selfieImage, options = {}) => {
@@ -105,7 +165,17 @@ const compareIdentityFaces = async (governmentIdImage, selfieImage, options = {}
     };
   } catch (error) {
     if (error?.statusCode && error?.code) throw error;
-    throw mapFaceMatchError(error);
+    const mappedError = mapFaceMatchError(error);
+    if (mappedError.statusCode >= 500) {
+      console.error('Identity face-match provider request failed', {
+        code: mappedError.code,
+        providerError: String(error?.name || 'UnknownError'),
+        httpStatusCode: Number(error?.$metadata?.httpStatusCode || 0) || undefined,
+        requestId: String(error?.$metadata?.requestId || '') || undefined,
+        region: resolveRekognitionRegion()
+      });
+    }
+    throw mappedError;
   }
 };
 
@@ -116,5 +186,6 @@ module.exports = {
   matchesImageSignature,
   getFaceMatchThreshold,
   resolveRekognitionRegion,
+  resolveRekognitionCredentials,
   compareIdentityFaces
 };

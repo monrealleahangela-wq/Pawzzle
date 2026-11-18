@@ -10,6 +10,7 @@ const {
   matchesImageSignature,
   getFaceMatchThreshold,
   resolveRekognitionRegion,
+  resolveRekognitionCredentials,
   compareIdentityFaces
 } = require('../utils/identityVerification');
 const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
@@ -49,6 +50,23 @@ test('Rekognition region resolution supports deployment overrides and a Philippi
   assert.equal(resolveRekognitionRegion({}), 'ap-southeast-1');
 });
 
+test('Rekognition credentials are trimmed and incomplete Render configuration fails clearly', () => {
+  assert.equal(resolveRekognitionCredentials({}), null);
+  assert.deepEqual(resolveRekognitionCredentials({
+    AWS_ACCESS_KEY_ID: '  AKIAEXAMPLE  ',
+    AWS_SECRET_ACCESS_KEY: '  secret-value  ',
+    AWS_SESSION_TOKEN: '  session-value  '
+  }), {
+    accessKeyId: 'AKIAEXAMPLE',
+    secretAccessKey: 'secret-value',
+    sessionToken: 'session-value'
+  });
+  assert.throws(
+    () => resolveRekognitionCredentials({ AWS_ACCESS_KEY_ID: 'AKIAEXAMPLE' }),
+    error => error.code === 'IDENTITY_FACE_MATCH_CREDENTIALS_INCOMPLETE'
+  );
+});
+
 test('Render declares every required face-match deployment setting without committing secrets', () => {
   const render = fs.readFileSync(path.join(__dirname, '../render.yaml'), 'utf8');
   assert.match(render, /key: AWS_REKOGNITION_REGION\s+value: ap-southeast-1/);
@@ -74,6 +92,26 @@ test('face comparison sends only in-memory bytes and enforces the threshold', as
   assert.deepEqual(input.TargetImage.Bytes, selfie);
   assert.equal(input.QualityFilter, 'HIGH');
   assert.equal(input.SimilarityThreshold, 95);
+});
+
+test('face comparison reports actionable AWS credential and permission failures', async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    for (const [providerError, expectedCode] of [
+      ['CredentialsProviderError', 'IDENTITY_FACE_MATCH_CREDENTIALS_MISSING'],
+      ['UnrecognizedClientException', 'IDENTITY_FACE_MATCH_CREDENTIALS_INVALID'],
+      ['AccessDeniedException', 'IDENTITY_FACE_MATCH_ACCESS_DENIED']
+    ]) {
+      const client = { send: async () => { throw Object.assign(new Error('provider failure'), { name: providerError }); } };
+      await assert.rejects(
+        compareIdentityFaces(Buffer.from('id'), Buffer.from('selfie'), { client }),
+        error => error.code === expectedCode && error.statusCode === 503
+      );
+    }
+  } finally {
+    console.error = originalConsoleError;
+  }
 });
 
 test('all public account creation paths enforce identity verification', () => {
