@@ -17,7 +17,74 @@
  * @param {Array}  selectedConditions - Array of condition strings (e.g., ['matted_fur', 'fleas_ticks'])
  * @returns {Object} pricingBreakdown
  */
+const calendarNights = (checkInDate, checkOutDate) => {
+  const matchDate = value => String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const start = matchDate(checkInDate);
+  const end = matchDate(checkOutDate);
+  if (!start || !end) return 0;
+  const startUtc = Date.UTC(Number(start[1]), Number(start[2]) - 1, Number(start[3]));
+  const endUtc = Date.UTC(Number(end[1]), Number(end[2]) - 1, Number(end[3]));
+  return Math.round((endUtc - startUtc) / 86400000);
+};
+
+const normalizePetSize = size => {
+  const normalized = String(size || '').trim().toLowerCase();
+  if (normalized === 'small') return 'small';
+  if (normalized === 'medium') return 'medium';
+  if (normalized === 'large' || normalized === 'extra large') return 'large';
+  return '';
+};
+
+const boardingPrice = (service, petData, bookingData) => {
+  const configuration = service.pricingConfiguration || {};
+  const nights = calendarNights(bookingData.checkInDate, bookingData.checkOutDate);
+  if (nights < 1) {
+    throw Object.assign(new Error('Check-out date must be later than check-in date.'), { statusCode: 400, code: 'INVALID_BOARDING_DATES' });
+  }
+  const minNights = Number(configuration.minimumNights || 0);
+  const maxNights = Number(configuration.maximumNights || 0);
+  if (minNights > 0 && nights < minNights) {
+    throw Object.assign(new Error(`This service requires a minimum stay of ${minNights} night${minNights === 1 ? '' : 's'}.`), { statusCode: 400, code: 'MINIMUM_STAY_NOT_MET' });
+  }
+  if (maxNights > 0 && nights > maxNights) {
+    throw Object.assign(new Error(`This service allows a maximum stay of ${maxNights} night${maxNights === 1 ? '' : 's'}.`), { statusCode: 400, code: 'MAXIMUM_STAY_EXCEEDED' });
+  }
+  const petSize = normalizePetSize(petData.size);
+  const hasPerNightConfiguration = configuration.pricingBasis === 'per_night';
+  if (hasPerNightConfiguration && configuration.petSizePricingEnabled && !petSize) {
+    throw Object.assign(new Error('Select a pet with a Small, Medium, or Large size to calculate boarding pricing.'), { statusCode: 400, code: 'PET_SIZE_REQUIRED' });
+  }
+  const configuredRate = hasPerNightConfiguration && configuration.petSizePricingEnabled && petSize
+    ? Number(configuration.petSizeRates?.[petSize])
+    : (hasPerNightConfiguration ? Number(configuration.pricePerNight) : Number(service.price));
+  const nightlyRate = Number.isFinite(configuredRate) && configuredRate >= 0
+    ? configuredRate
+    : Number(service.price || 0);
+  const subtotal = Number((nights * nightlyRate).toFixed(2));
+  return {
+    breakdown: {
+      pricingBasis: 'per_night',
+      basePrice: subtotal,
+      numberOfNights: nights,
+      applicableNightlyRate: nightlyRate,
+      boardingPetSize: petSize || 'standard',
+      sizeSurcharge: 0,
+      weightSurcharge: 0,
+      breedSurcharge: 0,
+      conditionFees: 0,
+      timePremium: 0,
+      addOnsTotal: 0,
+      homeServiceFee: 0,
+      subtotal,
+      discount: 0,
+      finalPrice: subtotal
+    },
+    resolvedAddOns: []
+  };
+};
+
 const calculateServicePrice = (service, petData = {}, bookingData = {}, selectedAddOnIds = [], selectedConditions = []) => {
+  if (service.category === 'boarding_hotel') return boardingPrice(service, petData, bookingData);
   const breakdown = {
     basePrice: service.price || 0,
     sizeSurcharge: 0,
@@ -234,6 +301,19 @@ const checkStaffAvailability = async (staffId, bookingDate, startTime, endTime, 
  * staff member for a booking slot. This is the single eligibility source used
  * by automatic assignment, administrator assignment, and customer reassignment.
  */
+const resolveCandidateStaffIds = async (service, User) => {
+  const assigned = (service.assignedStaff || []).map(member => member?._id || member).filter(Boolean);
+  if (assigned.length) return assigned;
+  const storeId = service.store?._id || service.store;
+  const staff = await User.find({
+    store: storeId,
+    isActive: { $ne: false },
+    isDeleted: { $ne: true },
+    staffStatus: { $nin: ['inactive', 'suspended', 'archived'] }
+  }).select('_id');
+  return staff.map(member => member._id);
+};
+
 const getEligibleStaff = async (service, bookingDate, startTime, endTime, excludeBookingId = null, storeOrTimezone) => {
   const Booking = require('../models/Booking');
   const User = require('../models/User');
@@ -249,7 +329,8 @@ const getEligibleStaff = async (service, bookingDate, startTime, endTime, exclud
   const candidates = [];
   const bufferTime = service.bufferTime || 0;
 
-  for (const staffId of service.assignedStaff || []) {
+  const candidateStaffIds = await resolveCandidateStaffIds(service, User);
+  for (const staffId of candidateStaffIds) {
     const staff = await User.findById(staffId)
       .select('firstName lastName avatar role store staffType staffStatus isActive isDeleted permissions professionalProfile');
     if (!isActiveStaffAccount(staff)) continue;
@@ -433,9 +514,6 @@ const getStaffAssignmentReadiness = async (service, bookingDate, startTime, endT
  * @returns {String|null} Staff user ID or null
  */
 const autoAssignStaff = async (service, bookingDate, startTime, endTime, storeOrTimezone) => {
-  if (!service.assignedStaff || service.assignedStaff.length === 0) {
-    return null;
-  }
   const candidates = await getEligibleStaff(service, bookingDate, startTime, endTime, null, storeOrTimezone);
 
   if (candidates.length === 0) return null;

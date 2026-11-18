@@ -128,7 +128,7 @@ test('checkout verifies product vouchers against the authoritative quote', () =>
   assert.doesNotMatch(checkout, /checkoutItems\[0\]\?\.storeId/);
 });
 
-test('service voucher uses the complete dynamic subtotal through booking and PayMongo', async () => {
+test('service voucher ignores removed home-service fees while preserving legacy booking add-ons', async () => {
   const originalVoucherFindById = Voucher.findById;
   Voucher.findById = async () => percentageVoucher;
   const service = {
@@ -156,9 +156,9 @@ test('service voucher uses the complete dynamic subtotal through booking and Pay
         discount: pricing.discountAmount,
         total: pricing.breakdown.finalPrice
       },
-      { subtotal: 950, discount: 190, total: 760 }
+      { subtotal: 850, discount: 170, total: 680 }
     );
-    assert.equal(amountCentavos({ totalPrice: pricing.breakdown.finalPrice }, 'booking'), 76000);
+    assert.equal(amountCentavos({ totalPrice: pricing.breakdown.finalPrice }, 'booking'), 68000);
   } finally {
     Voucher.findById = originalVoucherFindById;
   }

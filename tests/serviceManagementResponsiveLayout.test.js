@@ -44,8 +44,8 @@ test('service cards use denser responsive tracks and retain management details a
   assert.match(source, /alt=\{service\.name\}[^>]*object-cover/);
   assert.match(source, /role="heading" aria-level="3"[^>]*line-clamp-2 break-words/);
   assert.match(source, /DYNAMIC PRICING/);
-  assert.match(source, /\+\{service\.addOns\.length\} ADD-ONS/);
-  assert.match(source, /Base Price[\s\S]*Duration[\s\S]*Staff/);
+  assert.doesNotMatch(source, /\+\{service\.addOns\.length\} ADD-ONS/);
+  assert.match(source, /From \/ Night[\s\S]*Duration[\s\S]*Staff/);
   assert.match(source, /onClick=\{\(\) => handleEdit\(service\)\}/);
   assert.match(source, /aria-label=\{`Delete \$\{service\.name\}`\}/);
   assert.doesNotMatch(source, /responsive-card-grid \[--card-min:18rem\]/);

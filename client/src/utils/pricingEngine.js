@@ -3,7 +3,55 @@
  * Must match the backend logic for accurate price preview.
  */
 
+const calendarNights = (checkInDate, checkOutDate) => {
+  const matchDate = value => String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const start = matchDate(checkInDate);
+  const end = matchDate(checkOutDate);
+  if (!start || !end) return 0;
+  return Math.round((Date.UTC(Number(end[1]), Number(end[2]) - 1, Number(end[3]))
+    - Date.UTC(Number(start[1]), Number(start[2]) - 1, Number(start[3]))) / 86400000);
+};
+
+const normalizePetSize = size => {
+  const normalized = String(size || '').trim().toLowerCase();
+  if (normalized === 'small') return 'small';
+  if (normalized === 'medium') return 'medium';
+  if (normalized === 'large' || normalized === 'extra large') return 'large';
+  return '';
+};
+
+const boardingPrice = (service, petData, bookingData) => {
+  const configuration = service.pricingConfiguration || {};
+  const nights = calendarNights(bookingData.checkInDate, bookingData.checkOutDate);
+  if (nights < 1) throw new Error('Check-out date must be later than check-in date.');
+  const minNights = Number(configuration.minimumNights || 0);
+  const maxNights = Number(configuration.maximumNights || 0);
+  if (minNights > 0 && nights < minNights) throw new Error(`This service requires a minimum stay of ${minNights} night${minNights === 1 ? '' : 's'}.`);
+  if (maxNights > 0 && nights > maxNights) throw new Error(`This service allows a maximum stay of ${maxNights} night${maxNights === 1 ? '' : 's'}.`);
+  const petSize = normalizePetSize(petData.size);
+  const hasPerNightConfiguration = configuration.pricingBasis === 'per_night';
+  if (hasPerNightConfiguration && configuration.petSizePricingEnabled && !petSize) {
+    throw new Error('Select a pet with a Small, Medium, or Large size to calculate boarding pricing.');
+  }
+  const configuredRate = hasPerNightConfiguration && configuration.petSizePricingEnabled && petSize
+    ? Number(configuration.petSizeRates?.[petSize])
+    : (hasPerNightConfiguration ? Number(configuration.pricePerNight) : Number(service.price));
+  const nightlyRate = Number.isFinite(configuredRate) && configuredRate >= 0 ? configuredRate : Number(service.price || 0);
+  const subtotal = Number((nights * nightlyRate).toFixed(2));
+  return {
+    breakdown: {
+      pricingBasis: 'per_night', basePrice: subtotal, numberOfNights: nights,
+      applicableNightlyRate: nightlyRate, boardingPetSize: petSize || 'standard',
+      sizeSurcharge: 0, weightSurcharge: 0, breedSurcharge: 0, conditionFees: 0,
+      timePremium: 0, addOnsTotal: 0, homeServiceFee: 0,
+      subtotal, discount: 0, finalPrice: subtotal
+    },
+    resolvedAddOns: []
+  };
+};
+
 export const calculateServicePrice = (service, petData = {}, bookingData = {}, selectedAddOnIds = [], selectedConditions = []) => {
+  if (service.category === 'boarding_hotel') return boardingPrice(service, petData, bookingData);
   const breakdown = {
     basePrice: service.price || 0,
     sizeSurcharge: 0,

@@ -60,6 +60,19 @@ const timePricingSchema = new mongoose.Schema({
   holidays:       [{ type: Date }]  // specific holiday dates
 }, { _id: false });
 
+const pricingConfigurationSchema = new mongoose.Schema({
+  pricingBasis: { type: String, enum: ['fixed', 'per_night'], default: 'fixed' },
+  pricePerNight: { type: Number, min: 0, default: 0 },
+  petSizePricingEnabled: { type: Boolean, default: false },
+  petSizeRates: {
+    small: { type: Number, min: 0, default: 0 },
+    medium: { type: Number, min: 0, default: 0 },
+    large: { type: Number, min: 0, default: 0 }
+  },
+  minimumNights: { type: Number, min: 0, default: 0 },
+  maximumNights: { type: Number, min: 0, default: 0 }
+}, { _id: false });
+
 // ── Add-On Sub-Schema ─────────────────────────────────────────────────────
 
 const addOnSchema = new mongoose.Schema({
@@ -135,7 +148,8 @@ const serviceSchema = new mongoose.Schema({
   },
   duration: {
     type: Number, // in minutes
-    required: true
+    required() { return this.category !== 'boarding_hotel'; },
+    default: 0
   },
   bufferTime: {
     type: Number, // buffer minutes between bookings
@@ -146,6 +160,8 @@ const serviceSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+
+  pricingConfiguration: { type: pricingConfigurationSchema, default: () => ({}) },
 
   // ── Dynamic Pricing Rules ─────────────────────
   pricingRules: {
@@ -225,6 +241,25 @@ const serviceSchema = new mongoose.Schema({
 });
 
 serviceSchema.pre('save', function (next) {
+  if (this.category === 'boarding_hotel') {
+    const hadPerNightConfiguration = this.pricingConfiguration.pricingBasis === 'per_night';
+    if (!hadPerNightConfiguration) this.pricingConfiguration.pricePerNight = Number(this.price || 0);
+    this.pricingConfiguration.pricingBasis = 'per_night';
+    if (this.pricingConfiguration.maximumNights > 0
+        && this.pricingConfiguration.minimumNights > this.pricingConfiguration.maximumNights) {
+      return next(new Error('Maximum stay must be greater than or equal to minimum stay.'));
+    }
+    const rates = this.pricingConfiguration.petSizeRates || {};
+    if (this.pricingConfiguration.petSizePricingEnabled
+        && ['small', 'medium', 'large'].some(size => !Number.isFinite(Number(rates[size])) || Number(rates[size]) < 0)) {
+      return next(new Error('Small, medium, and large nightly rates are required.'));
+    }
+    this.price = this.pricingConfiguration.petSizePricingEnabled
+      ? Math.min(Number(rates.small), Number(rates.medium), Number(rates.large))
+      : Number(this.pricingConfiguration.pricePerNight || this.price || 0);
+  } else {
+    this.pricingConfiguration.pricingBasis = 'fixed';
+  }
   this.updatedAt = Date.now();
   next();
 });

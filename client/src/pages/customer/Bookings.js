@@ -36,6 +36,14 @@ const createInitialBookingForm = () => ({
   selectedConditions: []
 });
 
+const bookingPricingContext = bookingForm => ({
+  date: bookingForm.bookingDate,
+  startTime: bookingForm.startTime,
+  isHomeService: false,
+  checkInDate: bookingForm.serviceDetails?.checkInDate,
+  checkOutDate: bookingForm.serviceDetails?.checkOutDate
+});
+
 const RESERVATION_STATUS_LABELS = {
   too_early: 'Awaiting Schedule',
   available: 'Ready for Check-In',
@@ -202,7 +210,9 @@ const Bookings = ({ isSubcomponent = false }) => {
     
     let currentMins = openH * 60 + openM;
     const closeMins = closeH * 60 + closeM;
-    const duration = selectedService?.duration || selectedService?.store?.bookingSettings?.slotDuration || 60;
+    const duration = selectedService?.category === 'boarding_hotel'
+      ? selectedService?.store?.bookingSettings?.slotDuration || 60
+      : selectedService?.duration || selectedService?.store?.bookingSettings?.slotDuration || 60;
     const buffer = selectedService?.store?.bookingSettings?.bufferTime || 0;
 
     while (currentMins + duration <= closeMins) {
@@ -452,7 +462,7 @@ const Bookings = ({ isSubcomponent = false }) => {
       serviceId: selectedService._id,
       bookingDate: bookingForm.bookingDate,
       startTime: bookingForm.startTime,
-      selectedAddOns: bookingForm.selectedAddOns
+      selectedAddOns: []
     }).then(response => {
       if (specialistAvailabilityRequest.current !== requestId) return;
       const staff = response.data?.staff || [];
@@ -486,7 +496,7 @@ const Bookings = ({ isSubcomponent = false }) => {
     selectedService?._id,
     bookingForm.bookingDate,
     bookingForm.startTime,
-    bookingForm.selectedAddOns
+    bookingForm.serviceDetails?.checkOutDate
   ]);
 
   useEffect(() => {
@@ -864,8 +874,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       const { breakdown } = calculateServicePrice(
         selectedService,
         bookingForm.pet,
-        { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
-        bookingForm.selectedAddOns,
+        bookingPricingContext(bookingForm),
+        [],
         bookingForm.selectedConditions
       );
 
@@ -925,8 +935,8 @@ const Bookings = ({ isSubcomponent = false }) => {
       const { breakdown, resolvedAddOns } = calculateServicePrice(
         selectedService,
         bookingForm.pet,
-        { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
-        bookingForm.selectedAddOns,
+        bookingPricingContext(bookingForm),
+        [],
         bookingForm.selectedConditions
       );
 
@@ -936,7 +946,9 @@ const Bookings = ({ isSubcomponent = false }) => {
         breakdown.finalPrice = Math.max(0, breakdown.subtotal - breakdown.discount);
       }
       // Calculate endTime based on duration + add-ons
-      const duration = (selectedService.duration || 60) + resolvedAddOns.reduce((acc, curr) => acc + (curr.duration || 0), 0);
+      const duration = selectedService.category === 'boarding_hotel'
+        ? Number(selectedService.store?.bookingSettings?.slotDuration || 60)
+        : (selectedService.duration || 60) + resolvedAddOns.reduce((acc, curr) => acc + (curr.duration || 0), 0);
       const [hours, minutes] = bookingForm.startTime.split(':').map(Number);
       const totalMinutes = hours * 60 + minutes + duration;
       const endHours = Math.floor(totalMinutes / 60) % 24;
@@ -966,11 +978,10 @@ const Bookings = ({ isSubcomponent = false }) => {
         startTime: bookingForm.startTime,
         endTime,
         staffId: bookingForm.preferredStaffId || undefined,
-        isHomeService: bookingForm.isHomeService,
-        serviceAddress: bookingForm.isHomeService ? bookingForm.serviceAddress : undefined,
+        isHomeService: false,
         notes: bookingForm.notes,
         voucherCode: appliedVoucher ? voucherCode : null,
-        selectedAddOns: bookingForm.selectedAddOns, // Add-on IDs
+        selectedAddOns: [],
         selectedConditions: bookingForm.selectedConditions, // Condition IDs
         serviceIntake: buildServiceIntake(serviceBookingKind, bookingForm.serviceDetails, selectedService)
       };
@@ -1051,10 +1062,10 @@ const Bookings = ({ isSubcomponent = false }) => {
                 </h2>
                 <div className="flex flex-wrap gap-3">
                   <div className="flex items-center gap-2 px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest group hover:bg-white/10 transition-all font-black">
-                    <Clock className="h-3.5 w-3.5 text-primary-400 group-hover:rotate-12 transition-transform" /> {selectedService.duration || '—'} MIN
+                    <Clock className="h-3.5 w-3.5 text-primary-400 group-hover:rotate-12 transition-transform" /> {selectedService.category === 'boarding_hotel' ? 'CUSTOM STAY' : `${selectedService.duration || '—'} MIN`}
                   </div>
                   <div className="flex items-center gap-2 px-3 py-2 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest group hover:bg-white/10 transition-all font-black">
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-400 group-hover:scale-110 transition-transform" /> ₱{selectedService.price?.toLocaleString()}
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-400 group-hover:scale-110 transition-transform" /> ₱{selectedService.price?.toLocaleString()}{selectedService.category === 'boarding_hotel' ? ' / NIGHT' : ''}
                   </div>
                   {selectedService.homeServiceAvailable && (
                     <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 backdrop-blur-md rounded-xl border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-widest font-black">
@@ -1126,8 +1137,8 @@ const Bookings = ({ isSubcomponent = false }) => {
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {[
-                        { label: 'Duration', value: `${selectedService.duration || '—'} MIN`, icon: Clock },
-                        { label: 'Price', value: `₱${selectedService.price?.toLocaleString()}`, icon: DollarSign },
+                        { label: 'Duration', value: selectedService.category === 'boarding_hotel' ? 'CUSTOM STAY' : `${selectedService.duration || '—'} MIN`, icon: Clock },
+                        { label: 'Price', value: `₱${selectedService.price?.toLocaleString()}${selectedService.category === 'boarding_hotel' ? ' / NIGHT' : ''}`, icon: DollarSign },
                         { label: 'Store', value: selectedService.store?.name || 'Partner Store', icon: Store },
                         { label: 'Location', value: selectedService.store?.contactInfo?.address?.city || 'Local Hub', icon: MapPin },
                         { label: 'Home Visit', value: selectedService.homeServiceAvailable ? 'Available' : 'In-Store', icon: Phone },
@@ -1731,6 +1742,13 @@ const Bookings = ({ isSubcomponent = false }) => {
                     const errors = validateServiceDetails(serviceBookingKind, bookingForm.serviceDetails);
                     setServiceDetailErrors(errors);
                     if (Object.keys(errors).length) return toast.info(Object.values(errors)[0]);
+                    if (serviceBookingKind === 'boarding') {
+                      try {
+                        calculateServicePrice(selectedService, bookingForm.pet, bookingPricingContext(bookingForm));
+                      } catch (error) {
+                        return toast.info(error.message);
+                      }
+                    }
                     setFormStep(4);
                   }}
                     className="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl shadow-slate-200 hover:bg-primary-600 transition-all active:scale-95">
@@ -1746,8 +1764,8 @@ const Bookings = ({ isSubcomponent = false }) => {
               const { breakdown, resolvedAddOns } = calculateServicePrice(
                 selectedService,
                 bookingForm.pet,
-                { date: bookingForm.bookingDate, startTime: bookingForm.startTime, isHomeService: bookingForm.isHomeService },
-                bookingForm.selectedAddOns,
+                bookingPricingContext(bookingForm),
+                [],
                 bookingForm.selectedConditions
               );
               const estimatedTotal = Math.max(
@@ -1778,7 +1796,7 @@ const Bookings = ({ isSubcomponent = false }) => {
                           <div className="flex items-center gap-3">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">{selectedService.store?.name}</p>
                             <div className="w-1 h-1 rounded-full bg-slate-200" />
-                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">₱{selectedService.price?.toLocaleString()}</p>
+                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tight">₱{selectedService.price?.toLocaleString()}{selectedService.category === 'boarding_hotel' ? ' / night' : ''}</p>
                           </div>
                         </div>
                       </div>
@@ -1984,10 +2002,23 @@ const Bookings = ({ isSubcomponent = false }) => {
                     </div>
 
                       <div className="flex flex-col gap-2 pt-5 border-t border-slate-100">
-                        <div className="flex items-center justify-between text-slate-500">
-                          <span className="text-[9px] font-black uppercase tracking-widest">Base Service Fee</span>
-                          <span className="text-xs font-black">₱{(breakdown.basePrice || 0).toLocaleString()}</span>
-                        </div>
+                        {breakdown.pricingBasis === 'per_night' ? (
+                          <>
+                            <div className="flex items-center justify-between text-slate-500">
+                              <span className="text-[9px] font-black uppercase tracking-widest">Boarding Dates</span>
+                              <span className="text-xs font-black">{bookingForm.serviceDetails.checkInDate} → {bookingForm.serviceDetails.checkOutDate}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-slate-500">
+                              <span className="text-[9px] font-black uppercase tracking-widest">{breakdown.numberOfNights} Night{breakdown.numberOfNights === 1 ? '' : 's'} × ₱{Number(breakdown.applicableNightlyRate || 0).toLocaleString()} ({bookingForm.pet.size})</span>
+                              <span className="text-xs font-black">₱{Number(breakdown.subtotal || 0).toLocaleString()}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-between text-slate-500">
+                            <span className="text-[9px] font-black uppercase tracking-widest">Base Service Fee</span>
+                            <span className="text-xs font-black">₱{(breakdown.basePrice || 0).toLocaleString()}</span>
+                          </div>
+                        )}
                         
                         {breakdown.homeServiceFee > 0 && (
                           <div className="flex items-center justify-between text-slate-500">

@@ -39,17 +39,17 @@ test('compact product form keeps required fields and existing advanced behavior'
   assert.ok(Product.schema.path('unit'));
 });
 
-test('compact service form requires media and filters specialist choices by service category', () => {
+test('compact service form exposes only primary details and the new price configuration', () => {
   const form = read('client/src/components/forms/ServiceFormModal.js');
   const page = read('client/src/pages/admin/ServiceManagement.js');
 
-  for (const label of ['Service Image', 'Service Name', 'Category', 'Duration', 'Service Description', 'Specialist Requirements', 'Base Price (₱)', 'Availability']) {
+  for (const label of ['Primary Details', 'Service Name', 'Category', 'Duration', 'Service Description', 'Price Rules / Configuration', 'Price per Night', 'Minimum Stay', 'Maximum Stay']) {
     assert.ok(form.includes(label), `missing service form label: ${label}`);
   }
-  assert.match(form, /health_wellness: \['veterinarian', 'veterinary_technician', 'veterinary_assistant'\]/);
-  assert.match(form, /grooming: \['groomer'\]/);
-  assert.match(form, /training: \['trainer'\]/);
-  assert.match(form, /boarding_hotel: \['boarding_staff'\]/);
-  assert.match(page, /showAdvancedServiceEditor/);
-  assert.match(page, /if \(!formData\.images\?\.length\)/);
+  for (const removed of ['Service Image', 'Specialist Requirements', 'Advanced options', 'Home service available']) {
+    assert.doesNotMatch(form, new RegExp(removed, 'i'));
+  }
+  assert.match(form, /category\.id !== 'home_services'/);
+  assert.match(form, /pricingBasis: boarding \? 'per_night' : 'fixed'/);
+  assert.doesNotMatch(page, /if \(!formData\.images\?\.length\)/);
 });

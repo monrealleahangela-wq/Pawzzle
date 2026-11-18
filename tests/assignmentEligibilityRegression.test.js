@@ -120,6 +120,26 @@ test('Booking discovery accepts a same-Store legacy-active direct-role Veterinar
   });
 });
 
+test('services without a manual Staff section discover qualified same-Store specialists automatically', async () => {
+  const originalFind = User.find;
+  User.find = () => ({ select: async () => [{ _id: 'vet-1' }] });
+  try {
+    await withEligibilityModels(legacyVeterinarian, async () => {
+      const candidates = await getEligibleStaff(
+        { ...service, assignedStaff: [] },
+        bookingDate,
+        '10:00',
+        '11:00',
+        'booking-1'
+      );
+      assert.equal(candidates.length, 1);
+      assert.equal(candidates[0].staff._id, 'vet-1');
+    });
+  } finally {
+    User.find = originalFind;
+  }
+});
+
 test('Booking readiness gives a safe server-authoritative qualification reason', async () => {
   const pending = {
     ...legacyVeterinarian,
