@@ -162,7 +162,7 @@ const getFrontendUrl = () => process.env.FRONTEND_URL
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────
 const issueTokenAndRedirect = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('+identityVerification.status').populate('store');
+    const user = await User.findById(req.user._id).select('+identityVerification').populate('store');
     if (!user) return res.redirect(`${getFrontendUrl()}/login?error=oauth_failed`);
     await attachStoreRolePolicy(user);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });

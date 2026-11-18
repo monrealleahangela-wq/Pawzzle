@@ -154,7 +154,7 @@ test('HTTP and socket feature access fail closed until face matching succeeds', 
   const routes = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
   const sockets = fs.readFileSync(path.join(__dirname, '../services/socketAuthorization.js'), 'utf8');
-  assert.match(middleware, /select\('\+identityVerification\.status'\)/);
+  assert.match(middleware, /select\('\+identityVerification'\)/);
   assert.match(middleware, /IDENTITY_VERIFICATION_REQUIRED/);
   assert.match(routes, /router\.post\('\/identity\/verify',[\s\S]*authenticate[\s\S]*authRateLimits\.identityVerification[\s\S]*uploadRegistrationIdentity[\s\S]*verifyCurrentUserIdentity/);
   assert.match(controller, /policyVersion: 'identity-access-v1'/);
@@ -169,4 +169,20 @@ test('identity verification is idempotent for accounts already verified in the d
     /identityVerification\?\.status === 'verified'[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
   );
   assert.doesNotMatch(controller, /IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified/);
+});
+
+test('every authentication path selects the hidden identity record before applying the one-time gate', () => {
+  const files = [
+    '../middleware/auth.js',
+    '../controllers/authController.js',
+    '../routes/auth.js',
+    '../services/socketAuthorization.js'
+  ];
+  for (const file of files) {
+    const source = fs.readFileSync(path.join(__dirname, file), 'utf8');
+    assert.doesNotMatch(source, /\+identityVerification\.status/);
+  }
+  const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
+  assert.match(controller, /select\('\+password \+identityVerification'\)/);
+  assert.match(controller, /select\('\+identityVerification'\)/);
 });

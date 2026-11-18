@@ -258,7 +258,7 @@ const login = async (req, res) => {
         { username: identifier.toLowerCase() }
       ],
       isDeleted: false
-    }).select('+password +identityVerification.status').populate('store');
+    }).select('+password +identityVerification').populate('store');
 
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     if (!user.isActive) {
@@ -323,7 +323,7 @@ const verify2FA = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, isDeleted: false }).select('+identityVerification.status').populate('store');
+    const user = await User.findOne({ email, isDeleted: false }).select('+identityVerification').populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
@@ -402,7 +402,7 @@ const resendPasswordResetOTP = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('+identityVerification.status').populate('store');
+    const user = await User.findById(req.user._id).select('+identityVerification').populate('store');
     if (!user) return res.status(404).json({ message: 'User not found' });
     await attachStoreRolePolicy(user);
     const safe = withProfessionalVerificationState(sanitizeUser(user), user);
@@ -512,7 +512,7 @@ const updateProfile = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const user = await User.findById(req.user._id).select('+identityVerification.status');
+    const user = await User.findById(req.user._id).select('+identityVerification');
     if (!user) return res.status(404).json({ message: 'User not found' });
     applyProfileUpdates(user, pickProfileUpdates(req.body));
     await user.save();
