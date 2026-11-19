@@ -15,32 +15,37 @@ import {
 export const STORE_APPLICATION_JOURNEY = Object.freeze([
   { key: 'account', label: 'Account', description: 'Create login', icon: UserRound },
   { key: 'verify', label: 'Verify', description: 'Confirm email', icon: BadgeCheck },
-  { key: 'overview', label: 'Overview', description: 'Review process', icon: ClipboardCheck, applicationStep: 0 },
-  { key: 'business', label: 'Business', description: 'Store identity', icon: Building2, applicationStep: 1 },
-  { key: 'owner', label: 'Owner & Team', description: 'People and roles', icon: UsersRound, applicationStep: 2 },
-  { key: 'location', label: 'Location & Tax', description: 'Address and BIR', icon: MapPin, applicationStep: 3 },
-  { key: 'documents', label: 'Documents', description: 'Compliance files', icon: FileCheck2, applicationStep: 4 },
-  { key: 'review', label: 'Review', description: 'References and declaration', icon: ShieldCheck, applicationStep: 5 }
+  { key: 'business-type', label: 'Business Type', description: 'Choose categories', icon: ClipboardCheck, applicationStep: 0 },
+  { key: 'business', label: 'Business Info', description: 'Business identity', icon: Building2, applicationStep: 1 },
+  { key: 'location', label: 'Store Location', description: 'Address and map', icon: MapPin, applicationStep: 2 },
+  { key: 'documents', label: 'Documents', description: 'Upload requirements', icon: FileCheck2, applicationStep: 3 },
+  { key: 'document-review', label: 'Document Review', description: 'Check details', icon: ShieldCheck, applicationStep: 4 },
+  { key: 'review', label: 'Review & Submit', description: 'Confirm application', icon: UsersRound, applicationStep: 5 }
 ]);
 
 export const storeApplicationStageForStep = step => (
-  STORE_APPLICATION_JOURNEY.find(stage => stage.applicationStep === step)?.key || 'overview'
+  STORE_APPLICATION_JOURNEY.find(stage => stage.applicationStep === step)?.key || 'business-type'
 );
 
 const requirements = [
   'Verified Pawzzle account',
-  'DTI or SEC registration',
+  'DTI, SEC, or CDA registration',
   'Confirmed store map location',
-  'BIR details when registered',
-  'Two business references'
+  'BIR Form 2303',
+  'Category-specific documents'
 ];
 
 const StoreApplicationJourney = ({
   activeStage = 'account',
   accountComplete = false,
-  onStageSelect
+  onStageSelect,
+  applicationOnly = false
 }) => {
-  const activeIndex = Math.max(0, STORE_APPLICATION_JOURNEY.findIndex(stage => stage.key === activeStage));
+  const stages = applicationOnly
+    ? STORE_APPLICATION_JOURNEY.filter(stage => Number.isInteger(stage.applicationStep))
+    : STORE_APPLICATION_JOURNEY;
+  const activeIndex = Math.max(0, stages.findIndex(stage => stage.key === activeStage));
+  const applicationStep = stages[activeIndex]?.applicationStep;
 
   return (
     <section className="overflow-hidden rounded-[2rem] border border-primary-100 bg-white shadow-xl shadow-slate-200/40 sm:rounded-[2.5rem]">
@@ -68,8 +73,16 @@ const StoreApplicationJourney = ({
       </div>
 
       <div className="border-b border-slate-100 bg-white px-3 py-4 sm:px-5">
+        {applicationOnly && (
+          <div className="mb-4 flex items-center gap-4 px-1">
+            <strong className="whitespace-nowrap text-[10px] font-black uppercase tracking-widest text-primary-700">Step {Number(applicationStep) + 1} of 6</strong>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin="1" aria-valuemax="6" aria-valuenow={Number(applicationStep) + 1}>
+              <div className="h-full rounded-full bg-primary-600 transition-all" style={{ width: `${((Number(applicationStep) + 1) / 6) * 100}%` }} />
+            </div>
+          </div>
+        )}
         <div className="flex snap-x gap-2 overflow-x-auto pb-1" aria-label="Store application progress">
-          {STORE_APPLICATION_JOURNEY.map((stage, index) => {
+          {stages.map((stage, index) => {
             const isActive = index === activeIndex;
             const isComplete = index < activeIndex || (accountComplete && index < 2);
             const canSelect = Boolean(onStageSelect && Number.isInteger(stage.applicationStep));

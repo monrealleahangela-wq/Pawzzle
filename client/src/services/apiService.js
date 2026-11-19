@@ -413,12 +413,12 @@ export const storeService = {
 export const storeComplianceService = {
   getMyCompliance: () => api.get('/store-applications/compliance/my-store'),
   submitRequest: (formData) => api.post('/store-applications/compliance/my-store/requests', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  getMyDocument: (requirementKey, version) => api.get(`/store-applications/compliance/my-store/documents/${requirementKey}`, { params: version ? { version } : {} }),
+  getMyDocument: (requirementKey, version) => api.get(`/store-applications/compliance/my-store/documents/${requirementKey}`, { params: version ? { version } : {}, responseType: 'blob' }),
   getRequests: (params) => api.get('/store-applications/compliance/admin/requests', { params }),
   getRequest: (id) => api.get(`/store-applications/compliance/admin/requests/${id}`),
-  getRequestDocument: (id, documentId) => api.get(`/store-applications/compliance/requests/${id}/documents/${documentId}`),
+  getRequestDocument: (id, documentId) => api.get(`/store-applications/compliance/requests/${id}/documents/${documentId}`, { responseType: 'blob' }),
   reviewRequest: (id, data) => api.put(`/store-applications/compliance/admin/requests/${id}/review`, data),
-  getStoreDocument: (storeId, requirementKey, version) => api.get(`/store-applications/compliance/admin/stores/${storeId}/documents/${requirementKey}`, { params: version ? { version } : {} })
+  getStoreDocument: (storeId, requirementKey, version) => api.get(`/store-applications/compliance/admin/stores/${storeId}/documents/${requirementKey}`, { params: version ? { version } : {}, responseType: 'blob' })
 };
 
 // Public aggregated services

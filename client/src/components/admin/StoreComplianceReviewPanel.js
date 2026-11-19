@@ -29,7 +29,7 @@ const StoreComplianceReviewPanel = () => {
     catch (error) { toast.error(error.response?.data?.message || 'Unable to open request.'); }
   };
   const openDocument = async document => {
-    try { const response = await storeComplianceService.getRequestDocument(selected._id, document._id); window.open(response.data.url, '_blank', 'noopener,noreferrer'); }
+    try { const response = await storeComplianceService.getRequestDocument(selected._id, document._id); const url = URL.createObjectURL(response.data); window.open(url, '_blank', 'noopener,noreferrer'); window.setTimeout(() => URL.revokeObjectURL(url), 60000); }
     catch (error) { toast.error(error.response?.data?.message || 'Unable to open document.'); }
   };
   const submitReview = async () => {

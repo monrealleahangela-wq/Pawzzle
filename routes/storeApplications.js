@@ -16,6 +16,8 @@ const {
   getAuditCount,
   verifyTaxProfile,
   getApplicationDocument,
+  correctDocumentReviewInformation,
+  submitExpansionRequest,
   upload
 } = require('../controllers/storeApplicationController');
 const { extractStoreDocumentFields } = require('../controllers/storeDocumentOcrController');
@@ -23,6 +25,8 @@ const { authenticate, superAdminOnly } = require('../middleware/auth');
 const { storeOwnerOnly } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
 const { uploadStoreDocumentOcr, handleUploadError } = require('../middleware/upload');
+const { storeApplicationUpload } = require('../services/privateStoreDocumentService');
+const { CATEGORY_REQUIREMENTS, categoryDocumentField } = require('../utils/storeApplicationRequirements');
 const {
   getMyCompliance,
   getCurrentComplianceDocument,
@@ -85,14 +89,18 @@ const applicationUploadFields = [
   { name: 'storeLogo', maxCount: 1 },
   { name: 'storefrontPhotos', maxCount: 5 },
   { name: 'mayorsPermit', maxCount: 1 },
+  { name: 'proofOfBusinessAddress', maxCount: 1 },
   { name: 'petActivityDocuments', maxCount: 5 },
   { name: 'productActivityDocuments', maxCount: 5 },
-  { name: 'serviceActivityDocuments', maxCount: 5 }
+  { name: 'serviceActivityDocuments', maxCount: 5 },
+  ...[...new Set(Object.values(CATEGORY_REQUIREMENTS).flat().map(requirement => requirement.key))]
+    .map(requirementKey => ({ name: categoryDocumentField(requirementKey), maxCount: 1 }))
 ];
 
 // Protected routes
-router.post('/', authenticate, upload.fields(applicationUploadFields), submitApplication);
-router.post('/draft', authenticate, upload.fields(applicationUploadFields), saveApplicationDraft);
+router.post('/', authenticate, storeApplicationUpload.fields(applicationUploadFields), handleUploadError, submitApplication);
+router.post('/draft', authenticate, storeApplicationUpload.fields(applicationUploadFields), handleUploadError, saveApplicationDraft);
+router.post('/expansion', authenticate, storeOwnerOnly, storeApplicationUpload.fields(applicationUploadFields), handleUploadError, submitExpansionRequest);
 
 router.post(
   '/ocr/extract',
@@ -107,25 +115,26 @@ router.get('/my-application', authenticate, getUserApplication);
 router.patch('/my-application/withdraw', authenticate, withdrawApplication);
 router.get('/compliance/my-store', authenticate, storeOwnerOnly, getMyCompliance);
 router.get('/compliance/my-store/documents/:requirementKey', authenticate, storeOwnerOnly, getCurrentComplianceDocument);
-router.post('/compliance/my-store/requests', authenticate, storeOwnerOnly, upload.fields([
+router.post('/compliance/my-store/requests', authenticate, storeOwnerOnly, storeApplicationUpload.fields([
   { name: 'businessRegistration', maxCount: 1 },
   { name: 'birCertificate', maxCount: 1 },
   { name: 'authorityDocument', maxCount: 1 },
   { name: 'mayorsPermit', maxCount: 1 },
   { name: 'barangayClearance', maxCount: 1 }
-]), submitComplianceRequest);
+]), handleUploadError, submitComplianceRequest);
 router.get('/compliance/requests/:id/documents/:documentId', authenticate, getComplianceDocument);
 router.get('/compliance/admin/requests', authenticate, superAdminOnly, listComplianceRequests);
 router.get('/compliance/admin/requests/:id', authenticate, superAdminOnly, getComplianceRequest);
 router.get('/compliance/admin/stores/:storeId/documents/:requirementKey', authenticate, superAdminOnly, getCurrentComplianceDocument);
 router.put('/compliance/admin/requests/:id/review', authenticate, superAdminOnly, reviewComplianceRequest);
-router.get('/:id/documents/:documentType', authenticate, getApplicationDocument);
+router.get('/:id/documents/:documentType/:documentId?', authenticate, getApplicationDocument);
 
 // Super Admin only routes
 router.get('/', authenticate, superAdminOnly, getAllApplications);
 router.get('/:id', authenticate, superAdminOnly, getApplicationById);
 router.put('/:id/review', authenticate, superAdminOnly, reviewValidation, reviewApplication);
 router.put('/:id/tax-verification', authenticate, superAdminOnly, verifyTaxProfile);
+router.patch('/:id/document-review', authenticate, superAdminOnly, correctDocumentReviewInformation);
 router.put('/:id/request-info', authenticate, superAdminOnly, requestMoreInfo);
 router.delete('/:id', authenticate, superAdminOnly, archiveApplication);
 router.patch('/:id/restore', authenticate, superAdminOnly, restoreApplication);

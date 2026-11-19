@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import storeApplicationService from '../../services/storeApplicationService';
 import { getImageUrl, storeService } from '../../services/apiService';
-import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, Briefcase, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
+import { Building, Check, X, Eye, AlertTriangle, TrendingUp, Shield, Zap, ChevronRight, ShieldAlert, Search, Activity, ExternalLink, Wallet, Camera, MapPin, Phone, Heart } from 'lucide-react';
 import StoreComplianceReviewPanel from '../../components/admin/StoreComplianceReviewPanel';
 
 const authoritativeTaxProfile = application => application?.currentTaxProfile || application?.taxProfile || {};
@@ -27,6 +27,7 @@ const StoreApplications = () => {
     requiredCorrections: []
   });
   const [taxReview, setTaxReview] = useState({ decision: '', notes: '', rejectionReason: '', acknowledgeMismatch: false });
+  const [documentCorrections, setDocumentCorrections] = useState({});
 
   const CORRECTION_OPTIONS = [
     { id: 'businessName', label: 'Business Name' },
@@ -148,11 +149,42 @@ const StoreApplications = () => {
     }
   };
 
+  const openApplicationDocument = async (documentType, documentId) => {
+    try {
+      const response = await storeApplicationService.getDocument(selectedApplication._id, documentType, documentId);
+      const url = URL.createObjectURL(response.data);
+      const opened = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!opened) toast.info('Allow pop-ups to preview this document.');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to open this private document.');
+    }
+  };
+
+  const saveDocumentCorrections = async () => {
+    const extracted = selectedApplication.documentReview?.extractedInformation || [];
+    const corrections = extracted.map((item, index) => ({
+      documentKey: item.documentKey,
+      field: item.field,
+      value: documentCorrections[index] ?? item.value
+    })).filter((item, index) => item.value !== extracted[index].value);
+    if (!corrections.length) return toast.info('No document detail corrections were entered.');
+    try {
+      await storeApplicationService.correctDocumentReview(selectedApplication._id, corrections);
+      const response = await storeApplicationService.getApplicationById(selectedApplication._id);
+      setSelectedApplication(response.data.application);
+      setDocumentCorrections({});
+      toast.success('Document details corrected. Original files were not changed.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to save document detail corrections.');
+    }
+  };
+
   const getStatusProps = (status) => {
     const props = {
       pending: { color: 'primary', label: 'Under Review' },
       draft: { color: 'slate', label: 'Draft' },
-      submitted: { color: 'amber', label: 'Processing' },
+      submitted: { color: 'amber', label: 'Processing Documents' },
       pending_review: { color: 'amber', label: 'Pending Review' },
       under_review: { color: 'primary', label: 'Under Review' },
       approved: { color: 'emerald', label: 'Approved' },
@@ -556,130 +588,20 @@ const StoreApplications = () => {
                     <div className={`mb-6 rounded-2xl border p-5 ${selectedApplication.documentReview?.status === 'needs_attention' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
                       <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><div><h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Automated document review</h4><p className="mt-1 text-[9px] font-bold text-slate-600">These checks only assist review. A Platform Administrator must inspect the original files and make the final decision.</p></div></div>
                       <div className="mt-4 space-y-2">{(selectedApplication.documentReview?.checks || []).map((check, index) => <div key={`${check.documentKey}-${index}`} className="rounded-xl bg-white/80 p-3"><span className="text-[8px] font-black uppercase tracking-wider text-slate-500">{check.label}</span><p className={`mt-1 text-[9px] font-bold ${check.status === 'complete' ? 'text-emerald-700' : 'text-amber-800'}`}>{check.message}</p></div>)}</div>
-                      {!!selectedApplication.documentReview?.extractedInformation?.length && <div className="mt-4 rounded-xl bg-white/80 p-4"><h5 className="text-[8px] font-black uppercase tracking-widest text-slate-500">Suggested document details</h5><dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{selectedApplication.documentReview.extractedInformation.map((item, index) => <div key={`${item.documentKey}-${item.field}-${index}`} className="rounded-lg border border-slate-100 p-2"><dt className="text-[7px] font-black uppercase text-slate-400">{item.label}</dt><dd className="mt-1 break-words text-[9px] font-bold text-slate-800">{item.value}</dd></div>)}</dl></div>}
+                      {!!selectedApplication.documentReview?.extractedInformation?.length && <div className="mt-4 rounded-xl bg-white/80 p-4"><div className="flex items-center justify-between gap-3"><div><h5 className="text-[8px] font-black uppercase tracking-widest text-slate-500">Suggested document details</h5><p className="mt-1 text-[8px] text-slate-500">Correct inaccurate extracted text here. The uploaded original is never modified.</p></div><button type="button" onClick={saveDocumentCorrections} className="rounded-lg bg-slate-900 px-3 py-2 text-[8px] font-black uppercase text-white">Save corrections</button></div><dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">{selectedApplication.documentReview.extractedInformation.map((item, index) => <div key={`${item.documentKey}-${item.field}-${index}`} className="rounded-lg border border-slate-100 p-2"><dt className="text-[7px] font-black uppercase text-slate-400">{item.label}{item.correctedByAdmin ? ' · corrected' : ''}</dt><dd className="mt-1"><input aria-label={`Correct ${item.label}`} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[9px] font-bold text-slate-800" value={documentCorrections[index] ?? item.value} onChange={event => setDocumentCorrections(current => ({ ...current, [index]: event.target.value }))} /></dd></div>)}</dl></div>}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {(selectedApplication.storefrontPhotoUrls || []).map((url, index) => <a key={`storefront-${index}`} href={getImageUrl(url)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-6 hover:border-primary-500"><div className="flex items-center gap-4"><Camera className="h-5 w-5 text-primary-600" /><div><p className="text-[10px] font-black uppercase text-slate-900">Storefront photo {index + 1}</p><p className="text-[8px] font-bold uppercase text-slate-400">Location evidence</p></div></div><ExternalLink className="h-4 w-4 text-slate-300" /></a>)}
-                      {(selectedApplication.activityDocuments || []).map((document, index) => document.documentUrl && <a key={`activity-${index}`} href={getImageUrl(document.documentUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-6 hover:border-primary-500"><div className="flex items-center gap-4"><Briefcase className="h-5 w-5 text-primary-600" /><div><p className="text-[10px] font-black uppercase text-slate-900">{document.label}</p><p className="text-[8px] font-bold uppercase text-slate-400">{document.activity} supporting file</p></div></div><ExternalLink className="h-4 w-4 text-slate-300" /></a>)}
-                      {/* Mayor's Permit */}
-                      {selectedApplication.mayorsPermitUrl && (
-                        <a 
-                          href={getImageUrl(selectedApplication.mayorsPermitUrl)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-secondary-100 text-primary-700 rounded-2xl group-hover/doc:bg-primary-600 group-hover/doc:text-white transition-colors">
-                              <Check className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Mayor's Permit</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Business License</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-primary-600 transition-all" />
-                        </a>
-                      )}
-
-                      {/* Government ID */}
-                      {(selectedApplication.governmentIdUrl || selectedApplication.verification?.idImage) && (
-                        <a 
-                          href={getImageUrl(selectedApplication.governmentIdUrl || selectedApplication.verification?.idImage)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover/doc:bg-emerald-600 group-hover/doc:text-white transition-colors">
-                              <Shield className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Government ID</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Identity Verification</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-emerald-600 transition-all" />
-                        </a>
-                      )}
-
-                      {/* Selfie Verification */}
-                      {selectedApplication.verification?.selfieImage && (
-                        <a 
-                          href={getImageUrl(selectedApplication.verification.selfieImage)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-emerald-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-rose-50 text-rose-500 rounded-2xl group-hover/doc:bg-rose-500 group-hover/doc:text-white transition-colors">
-                              <Camera className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Selfie Verification</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Biometric Check</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-rose-600 transition-all" />
-                        </a>
-                      )}
-
-                      {/* Business Registration */}
-                      {selectedApplication.businessRegistrationUrl && (
-                        <a 
-                          href={getImageUrl(selectedApplication.businessRegistrationUrl)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl group-hover/doc:bg-indigo-600 group-hover/doc:text-white transition-colors">
-                              <Briefcase className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Registration</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">DTI / SEC Document</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-indigo-600 transition-all" />
-                        </a>
-                      )}
-
-                      {/* BIR Certificate */}
-                      {selectedApplication.birRegistrationUrl && (
-                        <a 
-                          href={getImageUrl(selectedApplication.birRegistrationUrl)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl group-hover/doc:bg-rose-600 group-hover/doc:text-white transition-colors">
-                              <ShieldAlert className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">BIR Certificate</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Form 2303</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-rose-600 transition-all" />
-                        </a>
-                      )}
-
-                      {/* Barangay Clearance */}
-                      {selectedApplication.barangayClearanceUrl && (
-                        <a 
-                          href={getImageUrl(selectedApplication.barangayClearanceUrl)}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex items-center justify-between p-6 bg-white rounded-2xl border border-slate-100 hover:border-primary-500 hover:shadow-xl transition-all group/doc"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-secondary-50 text-primary-600 rounded-2xl group-hover/doc:bg-primary-600 group-hover/doc:text-white transition-colors">
-                              <MapPin className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Brgy Clearance</p>
-                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Local Verification</p>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4 text-slate-300 group-hover/doc:text-primary-600 transition-all" />
-                        </a>
-                      )}
+                    <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {[
+                        ['businessRegistration', 'Business Registration', selectedApplication.documentAvailability?.businessRegistration],
+                        ['mayorsPermit', "Mayor's / Business Permit", selectedApplication.documentAvailability?.mayorsPermit],
+                        ['birCertificate', 'BIR Form 2303', selectedApplication.documentAvailability?.birRegistration],
+                        ['governmentId', 'Government-Issued ID', selectedApplication.documentAvailability?.governmentId],
+                        ['authorityDocument', 'Authorization Letter', selectedApplication.documentAvailability?.authorityDocument],
+                        ['proofOfBusinessAddress', 'Proof of Business Address', selectedApplication.documentAvailability?.proofOfBusinessAddress]
+                      ].filter(([, , available]) => available).map(([type, label]) => <button key={type} type="button" onClick={() => openApplicationDocument(type)} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 text-left transition hover:border-primary-500 hover:shadow-lg"><span className="flex items-center gap-3"><Shield className="h-5 w-5 text-primary-600" /><span><strong className="block text-[10px] uppercase tracking-wider text-slate-900">{label}</strong><span className="mt-1 block text-[8px] font-bold uppercase text-slate-400">Private document</span></span></span><ExternalLink className="h-4 w-4 text-slate-300" /></button>)}
+                      {Array.from({ length: Number(selectedApplication.documentAvailability?.storefrontPhotos || 0) }, (_, index) => <button key={`storefront-${index}`} type="button" onClick={() => openApplicationDocument('storefrontPhoto', index)} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 text-left transition hover:border-primary-500"><span className="flex items-center gap-3"><Camera className="h-5 w-5 text-primary-600" /><strong className="text-[10px] uppercase tracking-wider text-slate-900">Storefront photo {index + 1}</strong></span><ExternalLink className="h-4 w-4 text-slate-300" /></button>)}
+                      {(selectedApplication.categoryDocuments || []).filter(document => selectedApplication.documentAvailability?.categoryDocuments?.[document.requirementKey]).map(document => <button key={document._id} type="button" onClick={() => openApplicationDocument('categoryDocument', document._id)} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 text-left transition hover:border-primary-500"><span><strong className="block text-[10px] uppercase tracking-wider text-slate-900">{document.label}</strong><span className="mt-1 block text-[8px] font-bold uppercase text-slate-400">{document.level}{document.expiryDate ? ` · expires ${new Date(document.expiryDate).toLocaleDateString()}` : ''}</span></span><ExternalLink className="h-4 w-4 text-slate-300" /></button>)}
+                      {(selectedApplication.activityDocuments || []).filter(document => document._id).map(document => <button key={document._id} type="button" onClick={() => openApplicationDocument('activityDocument', document._id)} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 text-left transition hover:border-primary-500"><span><strong className="block text-[10px] uppercase tracking-wider text-slate-900">{document.label}</strong><span className="mt-1 block text-[8px] font-bold uppercase text-slate-400">Legacy supporting document</span></span><ExternalLink className="h-4 w-4 text-slate-300" /></button>)}
                     </div>
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
 import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
-import MapPicker from '../../components/MapPicker';
+import GoogleMapsLocationPicker from '../../components/GoogleMapsLocationPicker';
 import { getAccurateCurrentPosition, getLocationAccuracyPresentation, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
 import { normalizeNominatimAddress, toLocationOptionValue } from '../../utils/nominatimAddress';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
@@ -23,6 +23,13 @@ import {
   expectedStoreDocumentValues,
   STORE_DOCUMENT_OCR_TYPES
 } from '../../utils/storeDocumentOcr';
+import {
+  BUSINESS_CATEGORIES,
+  CATEGORY_REQUIREMENTS,
+  categoryDocumentField,
+  combinedCategoryRequirements,
+  deriveOperationalModules
+} from '../../utils/storeApplicationRequirements';
 
 const StoreApplication = () => {
   const { user, updateUser } = useAuth();
@@ -37,7 +44,7 @@ const StoreApplication = () => {
   const [documentOcr, setDocumentOcr] = useState({});
   const ocrRequestIds = useRef({});
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
-  const [files, setFiles] = useState({
+  const [files, setFiles] = useState(() => ({
     licenseDocument: null,
     governmentId: null,
     businessRegistration: null,
@@ -49,8 +56,10 @@ const StoreApplication = () => {
     storefrontPhotos: [],
     petActivityDocuments: [],
     productActivityDocuments: [],
-    serviceActivityDocuments: []
-  });
+    serviceActivityDocuments: [],
+    proofOfBusinessAddress: null,
+    ...Object.fromEntries(Object.values(CATEGORY_REQUIREMENTS).flat().map(requirement => [categoryDocumentField(requirement.key), null]))
+  }));
 
   useEffect(() => {
     checkExistingApplication();
@@ -103,6 +112,7 @@ const StoreApplication = () => {
         }
       });
       if (field === 'contactInfo.address.city') next.contactInfo.address.barangay = '';
+      if (field === 'businessCategories') next.operationalModules = deriveOperationalModules(value);
       if (field.startsWith('contactInfo.address.') && field !== 'contactInfo.address.coordinates') {
         next.contactInfo.address.coordinates = { lat: '', lng: '' };
       }
@@ -172,7 +182,7 @@ const StoreApplication = () => {
           fields: Object.fromEntries(Object.entries(extraction?.fields || {}).map(([field, result]) => [field, result?.value || '']))
         }
       }));
-      if (fieldCount) toast.success(`${fieldCount} document field${fieldCount === 1 ? '' : 's'} extracted for review.`);
+      if (fieldCount) toast.success(`${fieldCount} document field${fieldCount === 1 ? '' : 's'} suggested for your review.`);
     } catch (error) {
       if (ocrRequestIds.current[fileType] !== requestId) return;
       setDocumentOcr(prev => ({
@@ -305,7 +315,7 @@ const StoreApplication = () => {
     setLoading(true);
     try {
       const response = await storeApplicationService.submitApplication(buildMultipartApplication());
-      toast.success('Application submitted successfully!');
+      toast.success("Application Submitted Successfully. Your application has been received and is waiting for review. We'll notify you when there's an update.");
       setApplication(response.data?.application || null);
       setDocumentAvailability(response.data?.application?.documentAvailability || documentAvailability);
       setFieldErrors({});
@@ -337,7 +347,7 @@ const StoreApplication = () => {
 
   const getStatusLabel = status => ({
     draft: 'Draft',
-    submitted: 'Processing',
+    submitted: 'Processing Documents',
     pending_review: 'Pending Review',
     under_review: 'Under Review',
     approved: 'Approved',
@@ -378,7 +388,8 @@ const StoreApplication = () => {
           <div className="relative z-10">
             <p className="text-[8px] font-black text-primary-600 uppercase tracking-[0.3em] mb-1">Status</p>
             <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Application Status</h1>
-            <p className="text-slate-400 font-bold text-[8px] uppercase tracking-widest leading-none mt-1">Ref: {application._id}</p>
+            <p className="text-slate-400 font-bold text-[8px] uppercase tracking-widest leading-none mt-1">Ref: {application.applicationReference || application._id}</p>
+            {application.submittedAt && <p className="mt-2 text-[9px] font-semibold text-slate-500">Submitted {new Date(application.submittedAt).toLocaleString()}</p>}
           </div>
           <span className={`relative z-10 px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] shadow-sm ${getStatusColor(application.status)}`}>
             {getStatusLabel(application.status)}
@@ -387,6 +398,7 @@ const StoreApplication = () => {
 
         <div className="bg-white rounded-[2rem] p-6 space-y-6 shadow-xl border border-slate-100">
           <StoreApplicationProfileDetails application={application} />
+          {!!application.reviewHistory?.length && <section className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Status history</h3><ol className="mt-4 space-y-3">{application.reviewHistory.slice().reverse().map((event, index) => <li key={`${event.at}-${index}`} className="flex gap-3"><span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary-600" /><div><p className="text-[10px] font-black capitalize text-slate-800">{String(event.action || '').replace(/_/g, ' ')}</p><p className="text-[9px] text-slate-500">{event.notes || 'Status updated'} · {event.at ? new Date(event.at).toLocaleString() : ''}</p></div></li>)}</ol></section>}
           {application.documentReview?.checks?.length > 0 && <section className={`rounded-2xl border p-5 ${application.documentReview.status === 'needs_attention' ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Document review notes</h3><p className="mt-1 text-[10px] font-medium text-slate-600">These notes help you prepare the application. Final approval always comes from a Platform Administrator.</p><div className="mt-3 space-y-2">{application.documentReview.checks.map((check, index) => <div key={`${check.documentKey}-${index}`} className="rounded-xl bg-white/80 p-3"><span className="text-[8px] font-black uppercase tracking-wider text-slate-500">{check.label}</span><p className={`mt-1 text-[9px] font-bold ${check.status === 'complete' ? 'text-emerald-700' : 'text-amber-800'}`}>{check.message}</p></div>)}</div></section>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -476,7 +488,8 @@ const StoreApplication = () => {
                            applicationType: 'expansion',
                            businessName: application.businessName,
                            businessType: application.businessType,
-                           operationalModules: application.operationalModules || []
+                           operationalModules: application.operationalModules || [],
+                           businessCategories: application.businessCategories || []
                          }));
                          setCurrentStep(0);
                        }}
@@ -488,6 +501,12 @@ const StoreApplication = () => {
                  </div>
                )}
             </div>
+          )}
+
+          {application.status === 'approved' && (
+            <section className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-xl sm:p-8">
+              <div className="flex items-start gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500"><Check className="h-5 w-5" /></span><div><h3 className="text-lg font-black">Seller account activated</h3><p className="mt-2 text-sm leading-relaxed text-slate-300">Your store was approved. The seller dashboard is enabled for: {(application.businessCategories || []).map(value => BUSINESS_CATEGORIES.find(category => category.id === value)?.label || value).join(', ') || 'the approved store activities'}.</p></div></div>
+            </section>
           )}
 
           {['submitted', 'pending_review', 'under_review', 'requires_more_info'].includes(application.status) && (
@@ -529,7 +548,7 @@ const StoreApplication = () => {
     setLoading(true);
     try {
       // Use the expansion endpoint
-      const response = await storeApplicationService.submitExpansionRequest(formData);
+      const response = await storeApplicationService.submitExpansionRequest(buildMultipartApplication());
       toast.success('Expansion request submitted successfully! We will review it soon.');
       setApplication(response.data.application);
     } catch (error) {
@@ -545,6 +564,7 @@ const StoreApplication = () => {
       <StoreApplicationJourney
         activeStage={storeApplicationStageForStep(currentStep)}
         accountComplete
+        applicationOnly
         onStageSelect={setCurrentStep}
       />
 
@@ -568,29 +588,31 @@ const StoreApplication = () => {
           <div data-step="0" className="card space-y-8 p-6 animate-fade-up sm:p-10">
             <div className="flex flex-col gap-5 border-b border-slate-100 pb-8 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white"><Shield className="h-6 w-6" /></span>
-                <div><p className="text-[9px] font-black uppercase tracking-[0.22em] text-primary-700">Application overview</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Prepare once, then complete each section</h2></div>
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white"><Briefcase className="h-6 w-6" /></span>
+                <div><p className="text-[9px] font-black uppercase tracking-[0.22em] text-primary-700">Business type</p><h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">What will your store offer?</h2><p className="mt-2 text-xs text-slate-500">Select every category you plan to operate. Requirements and seller features update automatically.</p></div>
               </div>
-              <span className="rounded-xl bg-emerald-50 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-700">Account verified</span>
+              <span className="rounded-xl bg-primary-50 px-4 py-2 text-[9px] font-black uppercase tracking-widest text-primary-700">Multiple selections allowed</span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                { icon: FileText, title: 'Business evidence', desc: 'DTI or SEC registration is required. BIR Form 2303 is required only when the business is registered with BIR.' },
-                { icon: MapPin, title: 'Verified location', desc: 'Confirm the actual store pin and provide the complete business address used for operations.' },
-                { icon: Users, title: 'Owner and references', desc: 'Identify the authorized representative, team setup, and two business references for review.' }
-              ].map(item => (
-                <article key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                  <item.icon className="h-5 w-5 text-primary-600" />
-                  <h3 className="mt-4 text-sm font-black text-slate-950">{item.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">{item.desc}</p>
-                </article>
-              ))}
+            <div data-field="businessCategories" tabIndex="-1" className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${fieldErrors.businessCategories ? 'rounded-2xl ring-2 ring-rose-300' : ''}`}>
+              {BUSINESS_CATEGORIES.map((category, index) => {
+                const selected = formData.businessCategories.includes(category.id);
+                const Icon = [Truck, Heart, Camera, Calendar, Shield, Briefcase][index];
+                return <button key={category.id} type="button" onClick={() => {
+                  const next = selected ? formData.businessCategories.filter(value => value !== category.id) : [...formData.businessCategories, category.id];
+                  handleChange('businessCategories', next);
+                }} className={`relative rounded-2xl border-2 p-5 text-left transition-all ${selected ? 'border-primary-600 bg-primary-50 shadow-lg shadow-primary-100' : 'border-slate-100 bg-white hover:border-primary-200'}`}>
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${selected ? 'bg-primary-600 text-white' : 'bg-slate-50 text-slate-500'}`}><Icon className="h-5 w-5" /></span>
+                  <strong className="mt-4 block text-sm font-black text-slate-950">{category.label}</strong>
+                  <span className="mt-2 block text-xs leading-relaxed text-slate-500">{category.description}</span>
+                  {selected && <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-white"><Check className="h-4 w-4" /></span>}
+                </button>;
+              })}
             </div>
 
-            <div className="flex flex-col gap-4 rounded-2xl border border-primary-100 bg-primary-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div><p className="text-sm font-black text-primary-950">Your progress is saved with your Pawzzle account.</p><p className="mt-1 text-xs text-primary-800">Platform administrators manually review the submitted application and documents before store access is granted.</p></div>
-              <button type="button" onClick={() => setCurrentStep(1)} className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3 text-[9px] font-black uppercase tracking-widest text-white shadow-lg shadow-primary-200 transition hover:bg-slate-950">Start business details <ArrowRight className="h-4 w-4" /></button>
+            <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5">
+              <h3 className="text-sm font-black text-primary-950">Requirements for your selection</h3>
+              {formData.businessCategories.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{combinedCategoryRequirements(formData.businessCategories).map(requirement => <div key={requirement.key} className="flex items-center justify-between rounded-xl bg-white px-3 py-2"><span className="text-[10px] font-bold text-slate-700">{requirement.label}</span><span className={`rounded-full px-2 py-1 text-[7px] font-black uppercase ${requirement.level === 'required' ? 'bg-rose-100 text-rose-700' : requirement.level === 'conditional' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{requirement.level}</span></div>)}</div> : <p className="mt-2 text-xs text-primary-800">Choose at least one category to see the applicable requirements.</p>}
             </div>
           </div>
         )}
@@ -817,7 +839,7 @@ const StoreApplication = () => {
           </div>
         )}
 
-        {currentStep === 2 && (
+        {currentStep === 1 && (
           <div data-step="2" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="store-field-note" role="note">
               <Users className="mt-0.5 h-4 w-4 shrink-0" />
@@ -980,7 +1002,7 @@ const StoreApplication = () => {
           </div>
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 2 && (
           <div data-step="3" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="store-field-note" role="note">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
@@ -1038,7 +1060,7 @@ const StoreApplication = () => {
                 </div>
 
                 {addressInputType === 'map' ? (
-                  <MapPicker 
+                  <GoogleMapsLocationPicker
                     onLocationSelected={(location) => {
                       setFormData(prev => ({
                         ...prev,
@@ -1143,8 +1165,8 @@ const StoreApplication = () => {
           </div>
         )}
 
-        {currentStep === 4 && (
-          <div data-step="4" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
+        {currentStep === 3 && (
+          <div data-step="3" tabIndex="-1" className="card p-5 sm:p-10 space-y-10 animate-slide-up">
             <div className="store-field-note" role="note">
               <FileText className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Upload clear and readable copies of your business documents. Eligible images are checked securely to suggest form values and identify details that need attention. Review and correct every suggestion before submitting. A Platform Administrator always makes the final decision.</span>
@@ -1154,10 +1176,12 @@ const StoreApplication = () => {
                 <h3 className="text-base font-black text-slate-900">Business documents</h3>
                 <div className="space-y-4">
                     { [
-                      { id: 'businessRegistration', label: 'DTI / SEC Certificate', required: true },
+                      { id: 'businessRegistration', label: 'DTI Certificate or SEC/CDA Registration', required: true },
                       { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: true },
-                      { id: 'birRegistration', label: 'BIR Form 2303', required: formData.taxProfile.birRegistrationStatus === 'registered' },
-                      { id: 'barangayClearance', label: 'Barangay Clearance', required: true }
+                      { id: 'birRegistration', label: 'BIR Certificate of Registration (Form 2303)', required: true },
+                      { id: 'governmentId', label: 'Valid Government-Issued ID', required: true },
+                      { id: 'authorityDocument', label: 'Authorization Letter', required: formData.representative.isAuthorizedRepresentative },
+                      { id: 'proofOfBusinessAddress', label: 'Proof of Business Address', required: false }
                     ].map((doc) => (
                       <div key={doc.id} className={`p-4 rounded-2xl border flex items-center justify-between group transition-all ${isFieldBroken(doc.id) ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100 hover:border-primary-200'}`}>
                         <div className="flex items-center gap-3">
@@ -1172,27 +1196,26 @@ const StoreApplication = () => {
                             {documentOcr[doc.id] && <p aria-live="polite" className={`mt-1 max-w-[240px] text-[9px] font-bold leading-4 ${documentOcr[doc.id].status === 'error' ? 'text-rose-600' : documentOcr[doc.id].status === 'reading' ? 'text-primary-700' : 'text-slate-500'}`}>{documentOcr[doc.id].message}</p>}
                           </div>
                         </div>
-                        <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />
+                        <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />
                         <label htmlFor={doc.id} className={`cursor-pointer px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all shadow-sm ${isFieldBroken(doc.id) ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-white text-primary-600 border border-slate-100 hover:bg-primary-600 hover:text-white'}`}>
                           {isFieldBroken(doc.id) ? 'Upload again' : files[doc.id] ? 'Replace file' : 'Choose file'}
                         </label>
                       </div>
                     ))}
                 </div>
-                <div className="space-y-3 rounded-2xl border border-primary-100 bg-primary-50 p-4">
-                  <div><h4 className="text-xs font-black text-slate-900">Activity-specific permits and licenses</h4><p className="mt-1 text-[10px] leading-4 text-slate-600">Each selected business activity needs supporting regulatory evidence. You may upload multiple files and replace the selected group before saving.</p></div>
-                  {[
-                    { activity: 'pets', field: 'petActivityDocuments', label: 'Animal activity permit or registration' },
-                    { activity: 'products', field: 'productActivityDocuments', label: 'Product distribution or regulatory permit' },
-                    { activity: 'services', field: 'serviceActivityDocuments', label: 'Service or professional operating permit' }
-                  ].filter(item => formData.operationalModules.includes(item.activity)).map(item => (
-                    <div key={item.field} data-field={item.field} className={`rounded-xl border bg-white p-3 ${fieldErrors[item.field] ? 'border-rose-300' : 'border-slate-100'}`}>
-                      <div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-wider text-slate-700">{item.label} *</p>{documentAvailability[item.field] > 0 && !files[item.field].length && <p className="text-[8px] font-bold text-emerald-700">{documentAvailability[item.field]} saved file{documentAvailability[item.field] === 1 ? '' : 's'} retained</p>}</div><label className="shrink-0 cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-[8px] font-black uppercase text-primary-700 hover:bg-primary-700 hover:text-white">Choose files<input aria-label={item.label} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={(event) => handleFileChange(item.field, Array.from(event.target.files || []).slice(0, 5))} /></label></div>
-                      {!!files[item.field].length && <div className="mt-2 grid grid-cols-2 gap-2">{files[item.field].map(file => <div key={`${file.name}-${file.lastModified}`} className="overflow-hidden rounded-lg border border-slate-100 bg-slate-50">{file.type.startsWith('image/') && <img src={URL.createObjectURL(file)} alt={`${item.label} preview`} className="h-16 w-full object-cover" />}<p className="truncate px-2 py-1 text-[8px] font-bold text-slate-500">{file.name}</p></div>)}</div>}
-                      <div className="mt-3 grid grid-cols-2 gap-2"><label className="text-[8px] font-black uppercase text-slate-500">Issue date<input type="date" className="input-premium mt-1 !py-2" value={formData.activityDocumentDetails[item.activity]?.issueDate || ''} onChange={(event) => handleChange(`activityDocumentDetails.${item.activity}.issueDate`, event.target.value)} /></label><label className="text-[8px] font-black uppercase text-slate-500">Expiration date<input type="date" className="input-premium mt-1 !py-2" value={formData.activityDocumentDetails[item.activity]?.expiryDate || ''} onChange={(event) => handleChange(`activityDocumentDetails.${item.activity}.expiryDate`, event.target.value)} /></label></div>
-                      {fieldErrors[item.field] && <p className="mt-2 text-[9px] font-bold text-rose-700">{fieldErrors[item.field]}</p>}
-                    </div>
-                  ))}
+                <div data-field="categoryDocuments" className={`space-y-3 rounded-2xl border bg-primary-50 p-4 ${fieldErrors.categoryDocuments ? 'border-rose-400' : 'border-primary-100'}`}>
+                  <div><h4 className="text-xs font-black text-slate-900">Category permits, licenses, and supporting files</h4><p className="mt-1 text-[10px] leading-4 text-slate-600">This checklist combines the requirements for every selected category without duplicates.</p></div>
+                  {combinedCategoryRequirements(formData.businessCategories).map(requirement => {
+                    const field = categoryDocumentField(requirement.key);
+                    const selectedFile = files[field];
+                    const retained = documentAvailability.categoryDocuments?.[requirement.key];
+                    return <div key={requirement.key} data-field={field} tabIndex="-1" className="rounded-xl border border-slate-100 bg-white p-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-[9px] font-black uppercase tracking-wider text-slate-700">{requirement.label}</p><span className={`rounded-full px-2 py-0.5 text-[7px] font-black uppercase ${requirement.level === 'required' ? 'bg-rose-100 text-rose-700' : requirement.level === 'conditional' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>{requirement.level}</span></div>{retained && !selectedFile && <p className="mt-1 text-[8px] font-bold text-emerald-700">Saved document retained</p>}{selectedFile && <p className="mt-1 truncate text-[8px] font-bold text-emerald-700">{selectedFile.name}</p>}</div><label className="shrink-0 cursor-pointer rounded-lg border border-slate-200 px-3 py-2 text-center text-[8px] font-black uppercase text-primary-700 hover:bg-primary-700 hover:text-white">{selectedFile ? 'Replace file' : 'Choose file'}<input aria-label={requirement.label} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={event => handleFileChange(field, event.target.files[0])} /></label></div>
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><label className="text-[8px] font-black uppercase text-slate-500">Issue date<input type="date" className="input-premium mt-1 !py-2" value={formData.categoryDocumentDetails[requirement.key]?.issueDate || ''} onChange={event => handleChange(`categoryDocumentDetails.${requirement.key}.issueDate`, event.target.value)} /></label><label className="text-[8px] font-black uppercase text-slate-500">Expiration date<input type="date" className="input-premium mt-1 !py-2" value={formData.categoryDocumentDetails[requirement.key]?.expiryDate || ''} onChange={event => handleChange(`categoryDocumentDetails.${requirement.key}.expiryDate`, event.target.value)} /></label></div>
+                    </div>;
+                  })}
+                  {!combinedCategoryRequirements(formData.businessCategories).length && <p className="rounded-xl bg-white p-3 text-[10px] text-slate-600">No additional category document is currently listed. General business documents still apply.</p>}
+                  {fieldErrors.categoryDocuments && <p className="text-[9px] font-bold text-rose-700">{fieldErrors.categoryDocuments}</p>}
                 </div>
                 <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4">
                   <div><h4 className="text-xs font-black text-slate-900">Mayor's / business permit details</h4><p className="mt-1 text-[10px] text-slate-500">Suggested when readable. Confirm every value against the uploaded permit.</p></div>
@@ -1244,13 +1267,47 @@ const StoreApplication = () => {
           </div>
         )}
 
+        {currentStep === 4 && (
+          <div data-step="4" tabIndex="-1" className="card space-y-8 p-5 animate-slide-up sm:p-10">
+            <div className="store-field-note" role="note">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0" />
+              <span><strong>Document Review</strong><br />We're checking your submitted documents and information. This initial check helps identify items for confirmation; final approval always comes from a Platform Administrator.</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ['businessRegistration', 'Business registration'],
+                ['mayorsPermit', "Mayor's / business permit"],
+                ['birRegistration', 'BIR Form 2303'],
+                ['governmentId', 'Government-issued ID']
+              ].map(([field, label]) => {
+                const result = documentOcr[field];
+                const received = Boolean(files[field] || documentAvailability[field]);
+                const status = !received ? 'Not received' : !result ? 'Document received' : result.status === 'reading' ? 'Checking document details' : result.status === 'complete' ? 'Details confirmed' : result.status === 'error' || result.status === 'unreadable' ? 'Unable to read document' : 'Needs confirmation';
+                return <article key={field} className={`rounded-2xl border p-4 ${['Needs confirmation', 'Unable to read document'].includes(status) ? 'border-amber-200 bg-amber-50' : received ? 'border-emerald-100 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                  <div className="flex items-center justify-between gap-3"><strong className="text-xs text-slate-900">{label}</strong><span className="rounded-full bg-white px-2 py-1 text-[7px] font-black uppercase text-slate-600">{status}</span></div>
+                  {result?.message && <p className="mt-3 text-[10px] leading-relaxed text-slate-600">{result.message}</p>}
+                  {!!result?.fields && <dl className="mt-3 space-y-2">{Object.entries(result.fields).map(([name, value]) => <div key={name} className="rounded-lg bg-white p-2"><dt className="text-[7px] font-black uppercase tracking-wider text-slate-400">{name.replace(/([A-Z])/g, ' $1')}</dt><dd className="mt-1 text-[9px] font-bold text-slate-800">{value}</dd></div>)}</dl>}
+                  {files[field] && ['error', 'unreadable', 'review'].includes(result?.status) && <div className="mt-3 flex gap-2"><button type="button" onClick={() => handleFileChange(field, files[field])} className="rounded-lg bg-slate-900 px-3 py-2 text-[8px] font-black uppercase text-white">Check again</button><button type="button" onClick={() => setCurrentStep(3)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[8px] font-black uppercase text-slate-700">Replace document</button></div>}
+                </article>;
+              })}
+            </div>
+            <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5"><h3 className="text-sm font-black text-slate-900">Review any suggested information</h3><p className="mt-2 text-xs leading-relaxed text-slate-600">Suggested values have been copied into the application fields where available. Return to Business Information or Business Documents to correct a value or replace a file. A mismatch never automatically rejects your application.</p></div>
+          </div>
+        )}
+
         {currentStep === 5 && (
           <div data-step="5" tabIndex="-1" className="card p-5 sm:p-10 space-y-8 animate-slide-up">
             <div className="store-field-note" role="note">
               <Shield className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Provide two people who can confirm that your business is legitimate. Review your information before submitting it for administrator approval.</span>
+              <span><strong>Review Your Application</strong><br />Check every section before submitting it for manual administrator review.</span>
             </div>
-            <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <section className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Selected business categories</h3><div className="mt-3 flex flex-wrap gap-2">{formData.businessCategories.map(value => <span key={value} className="rounded-full bg-white px-3 py-1 text-[9px] font-black text-primary-700">{BUSINESS_CATEGORIES.find(category => category.id === value)?.label || value}</span>)}</div></section>
+              <section className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Business information</h3><p className="mt-3 text-sm font-black text-slate-900">{formData.registeredBusinessName}</p><p className="mt-1 text-xs text-slate-500">Store display name: {formData.businessName}</p><p className="mt-1 text-xs text-slate-500">Owner / representative: {formData.representative.fullName}</p></section>
+              <section className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Store location</h3><p className="mt-3 text-xs leading-relaxed text-slate-600">{[formData.contactInfo.address.unitBuilding, formData.contactInfo.address.street, formData.contactInfo.address.barangay, formData.contactInfo.address.city, 'Cavite', formData.contactInfo.address.zipCode].filter(Boolean).join(', ')}</p><p className="mt-2 text-[9px] font-bold text-emerald-700">Location pin confirmed</p></section>
+              <section className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Uploaded documents</h3><p className="mt-3 text-xs text-slate-600">General documents: {[files.businessRegistration || documentAvailability.businessRegistration, files.mayorsPermit || documentAvailability.mayorsPermit, files.birRegistration || documentAvailability.birRegistration, files.governmentId || documentAvailability.governmentId].filter(Boolean).length} of 4 received</p><p className="mt-1 text-xs text-slate-600">Category documents: {combinedCategoryRequirements(formData.businessCategories).filter(requirement => files[categoryDocumentField(requirement.key)] || documentAvailability.categoryDocuments?.[requirement.key]).length}</p></section>
+            </div>
+            <div className="hidden space-y-6" aria-hidden="true">
               <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary-500" /> Business references {isFieldBroken('references') && <span className="px-2 py-0.5 bg-rose-100 text-rose-600 rounded-md text-[7px] animate-pulse ml-2">Please correct</span>}
               </h3>
@@ -1273,15 +1330,16 @@ const StoreApplication = () => {
                 {Object.keys(documentOcr).length ? <ul className="mt-3 space-y-2">{Object.values(documentOcr).map((result, index) => <li key={index} className={`rounded-lg px-3 py-2 text-[9px] font-bold ${['review', 'unreadable', 'error'].includes(result.status) ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>{result.message}</li>)}</ul> : <p className="mt-3 text-[9px] font-bold text-slate-500">Uploaded image documents will show their review notes here.</p>}
               </div>
               <h3 className="text-base font-black text-slate-900">Final review and declaration</h3>
-              <p className="text-xs leading-relaxed text-slate-600">I confirm that the business, location, registration, and tax information I provided is accurate and matches my uploaded documents. I understand that Pawzzle administrators will verify these details before approving the store.</p>
+              <p className="text-xs leading-relaxed text-slate-600">Review the information above and confirm that Pawzzle may use it to verify your business. Document checks never automatically approve or reject an application.</p>
               <label className="store-field-label">Your full legal name <span className="store-field-label__status">Required</span><input data-field="declaration.applicantName" aria-invalid={Boolean(fieldErrors['declaration.applicantName'])} className="input-premium mt-2 bg-white" placeholder="Enter your full legal name as your signature" value={formData.declaration.applicantName} onChange={(e) => handleChange('declaration.applicantName', e.target.value)} required /></label>
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-primary-200 bg-white p-4">
                 <input data-field="declaration.accepted" aria-invalid={Boolean(fieldErrors['declaration.accepted'])} type="checkbox" className="mt-0.5" checked={formData.declaration.accepted} onChange={(e) => handleChange('declaration.accepted', e.target.checked)} required />
                 <span className="min-w-0 flex-1 text-xs font-bold leading-5 text-slate-700">
-                  I confirm the information is correct and agree to submit this application for manual review.
+                  I confirm that all information and documents submitted are accurate and authorize their use for business verification.
                   <span className="ml-2 inline-flex align-middle text-[10px] font-black uppercase tracking-wider text-primary-700">Required</span>
                 </span>
               </label>
+              <p className="text-[10px] font-semibold text-slate-500">By submitting, you agree to Pawzzle's <a href="/privacy" className="text-primary-700 underline">Privacy Policy</a> and <a href="/terms" className="text-primary-700 underline">Terms</a>.</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-[0.35fr_1fr]">
@@ -1293,9 +1351,9 @@ const StoreApplication = () => {
           </div>
         )}
 
-        {currentStep > 0 && (
+        {(
           <div className="store-application-navigation flex items-center justify-between rounded-2xl border border-slate-100 bg-white/90 p-1.5 shadow-sm backdrop-blur-md sm:rounded-full sm:p-2">
-            <button type="button" onClick={() => setCurrentStep(prev => prev - 1)} className="store-application-navigation__back h-11 rounded-xl px-4 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all hover:bg-slate-50 sm:h-12 sm:rounded-full sm:px-8">Back</button>
+            <button type="button" disabled={currentStep === 0} onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))} className="store-application-navigation__back h-11 rounded-xl px-4 text-[9px] font-black uppercase tracking-widest text-slate-500 transition-all hover:bg-slate-50 disabled:opacity-30 sm:h-12 sm:rounded-full sm:px-8">Previous</button>
             {user.role !== 'admin' && <button type="button" onClick={handleSaveDraft} disabled={loading} className="hidden rounded-full border border-slate-200 px-4 py-3 text-[8px] font-black uppercase tracking-wider text-slate-600 hover:border-primary-300 hover:text-primary-700 disabled:opacity-50 sm:block">Save draft</button>}
             <div className="store-application-navigation__steps flex gap-1.5 sm:gap-2">
               {[0, 1, 2, 3, 4, 5].map(s => <div key={s} className={`w-2 h-2 rounded-full transition-all duration-300 ${currentStep === s ? 'bg-primary-600 w-6' : 'bg-slate-200'}`} />)}

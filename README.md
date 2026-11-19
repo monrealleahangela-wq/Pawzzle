@@ -267,6 +267,10 @@ Make sure to set these environment variables:
 - `IDENTITY_DOCUMENT_ENCRYPTION_KEY` - Dedicated 32-byte identity-document encryption key (hex or Base64)
 - `AWS_REKOGNITION_REGION` - Optional Rekognition override; defaults to `ap-southeast-1`
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` when workload credentials are unavailable
+- `AWS_STORE_DOCUMENTS_BUCKET` - Private S3 bucket used for store application and compliance documents; enable Block Public Access
+- `REACT_APP_GOOGLE_MAPS_API_KEY` - Browser-restricted Google Maps JavaScript API key used by the Cavite store-location picker
+
+The AWS principal used by the server also needs `textract:AnalyzeDocument` and bucket-scoped `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` permissions for the store application workflow. Keep credentials only in the deployment environment; never place them in the React variables or repository.
 
 ## Release and Defense Documentation
 

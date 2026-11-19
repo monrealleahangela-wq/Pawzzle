@@ -9,6 +9,14 @@ const { uploadDoc, cloudinary } = require('../middleware/upload');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { isPlatformAdmin } = require('../config/permissions');
 const { FIELD_LABELS } = require('../utils/storeDocumentOcr');
+const { deliverHtmlEmail, wrapInTemplate } = require('../utils/emailService');
+const {
+  BUSINESS_CATEGORIES,
+  combinedCategoryRequirements,
+  deriveOperationalModules,
+  categoryDocumentField
+} = require('../utils/storeApplicationRequirements');
+const { cleanupPersistedUploads, persistApplicationUploads, streamStoredDocument } = require('../services/privateStoreDocumentService');
 
 const BUSINESS_STRUCTURES = [
   'single_proprietorship', 'sole_proprietorship', 'one_person_corporation',
@@ -16,6 +24,7 @@ const BUSINESS_STRUCTURES = [
 ];
 const REGISTRATION_AUTHORITIES = ['dti', 'sec', 'cda', 'other'];
 const DECLARED_TAX_STATUSES = ['vat_registered', 'non_vat_registered'];
+const CAVITE_BOUNDS = Object.freeze({ south: 13.95, west: 120.55, north: 14.55, east: 121.15 });
 const BUSINESS_TYPES = ['pet_store', 'breeder', 'shelter', 'veterinary', 'grooming', 'training', 'other'];
 const ACTIVITY_DOCUMENTS = Object.freeze({
   pets: { field: 'petActivityDocuments', label: 'Animal activity permit or registration' },
@@ -84,6 +93,29 @@ const buildResubmissionUpdateFilter = (application, applicantId) => ({
 });
 
 const maskTin = value => value ? `${String(value).replace(/\D/g, '').slice(0, 3)}-***-***` : null;
+const escapeEmailText = value => String(value || '').replace(/[&<>"']/g, character => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+}[character]));
+
+const sendApplicationStatusEmail = async (application, title, message) => {
+  try {
+    const applicant = await User.findById(application.applicant).select('email firstName lastName');
+    if (!applicant?.email) return;
+    const reference = application.applicationReference || String(application._id);
+    const html = wrapInTemplate('Store Application', `
+      <h2 style="font-size:20px;color:#333;margin:0 0 18px;">${escapeEmailText(title)}</h2>
+      <p style="font-size:14px;color:#666;line-height:1.6;">${escapeEmailText(message)}</p>
+      <div style="margin:22px auto;padding:16px;background:#f7f8f3;border-radius:10px;max-width:420px;">
+        <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:1px;">Application reference</div>
+        <strong style="display:block;margin-top:6px;color:#59663b;">${escapeEmailText(reference)}</strong>
+      </div>
+      <p style="font-size:12px;color:#777;">Sign in to Pawzzle to review the current status and any required action.</p>
+    `);
+    await deliverHtmlEmail({ email: applicant.email, subject: `Pawzzle store application: ${title}`, html });
+  } catch (error) {
+    console.error('Store application email notification error:', error.message);
+  }
+};
 
 const applicationValidationErrors = (data, files = {}) => {
   const errors = [];
@@ -101,6 +133,8 @@ const applicationValidationErrors = (data, files = {}) => {
   if (!BUSINESS_STRUCTURES.includes(data.legalStructure)) errors.push({ field: 'legalStructure', msg: 'Select a valid business structure.' });
   required(data.natureOfBusiness, 'natureOfBusiness', 'Nature or line of business is required.');
   required(data.businessDescription, 'businessDescription', 'Store description is required.');
+  if (!Array.isArray(data.businessCategories) || data.businessCategories.length === 0) errors.push({ field: 'businessCategories', msg: 'Select at least one business category.' });
+  if ((data.businessCategories || []).some(category => !BUSINESS_CATEGORIES.includes(category))) errors.push({ field: 'businessCategories', msg: 'Select valid business categories.' });
   if (!Array.isArray(data.operationalModules) || data.operationalModules.length === 0) errors.push({ field: 'operationalModules', msg: 'Select at least one store operation.' });
   required(data.contactInfo?.phone, 'contactInfo.phone', 'Primary contact number is required.');
   required(data.contactInfo?.email, 'contactInfo.email', 'Business email is required.');
@@ -108,12 +142,18 @@ const applicationValidationErrors = (data, files = {}) => {
   for (const [key, label] of [['street', 'Street'], ['barangay', 'Barangay'], ['city', 'City / municipality'], ['province', 'Province'], ['zipCode', 'Postal code']]) {
     required(address[key] || (key === 'province' ? address.state : ''), `contactInfo.address.${key}`, `${label} is required.`);
   }
+  if (String(address.province || address.state || '').trim().toLowerCase() !== 'cavite') {
+    errors.push({ field: 'contactInfo.address.province', msg: 'Store applications currently require a Cavite address.' });
+  }
   if (coordinates.lat === '' || coordinates.lat === undefined || coordinates.lat === null
       || coordinates.lng === '' || coordinates.lng === undefined || coordinates.lng === null
       || !Number.isFinite(Number(coordinates.lat)) || !Number.isFinite(Number(coordinates.lng))
       || Number(coordinates.lat) < -90 || Number(coordinates.lat) > 90
       || Number(coordinates.lng) < -180 || Number(coordinates.lng) > 180) {
     errors.push({ field: 'contactInfo.address.coordinates', msg: 'Select a valid store location on the map.' });
+  } else if (Number(coordinates.lat) < CAVITE_BOUNDS.south || Number(coordinates.lat) > CAVITE_BOUNDS.north
+      || Number(coordinates.lng) < CAVITE_BOUNDS.west || Number(coordinates.lng) > CAVITE_BOUNDS.east) {
+    errors.push({ field: 'contactInfo.address.coordinates', msg: 'The confirmed store pin must be inside Cavite.' });
   }
   required(data.representative?.fullName, 'representative.fullName', 'Owner or representative legal name is required.');
   required(data.representative?.role, 'representative.role', 'Owner or representative role is required.');
@@ -133,20 +173,18 @@ const applicationValidationErrors = (data, files = {}) => {
   required(registration.registeredName, 'businessRegistration.registeredName', 'Registered name is required.');
   if (!registration.documentUrl && !files.businessRegistration) errors.push({ field: 'businessRegistration', msg: 'Business registration document is required.' });
   if (!data.mayorsPermitUrl && !files.mayorsPermit) errors.push({ field: 'mayorsPermit', msg: "Mayor's or business permit is required." });
-  if (!data.barangayClearanceUrl && !files.barangayClearance) errors.push({ field: 'barangayClearance', msg: 'Barangay clearance is required.' });
+  if (!data.governmentIdUrl && !files.governmentId) errors.push({ field: 'governmentId', msg: 'A valid government-issued ID is required.' });
   const storefrontPhotoCount = (data.storefrontPhotoUrls || []).length + (files.storefrontPhotos || []).length;
   if (storefrontPhotoCount < 2) errors.push({ field: 'storefrontPhotos', msg: 'Upload at least two storefront photos.' });
-  for (const activity of data.operationalModules || []) {
-    const requirement = ACTIVITY_DOCUMENTS[activity];
-    if (!requirement) continue;
-    const retained = (data.activityDocuments || []).some(document => document.activity === activity && document.documentUrl);
-    if (!retained && !(files[requirement.field] || []).length) {
-      errors.push({ field: requirement.field, msg: `${requirement.label} is required for the selected activity.` });
+  for (const requirement of combinedCategoryRequirements(data.businessCategories).filter(item => item.level === 'required')) {
+    const retained = (data.categoryDocuments || []).some(document => document.requirementKey === requirement.key && document.documentUrl);
+    if (!retained && !(files[categoryDocumentField(requirement.key)] || []).length) {
+      errors.push({ field: categoryDocumentField(requirement.key), msg: `${requirement.label} is required.` });
     }
   }
 
-  if (!['registered', 'not_registered', 'pending_registration'].includes(tax.birRegistrationStatus)) {
-    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'Select the current BIR registration status.' });
+  if (tax.birRegistrationStatus !== 'registered') {
+    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'A BIR-registered business and Form 2303 are required.' });
   }
   if (tax.birRegistrationStatus === 'registered') {
     required(tax.tin, 'taxProfile.tin', 'TIN is required for a BIR-registered business.');
@@ -165,18 +203,6 @@ const applicationValidationErrors = (data, files = {}) => {
   if (data.representative?.isAuthorizedRepresentative && !data.representative?.authorityDocumentUrl && !files.authorityDocument) {
     errors.push({ field: 'authorityDocument', msg: 'Proof of authority is required for an authorized representative.' });
   }
-  if (!Array.isArray(data.references) || data.references.length < 2) {
-    errors.push({ field: 'references', msg: 'Provide at least two business references.' });
-  } else {
-    data.references.slice(0, 2).forEach((reference, index) => {
-      for (const [key, label] of [['name', 'name'], ['business', 'business or organization'], ['phone', 'phone number'], ['email', 'email']]) {
-        required(reference?.[key], `references.${index}.${key}`, `Reference ${index + 1} ${label} is required.`);
-      }
-      if (reference?.email && !/^\S+@\S+\.\S+$/.test(String(reference.email).trim())) {
-        errors.push({ field: `references.${index}.email`, msg: `Enter a valid email for reference ${index + 1}.` });
-      }
-    });
-  }
   if (data.declaration?.accepted !== true) errors.push({ field: 'declaration.accepted', msg: 'Accept the declaration before submitting.' });
   return errors;
 };
@@ -184,7 +210,8 @@ const applicationValidationErrors = (data, files = {}) => {
 const applicationQueryWithPrivateFields = query => query.select([
   '+taxProfile.tin', '+taxProfile.branchCode', '+taxProfile.corDocumentUrl',
   '+businessRegistration.documentUrl', '+representative.authorityDocumentUrl',
-  '+storefrontPhotoUrls', '+activityDocuments.documentUrl'
+  '+governmentIdUrl', '+businessRegistrationUrl', '+birRegistrationUrl', '+barangayClearanceUrl', '+mayorsPermitUrl',
+  '+storefrontPhotoUrls', '+activityDocuments.documentUrl', '+categoryDocuments.documentUrl', '+proofOfBusinessAddressUrl'
 ].join(' '));
 
 const toApplicationResponse = (application, { includeDocuments = false, includeSensitiveFields = false } = {}) => {
@@ -200,10 +227,13 @@ const toApplicationResponse = (application, { includeDocuments = false, includeS
     barangayClearance: Boolean(object.barangayClearanceUrl),
     storeLogo: Boolean(object.storeLogoUrl),
     mayorsPermit: Boolean(object.mayorsPermitUrl),
+    governmentId: Boolean(object.governmentIdUrl),
+    proofOfBusinessAddress: Boolean(object.proofOfBusinessAddressUrl),
     storefrontPhotos: Array.isArray(object.storefrontPhotoUrls) ? object.storefrontPhotoUrls.length : 0,
     petActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'pets' && document.documentUrl).length,
     productActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'products' && document.documentUrl).length,
-    serviceActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'services' && document.documentUrl).length
+    serviceActivityDocuments: (object.activityDocuments || []).filter(document => document.activity === 'services' && document.documentUrl).length,
+    categoryDocuments: Object.fromEntries((object.categoryDocuments || []).map(document => [document.requirementKey, Boolean(document.documentUrl)]))
   };
   if (object.taxProfile) {
     object.taxProfile.tinMasked = maskTin(object.taxProfile.tin);
@@ -226,8 +256,10 @@ const toApplicationResponse = (application, { includeDocuments = false, includeS
     delete object.birRegistrationUrl;
     delete object.barangayClearanceUrl;
     delete object.mayorsPermitUrl;
+    delete object.proofOfBusinessAddressUrl;
     delete object.storefrontPhotoUrls;
     if (Array.isArray(object.activityDocuments)) object.activityDocuments.forEach(document => delete document.documentUrl);
+    if (Array.isArray(object.categoryDocuments)) object.categoryDocuments.forEach(document => delete document.documentUrl);
   }
   return object;
 };
@@ -251,11 +283,13 @@ const buildApplicationData = (body, applicantId) => {
     insurance: safeParse(body.insurance),
     emergencyContact: safeParse(body.emergencyContact),
     operationalModules: safeParse(body.operationalModules),
+    businessCategories: safeParse(body.businessCategories),
     staffTypes: safeParse(body.staffTypes),
     productCategories: safeParse(body.productCategories),
     paymentInfo: safeParse(body.paymentInfo),
     productsOffered: safeParse(body.productsOffered),
-    activityDocumentDetails: safeParse(body.activityDocumentDetails)
+    activityDocumentDetails: safeParse(body.activityDocumentDetails),
+    categoryDocumentDetails: safeParse(body.categoryDocumentDetails)
   };
   const data = {
     applicant: applicantId,
@@ -266,7 +300,8 @@ const buildApplicationData = (body, applicantId) => {
     natureOfBusiness: body.natureOfBusiness,
     yearBusinessStarted: optionalInteger(body.yearBusinessStarted, undefined),
     businessType: body.businessType,
-    operationalModules: Array.isArray(parsed.operationalModules) ? parsed.operationalModules : [],
+    businessCategories: Array.isArray(parsed.businessCategories) ? parsed.businessCategories.filter(category => BUSINESS_CATEGORIES.includes(category)) : [],
+    operationalModules: [],
     hiringStaff: booleanValue(body.hiringStaff),
     staffTypes: Array.isArray(parsed.staffTypes) ? parsed.staffTypes : [],
     supplierNeeds: booleanValue(body.supplierNeeds),
@@ -286,7 +321,8 @@ const buildApplicationData = (body, applicantId) => {
     numberOfEmployees: optionalInteger(body.numberOfEmployees, 1),
     hasPhysicalStore: booleanValue(body.hasPhysicalStore, true)
   };
-  for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered', 'activityDocumentDetails']) {
+  data.operationalModules = deriveOperationalModules(data.businessCategories);
+  for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered', 'activityDocumentDetails', 'categoryDocumentDetails']) {
     if (parsed[key] !== undefined) data[key] = parsed[key];
   }
   for (const key of ['website']) {
@@ -339,7 +375,42 @@ const mergeUploadedEvidence = (applicationData, existingApplication, files = {})
     }
   }
   applicationData.activityDocuments = next;
+  const existingCategoryDocuments = Array.isArray(existingApplication?.categoryDocuments)
+    ? existingApplication.categoryDocuments.map(document => document.toObject ? document.toObject() : { ...document })
+    : [];
+  const categoryDocuments = [];
+  for (const requirement of combinedCategoryRequirements(applicationData.businessCategories)) {
+    const field = categoryDocumentField(requirement.key);
+    const replacement = files[field]?.[0];
+    const retainedDocument = existingCategoryDocuments.find(document => document.requirementKey === requirement.key);
+    const details = applicationData.categoryDocumentDetails?.[requirement.key] || {};
+    if (replacement) {
+      categoryDocuments.push({
+        requirementKey: requirement.key,
+        label: requirement.label,
+        level: requirement.level,
+        categories: requirement.categories,
+        documentUrl: uploadedUrl(replacement),
+        originalName: replacement.originalname,
+        mimeType: replacement.mimetype,
+        fileSize: replacement.size,
+        issueDate: details.issueDate || undefined,
+        expiryDate: details.expiryDate || undefined
+      });
+    } else if (retainedDocument) {
+      categoryDocuments.push({
+        ...retainedDocument,
+        label: requirement.label,
+        level: requirement.level,
+        categories: requirement.categories,
+        issueDate: details.issueDate || retainedDocument.issueDate,
+        expiryDate: details.expiryDate || retainedDocument.expiryDate
+      });
+    }
+  }
+  applicationData.categoryDocuments = categoryDocuments;
   delete applicationData.activityDocumentDetails;
+  delete applicationData.categoryDocumentDetails;
 };
 
 const safeDocumentSignals = value => {
@@ -371,19 +442,18 @@ const buildApplicationDocumentReview = (data, signals = {}, now = new Date()) =>
   const evidence = [
     ['businessRegistration', 'Business registration', Boolean(data.businessRegistration?.documentUrl || data.businessRegistrationUrl)],
     ['mayorsPermit', "Mayor's or business permit", Boolean(data.mayorsPermitUrl)],
-    ['barangayClearance', 'Barangay clearance', Boolean(data.barangayClearanceUrl)],
+    ['governmentId', 'Government-issued ID', Boolean(data.governmentIdUrl)],
+    ['birRegistration', 'BIR Certificate of Registration', Boolean(data.taxProfile?.corDocumentUrl || data.birRegistrationUrl)],
     ['storefrontPhotos', 'Storefront photos', (data.storefrontPhotoUrls || []).length >= 2]
   ];
-  if (data.taxProfile?.birRegistrationStatus === 'registered') {
-    evidence.push(['birRegistration', 'BIR Certificate of Registration', Boolean(data.taxProfile?.corDocumentUrl || data.birRegistrationUrl)]);
-  }
-  for (const activity of data.operationalModules || []) {
-    const requirement = ACTIVITY_DOCUMENTS[activity];
-    if (!requirement) continue;
+  if (data.proofOfBusinessAddressUrl) evidence.push(['proofOfBusinessAddress', 'Proof of business address', true]);
+  for (const requirement of combinedCategoryRequirements(data.businessCategories)) {
+    const attached = (data.categoryDocuments || []).some(document => document.requirementKey === requirement.key && document.documentUrl);
+    if (requirement.level !== 'required' && !attached) continue;
     evidence.push([
-      requirement.field,
+      categoryDocumentField(requirement.key),
       requirement.label,
-      (data.activityDocuments || []).some(document => document.activity === activity && document.documentUrl)
+      attached
     ]);
   }
   for (const [key, label, present] of evidence) {
@@ -433,6 +503,11 @@ const buildApplicationDocumentReview = (data, signals = {}, now = new Date()) =>
   for (const document of data.activityDocuments || []) {
     if (document.expiryDate && !Number.isNaN(new Date(document.expiryDate).getTime()) && new Date(document.expiryDate) <= now) {
       add(`${document.activity}ActivityDocuments`, document.label, 'expired', `${document.label} appears to be expired. Upload a current copy.`);
+    }
+  }
+  for (const document of data.categoryDocuments || []) {
+    if (document.expiryDate && !Number.isNaN(new Date(document.expiryDate).getTime()) && new Date(document.expiryDate) <= now) {
+      add(`categoryDocument__${document.requirementKey}`, document.label, 'expired', `${document.label} appears to be expired. Upload a current copy.`);
     }
   }
   return {
@@ -584,6 +659,7 @@ const submitApplication = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    await persistApplicationUploads(req.files || {}, req.user.id);
 
     const applicationData = buildApplicationData(req.body, req.user.id);
 
@@ -616,6 +692,12 @@ const submitApplication = async (req, res) => {
     applicationData.storeLogoUrl = req.files?.storeLogo
       ? undefined
       : existingApplication?.storeLogoUrl;
+    applicationData.governmentIdUrl = req.files?.governmentId
+      ? undefined
+      : existingApplication?.governmentIdUrl;
+    applicationData.proofOfBusinessAddressUrl = req.files?.proofOfBusinessAddress
+      ? undefined
+      : existingApplication?.proofOfBusinessAddressUrl;
     mergeUploadedEvidence(applicationData, existingApplication, req.files || {});
     if (applicationData.insurance || existingApplication?.insurance) {
       const savedInsurance = existingApplication?.insurance?.toObject
@@ -637,10 +719,12 @@ const submitApplication = async (req, res) => {
 
     const structuredErrors = applicationValidationErrors(applicationData, req.files || {});
     if (structuredErrors.length) {
+      await cleanupPersistedUploads(req.files || {});
       return res.status(400).json({ message: 'Complete the required application sections.', errors: structuredErrors });
     }
 
     if (existingApplication && ['under_review', 'pending_review', 'submitted', 'approved'].includes(existingApplication.status)) {
+      await cleanupPersistedUploads(req.files || {});
       return res.status(400).json({
         message: existingApplication.status === 'approved'
           ? 'Your store application has already been approved.'
@@ -682,6 +766,9 @@ const submitApplication = async (req, res) => {
       }
       if (req.files.governmentId) {
         applicationData.governmentIdUrl = req.files.governmentId[0].path || req.files.governmentId[0].secure_url;
+      }
+      if (req.files.proofOfBusinessAddress) {
+        applicationData.proofOfBusinessAddressUrl = uploadedUrl(req.files.proofOfBusinessAddress[0]);
       }
       if (req.files.businessRegistration) {
         const documentUrl = req.files.businessRegistration[0].path || req.files.businessRegistration[0].secure_url;
@@ -727,6 +814,7 @@ const submitApplication = async (req, res) => {
     // A complete submission enters the queue. Only a Platform Admin can move
     // it into active review and ultimately approve it.
     application.status = 'pending_review';
+    application.submittedAt = new Date();
     application.reviewNotes = application.verificationScore >= 60 
       ? 'Application submitted and awaiting manual review'
       : 'Application submitted but may require additional documentation due to low verification score';
@@ -761,6 +849,7 @@ const submitApplication = async (req, res) => {
             ...resubmissionFields,
             applicationType: 'new_store',
             status: application.status,
+            submittedAt: application.submittedAt,
             reviewNotes: application.reviewNotes,
             verificationScore: application.verificationScore,
             requiredCorrections: [],
@@ -803,19 +892,21 @@ const submitApplication = async (req, res) => {
         relatedId: application._id,
         relatedModel: 'StoreApplication'
       });
+      await sendApplicationStatusEmail(application, 'Application received', 'Your application is waiting for manual review. We will notify you when its status changes.');
     } catch (notificationError) {
       console.error('Store application notification error:', notificationError);
     }
   } catch (error) {
     console.error('Submit application error:', error);
     if (res.headersSent) return;
+    await cleanupPersistedUploads(req.files || {});
     if (error?.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Please review the application details and submit again.',
         errors: Object.entries(error.errors || {}).map(([field, detail]) => ({ field, msg: detail.message }))
       });
     }
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -823,6 +914,7 @@ const submitApplication = async (req, res) => {
 // remain editable by their owner and never grant store access.
 const saveApplicationDraft = async (req, res) => {
   try {
+    await persistApplicationUploads(req.files || {}, req.user.id);
     const existingApplication = await applicationQueryWithPrivateFields(StoreApplication.findOne(
       buildOriginalApplicationSelector(req.user.id)
     ).sort({ createdAt: -1 }));
@@ -847,6 +939,8 @@ const saveApplicationDraft = async (req, res) => {
     applicationData.mayorsPermitUrl = req.files?.mayorsPermit ? undefined : existingApplication?.mayorsPermitUrl;
     applicationData.barangayClearanceUrl = req.files?.barangayClearance ? undefined : existingApplication?.barangayClearanceUrl;
     applicationData.storeLogoUrl = req.files?.storeLogo ? undefined : existingApplication?.storeLogoUrl;
+    applicationData.governmentIdUrl = req.files?.governmentId ? undefined : existingApplication?.governmentIdUrl;
+    applicationData.proofOfBusinessAddressUrl = req.files?.proofOfBusinessAddress ? undefined : existingApplication?.proofOfBusinessAddressUrl;
     mergeUploadedEvidence(applicationData, existingApplication, req.files || {});
 
     const singleUploads = {
@@ -864,6 +958,8 @@ const saveApplicationDraft = async (req, res) => {
     if (req.files?.mayorsPermit?.[0]) applicationData.mayorsPermitUrl = uploadedUrl(req.files.mayorsPermit[0]);
     if (req.files?.barangayClearance?.[0]) applicationData.barangayClearanceUrl = uploadedUrl(req.files.barangayClearance[0]);
     if (req.files?.storeLogo?.[0]) applicationData.storeLogoUrl = uploadedUrl(req.files.storeLogo[0]);
+    if (req.files?.governmentId?.[0]) applicationData.governmentIdUrl = uploadedUrl(req.files.governmentId[0]);
+    if (req.files?.proofOfBusinessAddress?.[0]) applicationData.proofOfBusinessAddressUrl = uploadedUrl(req.files.proofOfBusinessAddress[0]);
 
     applicationData.status = 'draft';
     applicationData.draftSavedAt = new Date();
@@ -885,7 +981,8 @@ const saveApplicationDraft = async (req, res) => {
     });
   } catch (error) {
     console.error('Save store application draft error:', error);
-    return res.status(500).json({ message: 'Unable to save the draft. Try again.' });
+    await cleanupPersistedUploads(req.files || {});
+    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to save the draft. Try again.' });
   }
 };
 
@@ -923,6 +1020,7 @@ const withdrawApplication = async (req, res) => {
         relatedId: application._id,
         relatedModel: 'StoreApplication'
       });
+      await sendApplicationStatusEmail(application, 'Application withdrawn', 'Your store application has been withdrawn and will no longer be reviewed.');
     } catch (notificationError) {
       console.error('Store application withdrawal notification error:', notificationError);
     }
@@ -939,11 +1037,13 @@ const withdrawApplication = async (req, res) => {
 // Request business expansion
 const submitExpansionRequest = async (req, res) => {
   try {
-    const { operationalModules, hiringStaff, staffTypes, supplierNeeds, inventoryPlans, productCategories, businessDescription } = req.body;
+    await persistApplicationUploads(req.files || {}, req.user.id);
+    const { hiringStaff, staffTypes, supplierNeeds, inventoryPlans, productCategories, businessDescription } = req.body;
     
     // Validate if store exists
     const store = await Store.findOne({ owner: req.user.id });
     if (!store) {
+      await cleanupPersistedUploads(req.files || {});
       return res.status(404).json({ message: 'Store not found' });
     }
 
@@ -955,7 +1055,23 @@ const submitExpansionRequest = async (req, res) => {
     });
 
     if (existing) {
+      await cleanupPersistedUploads(req.files || {});
       return res.status(400).json({ message: 'A business expansion request is already in progress' });
+    }
+
+    const selectedCategories = safeParse(req.body.businessCategories);
+    const requestedCategories = (Array.isArray(selectedCategories) ? selectedCategories : [])
+      .filter(category => BUSINESS_CATEGORIES.includes(category) && !(store.approvedBusinessCategories || []).includes(category));
+    if (!requestedCategories.length) {
+      await cleanupPersistedUploads(req.files || {});
+      return res.status(400).json({ message: 'Select at least one new business category to verify.' });
+    }
+    const missingRequirement = combinedCategoryRequirements(requestedCategories)
+      .filter(requirement => requirement.level === 'required')
+      .find(requirement => !(req.files?.[categoryDocumentField(requirement.key)] || []).length);
+    if (missingRequirement) {
+      await cleanupPersistedUploads(req.files || {});
+      return res.status(400).json({ message: `${missingRequirement.label} is required for this category expansion.` });
     }
 
     const applicationData = {
@@ -964,7 +1080,8 @@ const submitExpansionRequest = async (req, res) => {
       businessType: store.businessType,
       applicationType: 'expansion',
       status: 'pending_review',
-      operationalModules: safeParse(operationalModules),
+      businessCategories: requestedCategories,
+      operationalModules: deriveOperationalModules(requestedCategories),
       hiringStaff: hiringStaff === 'true' || hiringStaff === true,
       staffTypes: safeParse(staffTypes),
       supplierNeeds: supplierNeeds === 'true' || supplierNeeds === true,
@@ -972,7 +1089,13 @@ const submitExpansionRequest = async (req, res) => {
       productCategories: safeParse(productCategories),
       businessDescription: businessDescription || `Expansion request for ${store.name}`,
       contactInfo: store.contactInfo,
+      categoryDocumentDetails: safeParse(req.body.categoryDocumentDetails),
+      submittedAt: new Date(),
+      reviewHistory: [{ action: 'submitted', actor: req.user.id, notes: `Requested verification for ${requestedCategories.join(', ')}.` }]
     };
+
+    mergeUploadedEvidence(applicationData, null, req.files || {});
+    applicationData.documentReview = buildApplicationDocumentReview(applicationData, {});
 
     // Handle uploaded permits/docs for expansion
     if (req.files) {
@@ -1008,7 +1131,7 @@ const submitExpansionRequest = async (req, res) => {
           sender: req.user.id,
           type: 'store_application', // Or 'expansion_request'
           title: 'Business Expansion Protocol Initiated',
-          message: `${store.name} has submitted a request to expand their modular operations to include ${safeParse(operationalModules).join(', ')}.`,
+          message: `${store.name} requested verification for ${requestedCategories.join(', ')}.`,
           relatedId: application._id,
           relatedModel: 'StoreApplication'
         });
@@ -1018,7 +1141,8 @@ const submitExpansionRequest = async (req, res) => {
     }
   } catch (error) {
     console.error('Expansion request error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    await cleanupPersistedUploads(req.files || {});
+    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
   }
 };
 
@@ -1092,7 +1216,7 @@ const getApplicationById = async (req, res) => {
       return res.status(404).json({ message: 'Application not found' });
     }
 
-    const [applicationWithStore] = await attachStoreSummaries(application, { includeDocuments: true });
+    const [applicationWithStore] = await attachStoreSummaries(application, { includeDocuments: false });
     res.json({ application: applicationWithStore });
   } catch (error) {
     console.error('Get application error:', error);
@@ -1163,13 +1287,62 @@ const reviewApplication = async (req, res) => {
 
       if (application.applicationType === 'expansion') {
         // Handle Expansion Approval
-        const store = await Store.findOne({ owner: application.applicant });
+        const store = await Store.findOne({ owner: application.applicant })
+          .select('+businessCompliance.documents.versions.documentUrl');
         if (store) {
-          store.operationalModules = application.operationalModules;
+          store.operationalModules = [...new Set([...(store.operationalModules || []), ...(application.operationalModules || [])])];
+          store.approvedBusinessCategories = [...new Set([...(store.approvedBusinessCategories || []), ...(application.businessCategories || [])])];
           store.staffingConfiguration = application.staffingConfiguration;
           store.staffTypes = application.staffTypes;
           store.supplierNeeds = application.supplierNeeds;
           store.expansionStatus = 'none';
+          store.businessCompliance = store.businessCompliance || {};
+          if (!Array.isArray(store.businessCompliance.documents)) store.businessCompliance.documents = [];
+          for (const document of application.categoryDocuments || []) {
+            const requirementKey = `category_${document.requirementKey}`;
+            let complianceDocument = store.businessCompliance.documents.find(item => item.requirementKey === requirementKey);
+            if (!complianceDocument) {
+              store.businessCompliance.documents.push({
+                requirementKey,
+                label: document.label,
+                requiredForOperation: document.level === 'required',
+                taxAffecting: false,
+                currentVersion: 0,
+                versions: []
+              });
+              complianceDocument = store.businessCompliance.documents[store.businessCompliance.documents.length - 1];
+            }
+            const nextVersion = Number(complianceDocument.currentVersion || 0) + 1;
+            complianceDocument.currentVersion = nextVersion;
+            complianceDocument.requiredForOperation = complianceDocument.requiredForOperation || document.level === 'required';
+            complianceDocument.versions.push({
+              version: nextVersion,
+              documentUrl: document.documentUrl,
+              originalName: document.originalName,
+              mimeType: document.mimeType,
+              size: document.fileSize,
+              issueDate: document.issueDate,
+              hasExpiration: Boolean(document.expiryDate),
+              expirationDate: document.expiryDate,
+              verificationStatus: 'verified',
+              submittedAt: application.submittedAt || application.createdAt,
+              submittedBy: application.applicant,
+              verifiedAt: new Date(),
+              verifiedBy: req.user.id,
+              sourceApplication: application._id
+            });
+          }
+          store.businessCompliance.lastSubmittedAt = application.submittedAt || application.createdAt;
+          store.businessCompliance.lastReviewedAt = new Date();
+          store.businessCompliance.lastVerifiedAt = new Date();
+          store.businessCompliance.auditTrail = store.businessCompliance.auditTrail || [];
+          store.businessCompliance.auditTrail.push({
+            event: 'business_category_expansion_approved',
+            actor: req.user.id,
+            at: new Date(),
+            reason: `Approved categories: ${(application.businessCategories || []).join(', ')}.`
+          });
+          store.markModified('businessCompliance');
           await store.save();
         }
       } else {
@@ -1179,10 +1352,13 @@ const reviewApplication = async (req, res) => {
           name: application.businessName,
           description: application.businessDescription || 'A new store on Pawzzle.',
           logo: application.storeLogoUrl,
-          coverImage: application.storefrontPhotoUrls?.[0],
-          storefrontPhotos: application.storefrontPhotoUrls || [],
+          // Storefront uploads are private verification evidence. They are
+          // never copied into public Store media fields.
+          coverImage: application.storeLogoUrl,
+          storefrontPhotos: [],
           businessType: application.businessType,
           operationalModules: application.operationalModules || [],
+          approvedBusinessCategories: application.businessCategories || [],
           staffingConfiguration: application.staffingConfiguration,
           staffTypes: application.staffTypes || [],
           legalStructure: application.legalStructure,
@@ -1250,6 +1426,29 @@ const reviewApplication = async (req, res) => {
                 requirementKey: `${document.activity}_activity_${index + 1}`,
                 label: document.label,
                 requiredForOperation: true,
+                taxAffecting: false,
+                currentVersion: 1,
+                versions: [{
+                  version: 1,
+                  documentUrl: document.documentUrl,
+                  originalName: document.originalName,
+                  mimeType: document.mimeType,
+                  size: document.fileSize,
+                  issueDate: document.issueDate,
+                  hasExpiration: Boolean(document.expiryDate),
+                  expirationDate: document.expiryDate,
+                  verificationStatus: 'verified',
+                  submittedAt: application.submittedAt || application.createdAt,
+                  submittedBy: application.applicant,
+                  verifiedAt: new Date(),
+                  verifiedBy: req.user.id,
+                  sourceApplication: application._id
+                }]
+              })),
+              ...(application.categoryDocuments || []).map(document => ({
+                requirementKey: `category_${document.requirementKey}`,
+                label: document.label,
+                requiredForOperation: document.level === 'required',
                 taxAffecting: false,
                 currentVersion: 1,
                 versions: [{
@@ -1344,21 +1543,31 @@ const reviewApplication = async (req, res) => {
       application
     });
 
-    // Notify applicant
-    await createNotification({
-      recipient: application.applicant,
-      sender: req.user.id,
-      type: 'store_application',
-      title: `Store Application ${status.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase())}`,
-      message: status === 'approved'
-        ? 'Congratulations! Your store application has been approved. You can now access the admin panel.'
-        : `Your application has been ${status}. Reason: ${rejectionReason || 'No specific reason provided.'}`,
-      relatedId: application._id,
-      relatedModel: 'StoreApplication'
-    });
+    try {
+      await createNotification({
+        recipient: application.applicant,
+        sender: req.user.id,
+        type: 'store_application',
+        title: `Store Application ${status.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase())}`,
+        message: status === 'approved'
+          ? 'Congratulations! Your store application has been approved. You can now access the seller dashboard.'
+          : `Your application has been ${status}. Reason: ${reviewNotes || rejectionReason || 'Check your application status for details.'}`,
+        relatedId: application._id,
+        relatedModel: 'StoreApplication'
+      });
+      await sendApplicationStatusEmail(
+        application,
+        status === 'requires_more_info' ? 'Revision requested' : status.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase()),
+        status === 'approved'
+          ? 'Your store application was approved. Your seller dashboard is now available for the approved business categories.'
+          : (reviewNotes || rejectionReason || `Your application status changed to ${status.replace(/_/g, ' ')}.`)
+      );
+    } catch (notificationError) {
+      console.error('Store application status notification error:', notificationError);
+    }
   } catch (error) {
     console.error('Review application error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    if (!res.headersSent) res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -1517,13 +1726,61 @@ const getApplicationDocument = async (req, res) => {
       birCertificate: application.taxProfile?.corDocumentUrl || application.birRegistrationUrl,
       authorityDocument: application.representative?.authorityDocumentUrl,
       mayorsPermit: application.mayorsPermitUrl,
-      barangayClearance: application.barangayClearanceUrl
+      barangayClearance: application.barangayClearanceUrl,
+      proofOfBusinessAddress: application.proofOfBusinessAddressUrl,
+      storeLogo: application.storeLogoUrl
     };
-    const documentUrl = documents[req.params.documentType];
+    let documentUrl = documents[req.params.documentType];
+    if (req.params.documentType === 'activityDocument' && req.params.documentId) {
+      documentUrl = application.activityDocuments?.id(req.params.documentId)?.documentUrl;
+    }
+    if (req.params.documentType === 'categoryDocument' && req.params.documentId) {
+      documentUrl = application.categoryDocuments?.id(req.params.documentId)?.documentUrl;
+    }
+    if (req.params.documentType === 'storefrontPhoto' && /^\d+$/.test(String(req.params.documentId || ''))) {
+      documentUrl = application.storefrontPhotoUrls?.[Number(req.params.documentId)];
+    }
     if (!documentUrl) return res.status(404).json({ message: 'Document not found.' });
-    res.json({ documentUrl });
+    await streamStoredDocument(documentUrl, res);
   } catch (error) {
-    res.status(500).json({ message: 'Unable to open the application document.' });
+    if (res.headersSent) return;
+    res.status(error.statusCode || 500).json({ message: 'Unable to open the application document.' });
+  }
+};
+
+const correctDocumentReviewInformation = async (req, res) => {
+  try {
+    const corrections = Array.isArray(req.body?.corrections) ? req.body.corrections : [];
+    if (!corrections.length || corrections.length > 50) {
+      return res.status(400).json({ message: 'Provide between 1 and 50 document detail corrections.' });
+    }
+    const application = await applicationQueryWithPrivateFields(StoreApplication.findById(req.params.id));
+    if (!application || application.isDeleted) return res.status(404).json({ message: 'Application not found.' });
+    const extracted = application.documentReview?.extractedInformation || [];
+    for (const correction of corrections) {
+      const documentKey = String(correction?.documentKey || '').trim();
+      const field = String(correction?.field || '').trim();
+      const value = String(correction?.value || '').trim();
+      if (!documentKey || !field || !value || value.length > 300) {
+        return res.status(400).json({ message: 'Each correction requires a document, field, and value of at most 300 characters.' });
+      }
+      const item = extracted.find(row => row.documentKey === documentKey && row.field === field);
+      if (!item) return res.status(400).json({ message: `The document detail ${field} no longer exists.` });
+      item.value = value;
+      item.correctedByAdmin = true;
+      item.correctedAt = new Date();
+      item.correctedBy = req.user.id;
+    }
+    appendApplicationReviewEvent(application, {
+      action: 'document_review_corrected',
+      actor: req.user.id,
+      notes: `Corrected ${corrections.length} extracted document detail${corrections.length === 1 ? '' : 's'} without changing the original files.`
+    });
+    await application.save();
+    res.json({ message: 'Document details corrected.', application: toApplicationResponse(application, { includeSensitiveFields: true }) });
+  } catch (error) {
+    console.error('Correct document review information error:', error);
+    res.status(500).json({ message: 'Unable to correct the document review details.' });
   }
 };
 
@@ -1671,6 +1928,7 @@ module.exports = {
   getAuditCount,
   verifyTaxProfile,
   getApplicationDocument,
+  correctDocumentReviewInformation,
   applicationValidationErrors,
   buildApplicationData,
   maskTin,

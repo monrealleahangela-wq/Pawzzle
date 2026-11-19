@@ -25,6 +25,10 @@ const storeApplicationService = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
 
+  submitExpansionRequest: (formData) => api.post('/store-applications/expansion', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+
   withdrawApplication: () => api.patch('/store-applications/my-application/withdraw'),
 
   // Get all applications (Super Admin only)
@@ -38,7 +42,11 @@ const storeApplicationService = {
 
   verifyTaxProfile: (id, reviewData) => api.put(`/store-applications/${id}/tax-verification`, reviewData),
 
-  getDocument: (id, documentType) => api.get(`/store-applications/${id}/documents/${documentType}`),
+  correctDocumentReview: (id, corrections) => api.patch(`/store-applications/${id}/document-review`, { corrections }),
+
+  getDocument: (id, documentType, documentId) => api.get(`/store-applications/${id}/documents/${documentType}${documentId !== undefined ? `/${documentId}` : ''}`, {
+    responseType: 'blob'
+  }),
 
   // Get user's application
   getUserApplication: () => api.get('/store-applications/my-application')
