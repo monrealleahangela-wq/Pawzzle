@@ -1,3 +1,11 @@
+import {
+  BUSINESS_CATEGORIES,
+  CATEGORY_REQUIREMENTS,
+  categoryDocumentField,
+  combinedCategoryRequirements,
+  deriveOperationalModules
+} from './storeApplicationRequirements';
+
 const currentYear = () => new Date().getFullYear();
 
 const dateInputValue = value => {
@@ -7,6 +15,7 @@ const dateInputValue = value => {
 };
 
 export const createStoreApplicationForm = user => ({
+  businessCategories: [],
   operationalModules: [],
   staffingConfiguration: {
     hasStaff: 'no',
@@ -24,6 +33,9 @@ export const createStoreApplicationForm = user => ({
     products: { issueDate: '', expiryDate: '' },
     services: { issueDate: '', expiryDate: '' }
   },
+  categoryDocumentDetails: Object.fromEntries(Object.values(CATEGORY_REQUIREMENTS).flat().map(requirement => [requirement.key, {
+    issueDate: '', expiryDate: ''
+  }])),
   businessName: '',
   tradeName: '',
   registeredBusinessName: '',
@@ -97,7 +109,8 @@ export const hydrateStoreApplicationForm = (application, user) => {
 
   return {
     ...defaults,
-    operationalModules: application?.operationalModules || defaults.operationalModules,
+    businessCategories: application?.businessCategories || defaults.businessCategories,
+    operationalModules: application?.operationalModules || deriveOperationalModules(application?.businessCategories || []),
     staffingConfiguration: { ...defaults.staffingConfiguration, ...staffing },
     staffTypes: application?.staffTypes || defaults.staffTypes,
     hiringStaff: application?.hiringStaff ?? defaults.hiringStaff,
@@ -105,6 +118,12 @@ export const hydrateStoreApplicationForm = (application, user) => {
     inventoryPlans: application?.inventoryPlans || '',
     productCategories: application?.productCategories || [],
     activityDocumentDetails: { ...defaults.activityDocumentDetails, ...activityDocumentDetails },
+    categoryDocumentDetails: {
+      ...defaults.categoryDocumentDetails,
+      ...Object.fromEntries((application?.categoryDocuments || []).map(document => [document.requirementKey, {
+        issueDate: dateInputValue(document.issueDate), expiryDate: dateInputValue(document.expiryDate)
+      }]))
+    },
     businessName: application?.businessName || '',
     tradeName: application?.tradeName || application?.businessName || '',
     registeredBusinessName: application?.registeredBusinessName || registration.registeredName || '',
@@ -166,32 +185,38 @@ export const hydrateStoreApplicationForm = (application, user) => {
 };
 
 export const STORE_APPLICATION_FIELD_STEPS = {
+  businessCategories: 0,
   businessName: 1,
   registeredBusinessName: 1,
   businessType: 1,
   legalStructure: 1,
   natureOfBusiness: 1,
   businessDescription: 1,
-  operationalModules: 1,
-  'representative.fullName': 2,
-  'representative.role': 2,
-  'representative.phone': 2,
-  'representative.email': 2,
-  authorityDocument: 2,
-  'contactInfo.phone': 3,
-  'contactInfo.email': 3,
-  'contactInfo.address.street': 3,
-  'contactInfo.address.barangay': 3,
-  'contactInfo.address.city': 3,
-  'contactInfo.address.province': 3,
-  'contactInfo.address.zipCode': 3,
-  'contactInfo.address.coordinates': 3,
-  storefrontPhotos: 3,
-  'businessRegistration.authority': 3,
-  'businessRegistration.certificateNumber': 3,
-  'businessRegistration.registeredName': 3,
+  'representative.fullName': 1,
+  'representative.role': 1,
+  'representative.phone': 1,
+  'representative.email': 1,
+  'contactInfo.phone': 1,
+  'contactInfo.email': 1,
+  'businessRegistration.authority': 1,
+  'businessRegistration.certificateNumber': 1,
+  'businessRegistration.registeredName': 1,
+  'taxProfile.tin': 1,
+  'contactInfo.address.street': 2,
+  'contactInfo.address.barangay': 2,
+  'contactInfo.address.city': 2,
+  'contactInfo.address.province': 2,
+  'contactInfo.address.zipCode': 2,
+  'contactInfo.address.coordinates': 2,
+  storefrontPhotos: 2,
+  authorityDocument: 3,
+  businessRegistration: 3,
+  birRegistration: 3,
+  mayorsPermit: 3,
+  governmentId: 3,
+  proofOfBusinessAddress: 3,
+  categoryDocuments: 3,
   'taxProfile.birRegistrationStatus': 3,
-  'taxProfile.tin': 3,
   'taxProfile.branchCode': 3,
   'taxProfile.registeredName': 3,
   'taxProfile.lineOfBusiness': 3,
@@ -201,16 +226,10 @@ export const STORE_APPLICATION_FIELD_STEPS = {
   'taxProfile.registeredAddress.province': 3,
   'taxProfile.registeredAddress.postalCode': 3,
   'taxProfile.declaredTaxStatus': 3,
-  businessRegistration: 4,
-  birRegistration: 4,
-  mayorsPermit: 4,
-  barangayClearance: 4,
-  petActivityDocuments: 4,
-  productActivityDocuments: 4,
-  serviceActivityDocuments: 4,
   references: 5,
   'declaration.applicantName': 5,
-  'declaration.accepted': 5
+  'declaration.accepted': 5,
+  ...Object.fromEntries(Object.values(CATEGORY_REQUIREMENTS).flat().map(requirement => [categoryDocumentField(requirement.key), 3]))
 };
 
 const present = value => value !== undefined && value !== null && String(value).trim() !== '';
@@ -218,6 +237,11 @@ const email = value => /^\S+@\S+\.\S+$/.test(String(value || '').trim());
 
 export const validateStoreApplicationForm = (data, { files = {}, documentAvailability = {} } = {}) => {
   const errors = {};
+  if (!Array.isArray(data.businessCategories) || !data.businessCategories.length) {
+    errors.businessCategories = 'Select at least one business category.';
+  } else if (data.businessCategories.some(category => !BUSINESS_CATEGORIES.some(option => option.id === category))) {
+    errors.businessCategories = 'Select valid business categories.';
+  }
   const requireField = (field, value, message) => {
     if (!present(value) && !errors[field]) errors[field] = message;
   };
@@ -227,7 +251,6 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
   requireField('legalStructure', data.legalStructure, 'Business structure is required.');
   requireField('natureOfBusiness', data.natureOfBusiness, 'Nature or line of business is required.');
   requireField('businessDescription', data.businessDescription, 'Business description is required.');
-  if (!data.operationalModules?.length) errors.operationalModules = 'Select at least one store operation.';
 
   for (const [field, value, message] of [
     ['representative.fullName', data.representative?.fullName, 'Representative legal name is required.'],
@@ -255,6 +278,11 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
   if (rawLat === '' || rawLat === undefined || rawLat === null || rawLng === '' || rawLng === undefined || rawLng === null
       || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
     errors['contactInfo.address.coordinates'] = 'Select and confirm the store location on the map.';
+  } else if (lat < 13.95 || lat > 14.55 || lng < 120.55 || lng > 121.15) {
+    errors['contactInfo.address.coordinates'] = 'The confirmed store pin must be inside Cavite.';
+  }
+  if (String(data.contactInfo?.address?.province || data.contactInfo?.address?.state || '').trim().toLowerCase() !== 'cavite') {
+    errors['contactInfo.address.province'] = 'Store applications currently require a Cavite address.';
   }
   if (data.representative?.isAuthorizedRepresentative && !files.authorityDocument && !documentAvailability.authorityDocument) {
     errors.authorityDocument = 'Proof of authority is required.';
@@ -265,23 +293,22 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
   if (!files.mayorsPermit && !documentAvailability.mayorsPermit) {
     errors.mayorsPermit = "Mayor's or business permit is required.";
   }
-  if (!files.barangayClearance && !documentAvailability.barangayClearance) {
-    errors.barangayClearance = 'Barangay clearance is required.';
+  if (!files.governmentId && !documentAvailability.governmentId) {
+    errors.governmentId = 'A valid government-issued ID is required.';
   }
   const storefrontPhotos = Array.isArray(files.storefrontPhotos) ? files.storefrontPhotos.length : 0;
   if (storefrontPhotos + Number(documentAvailability.storefrontPhotos || 0) < 2) {
     errors.storefrontPhotos = 'Upload at least two storefront photos.';
   }
-  const activityDocumentFields = {
-    pets: ['petActivityDocuments', 'Animal activity permit or registration'],
-    products: ['productActivityDocuments', 'Product distribution or regulatory permit'],
-    services: ['serviceActivityDocuments', 'Service or professional operating permit']
-  };
-  for (const activity of data.operationalModules || []) {
-    const [field, label] = activityDocumentFields[activity] || [];
-    if (!field) continue;
-    const selected = Array.isArray(files[field]) ? files[field].length : 0;
-    if (selected + Number(documentAvailability[field] || 0) < 1) errors[field] = `${label} is required.`;
+  for (const requirement of combinedCategoryRequirements(data.businessCategories).filter(item => item.level === 'required')) {
+    const field = `categoryDocument__${requirement.key}`;
+    if (!files[field] && !documentAvailability.categoryDocuments?.[requirement.key]) {
+      errors.categoryDocuments = `${requirement.label} is required.`;
+      break;
+    }
+  }
+  if (data.taxProfile?.birRegistrationStatus !== 'registered') {
+    errors['taxProfile.birRegistrationStatus'] = 'A BIR-registered business and Form 2303 are required.';
   }
   if (data.taxProfile?.birRegistrationStatus === 'registered') {
     for (const [field, value, message] of [
@@ -298,19 +325,11 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
     ]) requireField(field, value, message);
     if (!files.birRegistration && !documentAvailability.birRegistration) errors.birRegistration = 'BIR Form 2303 is required.';
   }
-  if (!Array.isArray(data.references) || data.references.length < 2) {
-    errors.references = 'Provide at least two business references.';
-  } else {
-    data.references.slice(0, 2).forEach((reference, index) => {
-      ['name', 'business', 'phone', 'email'].forEach(key => requireField(`references.${index}.${key}`, reference?.[key], `Reference ${index + 1} ${key} is required.`));
-      if (reference?.email && !email(reference.email)) errors[`references.${index}.email`] = `Reference ${index + 1} email is invalid.`;
-    });
-  }
   if (data.declaration?.accepted !== true) errors['declaration.accepted'] = 'Accept the declaration before submitting.';
   return errors;
 };
 
 export const firstInvalidStep = errors => Object.keys(errors).reduce((first, field) => {
-  const step = STORE_APPLICATION_FIELD_STEPS[field] ?? (field.startsWith('references.') ? 5 : 1);
+  const step = STORE_APPLICATION_FIELD_STEPS[field] ?? 1;
   return first === null || step < first ? step : first;
 }, null);

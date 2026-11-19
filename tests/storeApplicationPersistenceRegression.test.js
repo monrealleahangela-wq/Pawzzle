@@ -23,6 +23,7 @@ const body = () => ({
   natureOfBusiness: 'Pet supplies',
   businessType: 'pet_store',
   legalStructure: 'one_person_corporation',
+  businessCategories: JSON.stringify(['pet_products']),
   operationalModules: JSON.stringify(['products']),
   staffingConfiguration: JSON.stringify({ hasStaff: 'yes', staffQuantityRange: '1-5', isStaffVisibleToCustomers: true }),
   staffTypes: JSON.stringify(['inventory']),
@@ -92,17 +93,26 @@ test('document assessment persists safe suggested values and discrepancy notes f
   assert.equal(review.manualApprovalRequired, true);
 });
 
-test('draft endpoint and activity evidence are owner-authenticated but never auto-approved', () => {
+test('draft endpoint and category evidence are owner-authenticated but never auto-approved', () => {
   const routes = read('routes/storeApplications.js');
   const controller = read('controllers/storeApplicationController.js');
-  assert.match(routes, /router\.post\('\/draft', authenticate, upload\.fields\(applicationUploadFields\), saveApplicationDraft\)/);
+  assert.match(routes, /router\.post\('\/draft', authenticate, storeApplicationUpload\.fields\(applicationUploadFields\), handleUploadError, saveApplicationDraft\)/);
   assert.match(routes, /router\.patch\('\/my-application\/withdraw', authenticate, withdrawApplication\)/);
   assert.match(controller, /applicationData\.status = 'draft'/);
   assert.match(controller, /application\.status = 'withdrawn'/);
   assert.match(controller, /application\.status = 'pending_review'/);
   assert.match(controller, /manualApprovalRequired: true/);
   assert.doesNotMatch(controller, /documentReview[\s\S]{0,200}status\s*=\s*'approved'/);
-  assert.match(controller, /activityDocuments[\s\S]*requiredForOperation: true/);
+  assert.match(controller, /categoryDocuments[\s\S]*requiredForOperation: document\.level === 'required'/);
+});
+
+test('category expansion requires new evidence and promotes approved permits into renewal tracking', () => {
+  const routes = read('routes/storeApplications.js');
+  const controller = read('controllers/storeApplicationController.js');
+  assert.match(routes, /router\.post\('\/expansion', authenticate, storeOwnerOnly, storeApplicationUpload\.fields\(applicationUploadFields\)/);
+  assert.match(controller, /requestedCategories[\s\S]*approvedBusinessCategories[\s\S]*Select at least one new business category/);
+  assert.match(controller, /business_category_expansion_approved/);
+  assert.match(controller, /requirementKey = `category_\$\{document\.requirementKey\}`[\s\S]*expirationDate: document\.expiryDate/);
 });
 
 test('browser payload cannot assign workflow, ownership, review, or document URL fields', () => {
@@ -120,12 +130,12 @@ test('browser payload cannot assign workflow, ownership, review, or document URL
   assert.match(controller, /applicationData\.businessRegistration\.documentUrl = req\.files\?\.businessRegistration[\s\S]*existingApplication\?\.businessRegistration\?\.documentUrl/);
 });
 
-test('all required references receive field-specific validation errors', () => {
+test('business references are optional and do not block an otherwise complete application', () => {
   const data = buildApplicationData(body(), '64b000000000000000000001');
   data.businessRegistration.documentUrl = 'secure://registration';
-  data.references[1].email = 'not-an-email';
+  data.references = [];
   const errors = applicationValidationErrors(data);
-  assert.ok(errors.some(error => error.field === 'references.1.email'));
+  assert.ok(!errors.some(error => error.field.startsWith('references')));
 });
 
 test('saved response exposes document presence without leaking document URLs', () => {

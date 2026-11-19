@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const storeApplicationSchema = new mongoose.Schema({
@@ -23,6 +24,19 @@ const storeApplicationSchema = new mongoose.Schema({
     enum: ['pets', 'products', 'services'],
     required: true
   }],
+  businessCategories: [{
+    type: String,
+    enum: ['pet_products', 'pet_sales', 'pet_grooming', 'pet_boarding', 'veterinary_services', 'other_pet_services']
+  }],
+  applicationReference: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    index: true,
+    unique: true,
+    sparse: true,
+    default: () => `APP-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+  },
   hiringStaff: {
     type: Boolean,
     default: false
@@ -222,19 +236,23 @@ const storeApplicationSchema = new mongoose.Schema({
   }],
   governmentIdUrl: {
     type: String,
-    required: false
+    required: false,
+    select: false
   },
   businessRegistrationUrl: {
     type: String, // DTI or SEC
-    required: false
+    required: false,
+    select: false
   },
   birRegistrationUrl: {
     type: String, // BIR Form 2303
-    required: false
+    required: false,
+    select: false
   },
   barangayClearanceUrl: {
     type: String,
-    required: false
+    required: false,
+    select: false
   },
   storeLogoUrl: {
     type: String,
@@ -246,8 +264,10 @@ const storeApplicationSchema = new mongoose.Schema({
   }],
   mayorsPermitUrl: {
     type: String,
-    required: false
+    required: false,
+    select: false
   },
+  proofOfBusinessAddressUrl: { type: String, select: false },
   activityDocuments: [{
     activity: {
       type: String,
@@ -257,6 +277,18 @@ const storeApplicationSchema = new mongoose.Schema({
     label: { type: String, required: true, trim: true },
     documentUrl: { type: String, required: true, select: false },
     originalName: { type: String, trim: true },
+    issueDate: Date,
+    expiryDate: Date
+  }],
+  categoryDocuments: [{
+    requirementKey: { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true },
+    level: { type: String, enum: ['required', 'conditional', 'recommended'], required: true },
+    categories: [{ type: String, enum: ['pet_products', 'pet_sales', 'pet_grooming', 'pet_boarding', 'veterinary_services', 'other_pet_services'] }],
+    documentUrl: { type: String, required: true, select: false },
+    originalName: { type: String, trim: true },
+    mimeType: { type: String, trim: true },
+    fileSize: Number,
     issueDate: Date,
     expiryDate: Date
   }],
@@ -281,10 +313,14 @@ const storeApplicationSchema = new mongoose.Schema({
       documentKey: { type: String, trim: true, maxlength: 60 },
       field: { type: String, trim: true, maxlength: 120 },
       label: { type: String, trim: true, maxlength: 160 },
-      value: { type: String, trim: true, maxlength: 300 }
+      value: { type: String, trim: true, maxlength: 300 },
+      correctedByAdmin: { type: Boolean, default: false },
+      correctedAt: Date,
+      correctedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }]
   },
   draftSavedAt: Date,
+  submittedAt: Date,
   paymentInfo: {
     bankName: String,
     bankAccountName: String,
@@ -317,7 +353,8 @@ const storeApplicationSchema = new mongoose.Schema({
       'birRegistration', 'barangayClearance', 'address', 'paymentInfo',
       'references', 'representative', 'businessRegistrationDetails',
       'taxProfile', 'taxStatus', 'coordinates', 'declaration',
-      'storefrontPhotos', 'petActivityDocuments', 'productActivityDocuments', 'serviceActivityDocuments'
+      'storefrontPhotos', 'petActivityDocuments', 'productActivityDocuments', 'serviceActivityDocuments',
+      'proofOfBusinessAddress', 'categoryDocuments'
     ]
   }],
   reviewNotes: {
@@ -351,7 +388,7 @@ const storeApplicationSchema = new mongoose.Schema({
   reviewHistory: [{
     action: {
       type: String,
-      enum: ['draft_saved', 'submitted', 'resubmitted', 'under_review', 'needs_correction', 'approved', 'rejected', 'withdrawn', 'tax_verified', 'tax_rejected', 'tax_update_requested']
+      enum: ['draft_saved', 'submitted', 'resubmitted', 'under_review', 'needs_correction', 'approved', 'rejected', 'withdrawn', 'tax_verified', 'tax_rejected', 'tax_update_requested', 'document_review_corrected']
     },
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     at: { type: Date, default: Date.now },

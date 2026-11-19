@@ -6,6 +6,7 @@ const ActivityLog = require('../models/ActivityLog');
 const { createNotification } = require('./notificationController');
 const { isPlatformAdmin } = require('../config/permissions');
 const { getComplianceSummary, syncExpirationRestrictions } = require('../services/storeComplianceService');
+const { persistApplicationUploads, streamStoredDocument } = require('../services/privateStoreDocumentService');
 
 const BUSINESS_STRUCTURES = ['single_proprietorship', 'sole_proprietorship', 'one_person_corporation', 'corporation', 'partnership', 'cooperative', 'other'];
 const AUTHORITIES = ['dti', 'sec', 'cda', 'other'];
@@ -193,12 +194,16 @@ const getCurrentComplianceDocument = async (req, res) => {
     const versionNumber = req.query.version ? Number(req.query.version) : Number(document?.currentVersion);
     const version = document?.versions?.find(row => Number(row.version) === versionNumber);
     if (!version?.documentUrl) return res.status(404).json({ message: 'Document not found.' });
-    res.json({ url: version.documentUrl, name: version.originalName || document.label });
-  } catch (_) { res.status(500).json({ message: 'Unable to open document.' }); }
+    await streamStoredDocument(version.documentUrl, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    res.status(error.statusCode || 500).json({ message: 'Unable to open document.' });
+  }
 };
 
 const submitComplianceRequest = async (req, res) => {
   try {
+    await persistApplicationUploads(req.files || {}, req.user.id);
     const store = await ownerStore(req.user._id);
     if (!store) return res.status(404).json({ message: 'Store not found.' });
     const application = await privateApplicationQuery(StoreApplication.findById(store.businessProfile?.sourceApplication || store.taxProfile?.sourceApplication));
@@ -309,8 +314,11 @@ const getComplianceDocument = async (req, res) => {
     if (!isPlatformAdmin(req.user) && String(request.owner) !== String(req.user._id)) return res.status(403).json({ message: 'Access denied.' });
     const document = request.proposedDocuments.id(req.params.documentId);
     if (!document?.documentUrl) return res.status(404).json({ message: 'Document not found.' });
-    res.json({ url: document.documentUrl, name: document.originalName || document.label });
-  } catch (_) { res.status(500).json({ message: 'Unable to open document.' }); }
+    await streamStoredDocument(document.documentUrl, res);
+  } catch (error) {
+    if (res.headersSent) return;
+    res.status(error.statusCode || 500).json({ message: 'Unable to open document.' });
+  }
 };
 
 const addVersion = ({ store, request, proposedDocument, reviewer, now }) => {

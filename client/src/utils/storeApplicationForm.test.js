@@ -13,6 +13,7 @@ const complete = () => ({
   legalStructure: 'sole_proprietorship',
   natureOfBusiness: 'Pet supplies',
   businessDescription: 'A complete application.',
+  businessCategories: ['pet_products'],
   operationalModules: ['products'],
   representative: { fullName: 'Store Owner', role: 'Owner', phone: '0917', email: 'owner@example.com', isAuthorizedRepresentative: false },
   contactInfo: {
@@ -20,7 +21,7 @@ const complete = () => ({
     address: { street: 'Main', barangay: 'San Jose', city: 'dasmarinas', province: 'Cavite', zipCode: '4114', coordinates: { lat: 14.3, lng: 120.9 } }
   },
   businessRegistration: { authority: 'dti', certificateNumber: 'DTI-1', registeredName: 'Pawzzle Store', registrationDate: '', expirationDate: '' },
-  taxProfile: { birRegistrationStatus: 'not_registered', registeredAddress: {} },
+  taxProfile: { birRegistrationStatus: 'registered', tin: '123-456-789', branchCode: '000', registeredName: 'Pawzzle Store', lineOfBusiness: 'Pet supplies', declaredTaxStatus: 'non_vat_registered', registeredAddress: { street: 'Main', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114' } },
   declaration: { accepted: true, applicantName: 'Store Owner' },
   references: [
     { name: 'One', business: 'One Co', phone: '1', email: 'one@example.com' },
@@ -49,9 +50,10 @@ test('valid application accepts retained registration evidence without a replace
     files: {}, documentAvailability: {
       businessRegistration: true,
       mayorsPermit: true,
-      barangayClearance: true,
+      governmentId: true,
+      birRegistration: true,
       storefrontPhotos: 2,
-      productActivityDocuments: 1
+      categoryDocuments: {}
     }
   })).toEqual({});
 });
@@ -60,7 +62,7 @@ test('missing fields map to the correct visible step', () => {
   const data = complete();
   data.businessName = '';
   data.contactInfo.address.coordinates = { lat: '', lng: '' };
-  const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true, storefrontPhotos: 2, productActivityDocuments: 1 } });
+  const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true, mayorsPermit: true, governmentId: true, birRegistration: true, storefrontPhotos: 2, categoryDocuments: {} } });
   expect(errors.businessName).toMatch(/required/i);
   expect(errors['contactInfo.address.coordinates']).toMatch(/location/i);
   expect(firstInvalidStep(errors)).toBe(1);
@@ -74,11 +76,13 @@ test('editing a saved application preserves document requirements and reference 
   });
   hydrated.declaration.accepted = true;
   expect(hydrated.references[1].email).toBe('two@example.com');
-  expect(validateStoreApplicationForm(hydrated, { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true, storefrontPhotos: 2, productActivityDocuments: 1 } })).toEqual({});
+  expect(validateStoreApplicationForm(hydrated, { documentAvailability: { businessRegistration: true, mayorsPermit: true, governmentId: true, birRegistration: true, storefrontPhotos: 2, categoryDocuments: {} } })).toEqual({});
 });
 
-test('selected business activities require matching evidence and storefront photos', () => {
-  const errors = validateStoreApplicationForm(complete(), { documentAvailability: { businessRegistration: true, mayorsPermit: true, barangayClearance: true } });
+test('selected business categories require matching evidence and storefront photos', () => {
+  const data = complete();
+  data.businessCategories = ['pet_sales'];
+  const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true, mayorsPermit: true, governmentId: true, birRegistration: true, categoryDocuments: {} } });
   expect(errors.storefrontPhotos).toMatch(/two storefront photos/i);
-  expect(errors.productActivityDocuments).toMatch(/product distribution/i);
+  expect(errors.categoryDocuments).toMatch(/animal facility/i);
 });

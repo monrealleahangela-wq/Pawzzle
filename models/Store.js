@@ -39,6 +39,10 @@ const storeSchema = new mongoose.Schema({
     enum: ['pets', 'products', 'services'],
     required: true
   }],
+  approvedBusinessCategories: [{
+    type: String,
+    enum: ['pet_products', 'pet_sales', 'pet_grooming', 'pet_boarding', 'veterinary_services', 'other_pet_services']
+  }],
   hiringStaff: {
     type: Boolean,
     default: false

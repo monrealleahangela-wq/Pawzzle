@@ -60,7 +60,7 @@ const BusinessTaxComplianceSettings = () => {
 
   const documents = useMemo(() => data?.compliance?.documents || [], [data]);
   const openDocument = async (requirementKey, version) => {
-    try { const response = await storeComplianceService.getMyDocument(requirementKey, version); window.open(response.data.url, '_blank', 'noopener,noreferrer'); }
+    try { const response = await storeComplianceService.getMyDocument(requirementKey, version); const url = URL.createObjectURL(response.data); window.open(url, '_blank', 'noopener,noreferrer'); window.setTimeout(() => URL.revokeObjectURL(url), 60000); }
     catch (error) { toast.error(error.response?.data?.message || 'Unable to open document.'); }
   };
 
