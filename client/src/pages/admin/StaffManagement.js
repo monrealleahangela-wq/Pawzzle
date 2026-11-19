@@ -130,7 +130,21 @@ const verificationDetails = (member) => {
   }
   return { status: "not_required", label: "Not required", professional: false };
 };
-const emptyForm = () => ({
+export const staffDateInputValue = (value = new Date()) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Manila",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(value)
+      .filter(({ type }) => ["year", "month", "day"].includes(type))
+      .map(({ type, value: part }) => [type, part]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
+const emptyForm = (today = staffDateInputValue()) => ({
   firstName: "",
   lastName: "",
   email: "",
@@ -147,12 +161,12 @@ const emptyForm = () => ({
     position: "",
     department: "",
     employmentStatus: "active",
-    dateHired: new Date().toISOString().slice(0, 10),
+    dateHired: today,
     employmentEndDate: "",
     compensation: {
       compensationBasis: "monthly",
       baseRate: "",
-      effectiveDate: new Date().toISOString().slice(0, 10),
+      effectiveDate: today,
       reason: "Initial staff payroll setup",
     },
     statutoryIdentifiers: { sss: "", philHealth: "", pagIbig: "", tin: "" },

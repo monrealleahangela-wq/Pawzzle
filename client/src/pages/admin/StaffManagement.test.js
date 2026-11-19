@@ -2,7 +2,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import StaffManagement from './StaffManagement';
+import StaffManagement, { staffDateInputValue } from './StaffManagement';
 import { staffService } from '../../services/apiService';
 
 jest.mock('../../services/apiService', () => ({
@@ -35,6 +35,10 @@ const renderPage = () => render(
     <StaffManagement />
   </MemoryRouter>
 );
+
+test('new staff dates use the Philippine calendar day instead of the UTC day', () => {
+  expect(staffDateInputValue(new Date('2026-11-19T18:30:00.000Z'))).toBe('2026-11-20');
+});
 
 test('staff form is portaled above the application shell with a visible close button', () => {
   renderPage();
