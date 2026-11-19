@@ -9,9 +9,11 @@ jest.mock('../../components/auth/IdentityRegistrationFields', () => props => (
   <section aria-label="Verified personal identity">
     <label>First name *<input name="firstName" value={props.formData.firstName} onChange={props.onChange} /></label>
     <label>Surname *<input name="lastName" value={props.formData.lastName} onChange={props.onChange} /></label>
+    <button type="button" onClick={() => props.onChange({ target: { name: 'governmentIdType', value: 'passport', type: 'select-one' } })}>Select passport</button>
     <button type="button" onClick={() => props.onGovernmentIdImage(new File(['id'], 'id.jpg', { type: 'image/jpeg' }))}>Attach valid government ID</button>
     <button type="button" onClick={() => props.onSelfieImage(new File(['selfie'], 'identity-live-selfie-1.jpg', { type: 'image/jpeg' }))}>Capture live selfie</button>
     <button type="button" onClick={() => props.onChange({ target: { name: 'biometricConsent', type: 'checkbox', checked: true } })}>Accept face-match consent</button>
+    <span data-testid="id-document-status">{props.documentReview?.status}</span>
   </section>
 ));
 
@@ -25,13 +27,14 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/authService', () => ({
   __esModule: true,
-  default: { sendRegisterOTP: jest.fn(), verifyRegisterOTP: jest.fn(), resendRegisterOTP: jest.fn() }
+  default: { sendRegisterOTP: jest.fn(), readGovernmentId: jest.fn(), verifyRegisterOTP: jest.fn(), resendRegisterOTP: jest.fn() }
 }));
 jest.mock('react-toastify', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
 beforeEach(() => {
   jest.clearAllMocks();
   authService.sendRegisterOTP.mockResolvedValue({ success: true });
+  authService.readGovernmentId.mockResolvedValue({ detectedType: 'passport', detectedTypeLabel: 'Philippine passport', fields: {} });
 });
 
 test('seller join shows the canonical application journey without duplicating the business form', () => {
@@ -56,7 +59,10 @@ test('new seller account proceeds from account details to email verification', a
   fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'owner@example.com' } });
   fireEvent.change(screen.getByPlaceholderText(/create a secure password/i), { target: { value: 'SecurePass123!' } });
   fireEvent.change(screen.getByPlaceholderText(/same password again/i), { target: { value: 'SecurePass123!' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Select passport' }));
   fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
+  await waitFor(() => expect(authService.readGovernmentId).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByTestId('id-document-status')).toHaveTextContent('matched'));
   fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
   fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
   fireEvent.click(screen.getByRole('button', { name: /create account & verify email/i }));

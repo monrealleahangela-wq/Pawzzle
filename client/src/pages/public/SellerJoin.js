@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import StoreApplicationJourney from '../../components/stores/StoreApplicationJourney';
 import IdentityRegistrationFields from '../../components/auth/IdentityRegistrationFields';
+import useGovernmentIdDocument from '../../hooks/useGovernmentIdDocument';
+import { isGovernmentIdConfirmed } from '../../utils/governmentIdRegistration';
 import '../../components/stores/StoreApplicationFields.css';
 
 const initialRegistration = {
@@ -25,7 +27,12 @@ const SellerJoin = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [governmentIdImage, setGovernmentIdImage] = useState(null);
+  const {
+    governmentIdImage,
+    documentReview,
+    handleGovernmentIdImage,
+    handleGovernmentIdType
+  } = useGovernmentIdDocument({ formData: registration, setFormData: setRegistration });
   const [selfieImage, setSelfieImage] = useState(null);
   const otpRefs = useRef([]);
 
@@ -41,6 +48,10 @@ const SellerJoin = () => {
 
   const handleRegistrationChange = event => {
     const { name, value, type, checked } = event.target;
+    if (name === 'governmentIdType') {
+      handleGovernmentIdType(value);
+      return;
+    }
     setRegistration(previous => ({ ...previous, [name]: type === 'checkbox' ? checked : value }));
   };
 
@@ -57,6 +68,12 @@ const SellerJoin = () => {
     }
     if (!governmentIdImage || !selfieImage || !registration.biometricConsent) {
       toast.error('Add your government ID, capture a live selfie, and accept the identity verification consent.');
+      return;
+    }
+    if (!isGovernmentIdConfirmed(documentReview, registration.governmentIdType)) {
+      toast.error(documentReview.status === 'reading'
+        ? 'Wait for the government ID check to finish.'
+        : 'Upload an ID that matches the selected government ID type.');
       return;
     }
     setLoading(true);
@@ -161,10 +178,11 @@ const SellerJoin = () => {
                   onChange={handleRegistrationChange}
                   onAddressChange={handleAddressChange}
                   governmentIdImage={governmentIdImage}
-                  onGovernmentIdImage={setGovernmentIdImage}
+                  onGovernmentIdImage={handleGovernmentIdImage}
                   selfieImage={selfieImage}
                   onSelfieImage={setSelfieImage}
                   onFileError={toast.error}
+                  documentReview={documentReview}
                 />
 
                 <div className="grid gap-5 sm:grid-cols-2">

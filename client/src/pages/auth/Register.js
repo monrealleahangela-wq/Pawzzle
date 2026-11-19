@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import authService from '../../services/authService';
 import IdentityRegistrationFields from '../../components/auth/IdentityRegistrationFields';
+import useGovernmentIdDocument from '../../hooks/useGovernmentIdDocument';
+import { isGovernmentIdConfirmed } from '../../utils/governmentIdRegistration';
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowLeft, ArrowRight,
   ShieldCheck, RefreshCw, Sparkles, HeartHandshake, Store
@@ -105,7 +107,12 @@ const Register = () => {
       country: 'PH'
     }
   });
-  const [governmentIdImage, setGovernmentIdImage] = useState(null);
+  const {
+    governmentIdImage,
+    documentReview,
+    handleGovernmentIdImage,
+    handleGovernmentIdType
+  } = useGovernmentIdDocument({ formData, setFormData });
   const [selfieImage, setSelfieImage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -134,6 +141,10 @@ const Register = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'governmentIdType') {
+      handleGovernmentIdType(value);
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
@@ -158,6 +169,12 @@ const Register = () => {
     }
     if (!governmentIdImage || !selfieImage || !formData.biometricConsent) {
       toast.error('Add your government ID, capture a live selfie, and accept the identity verification consent.');
+      return;
+    }
+    if (!isGovernmentIdConfirmed(documentReview, formData.governmentIdType)) {
+      toast.error(documentReview.status === 'reading'
+        ? 'Wait for the government ID check to finish.'
+        : 'Upload an ID that matches the selected government ID type.');
       return;
     }
 
@@ -350,10 +367,11 @@ const Register = () => {
                 onChange={handleChange}
                 onAddressChange={handleAddressChange}
                 governmentIdImage={governmentIdImage}
-                onGovernmentIdImage={setGovernmentIdImage}
+                onGovernmentIdImage={handleGovernmentIdImage}
                 selfieImage={selfieImage}
                 onSelfieImage={setSelfieImage}
                 onFileError={toast.error}
+                documentReview={documentReview}
               />
 
               <div className="grid gap-5 sm:grid-cols-2">
