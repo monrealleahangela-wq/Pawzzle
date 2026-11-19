@@ -11,11 +11,12 @@ const dateOnly = value => {
 
 const attendanceStartDateKey = (employee, timezone) => {
   const hired = dateOnly(employee?.employmentProfile?.dateHired);
-  if (hired) return hired;
   const createdAt = employee?.createdAt ? new Date(employee.createdAt) : null;
-  return createdAt && !Number.isNaN(createdAt.getTime())
+  const added = createdAt && !Number.isNaN(createdAt.getTime())
     ? dateKeyInTimezone(createdAt, timezone)
     : null;
+  if (hired && added) return hired > added ? hired : added;
+  return hired || added;
 };
 
 const isAttendanceDateEligible = (employee, workDate, timezone) => {
