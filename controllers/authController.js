@@ -22,7 +22,7 @@ const {
   matchesImageSignature,
   compareIdentityFaces
 } = require('../utils/identityVerification');
-const { extractGovernmentId } = require('../utils/governmentIdOcr');
+const { extractGovernmentId, extractGovernmentIdForVerification } = require('../utils/governmentIdOcr');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -178,7 +178,7 @@ const verifyRegisterOTP = async (req, res) => {
     });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
-    const documentRead = await extractGovernmentId({
+    const documentRead = await extractGovernmentIdForVerification({
       selectedType: userData.governmentIdType,
       buffer: governmentIdImage.buffer,
       mimeType: governmentIdImage.mimetype
@@ -200,6 +200,7 @@ const verifyRegisterOTP = async (req, res) => {
       governmentId: {
         documentType: userData.governmentIdType,
         detectedType: documentRead.detectedType,
+        typeVerificationMethod: documentRead.verificationMethod || 'ocr',
         encryptedImage: encryptedGovernmentId,
         mimeType: governmentIdImage.mimetype,
         size: governmentIdImage.size
@@ -488,7 +489,7 @@ const verifyCurrentUserIdentity = async (req, res) => {
     }
 
     getEncryptionKey();
-    const documentRead = await extractGovernmentId({
+    const documentRead = await extractGovernmentIdForVerification({
       selectedType: req.body.governmentIdType,
       buffer: governmentIdImage.buffer,
       mimeType: governmentIdImage.mimetype
@@ -506,6 +507,7 @@ const verifyCurrentUserIdentity = async (req, res) => {
       governmentId: {
         documentType: req.body.governmentIdType,
         detectedType: documentRead.detectedType,
+        typeVerificationMethod: documentRead.verificationMethod || 'ocr',
         encryptedImage: encryptIdentityDocument(governmentIdImage.buffer),
         mimeType: governmentIdImage.mimetype,
         size: governmentIdImage.size

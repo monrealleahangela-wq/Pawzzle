@@ -37,10 +37,17 @@ const useGovernmentIdDocument = ({ formData, setFormData }) => {
       });
     } catch (error) {
       if (requestVersion.current !== version) return;
+      const code = error.response?.data?.code;
+      const ocrUnavailable = error.response?.status === 503 && [
+        'GOVERNMENT_ID_READING_NOT_CONFIGURED',
+        'GOVERNMENT_ID_READING_UNAVAILABLE'
+      ].includes(code);
       setDocumentReview({
-        status: 'error',
+        status: ocrUnavailable ? 'manual' : 'error',
         selectedType,
-        message: error.response?.data?.message || 'The ID could not be read. Upload a clear image showing the full document.'
+        message: ocrUnavailable
+          ? 'Automatic ID reading is unavailable. Review the details you entered, then continue; your ID and live face match are still required.'
+          : error.response?.data?.message || 'The ID could not be read. Upload a clear image showing the full document.'
       });
     }
   };

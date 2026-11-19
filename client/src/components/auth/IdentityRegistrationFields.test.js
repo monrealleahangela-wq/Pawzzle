@@ -39,3 +39,9 @@ test('shows document type confirmation and mismatch messages', () => {
   rerender(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={jest.fn()} selfieImage={null} onSelfieImage={jest.fn()} documentReview={{ status: 'error', message: 'The attached image appears to be a driver\'s license.' }} />);
   expect(screen.getByRole('alert')).toHaveTextContent("appears to be a driver's license");
 });
+
+test('shows OCR outages as a non-blocking manual-entry status', () => {
+  render(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={jest.fn()} selfieImage={null} onSelfieImage={jest.fn()} documentReview={{ status: 'manual', message: 'Review the details you entered, then continue.' }} />);
+  expect(screen.getByRole('status')).toHaveTextContent(/review the details you entered/i);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
