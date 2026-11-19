@@ -35,6 +35,7 @@ const renderPage = () => render(
     <Routes>
       <Route path="/identity-verification" element={<IdentityVerification />} />
       <Route path="/home" element={<div>Unlocked home</div>} />
+      <Route path="/professional-verification" element={<div>Submit professional credentials</div>} />
       <Route path="/superadmin/dashboard" element={<div>Platform administration</div>} />
     </Routes>
   </MemoryRouter>
@@ -67,6 +68,34 @@ test('already verified accounts cannot reopen the verification workflow', () => 
   mockAuthState.user.identityVerificationStatus = 'verified';
   renderPage();
   expect(screen.getByText('Unlocked home')).toBeVisible();
+});
+
+test('sends a pending care professional to credential submission after identity verification', async () => {
+  mockAuthState.user = {
+    _id: 'vet-1',
+    role: 'staff',
+    staffType: 'veterinarian',
+    identityVerificationStatus: null,
+    professionalVerificationStatus: 'pending_verification'
+  };
+  authService.verifyIdentity.mockResolvedValue({
+    user: { ...mockAuthState.user, identityVerificationStatus: 'verified' }
+  });
+  renderPage();
+
+  fireEvent.change(screen.getByLabelText(/government id type/i), { target: { value: 'passport' } });
+  fireEvent.change(screen.getByLabelText(/government id image/i), {
+    target: { files: [new File(['id'], 'passport.jpg', { type: 'image/jpeg' })] }
+  });
+  fireEvent.click(screen.getByRole('button', { name: /capture test selfie/i }));
+  fireEvent.click(screen.getByRole('checkbox'));
+  fireEvent.click(screen.getByRole('button', { name: /verify id and unlock pawzzle/i }));
+
+  expect(await screen.findByText('Submit professional credentials')).toBeVisible();
+  expect(mockUpdateUser).toHaveBeenCalledWith(expect.objectContaining({
+    identityVerificationStatus: 'verified',
+    professionalVerificationStatus: 'pending_verification'
+  }));
 });
 
 test.each(['super_admin', 'platform_admin'])(

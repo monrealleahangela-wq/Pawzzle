@@ -44,6 +44,9 @@ const ProfessionalVerificationStatus = () => {
   });
   const status = professionalVerificationStatus(user);
   const documents = useMemo(() => (profile?.credentialDocuments || []).filter(document => document.status !== 'archived'), [profile]);
+  const statusMessage = status === 'pending_verification' && !loadingProfile && documents.length === 0
+    ? 'Your identity verification is complete. Submit a current professional credential below so Platform Admin can review it. Professional tools remain restricted until approval.'
+    : messages[status] || 'Platform Admin must review your professional credentials before professional tools become available.';
   const replaceableDocuments = useMemo(() => documents.filter(document =>
     ['expired', 'rejected'].includes(document.status) || isPast(document.expiresAt)
   ), [documents]);
@@ -115,7 +118,7 @@ const ProfessionalVerificationStatus = () => {
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300"><ShieldCheck /></div>
       <p className="mt-5 text-xs font-bold uppercase tracking-widest text-primary-700 dark:text-primary-300">Professional account</p>
       <h1 className="mt-1 text-2xl font-black text-slate-900 dark:text-white">{labels[status] || 'Verification Required'}</h1>
-      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{messages[status] || 'Platform Admin must review your professional credentials before professional tools become available.'}</p>
+      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{statusMessage}</p>
       {user?.professionalProfile?.verification?.notes && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><strong>Review note:</strong> {user.professionalProfile.verification.notes}</div>}
 
       <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
