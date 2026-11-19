@@ -22,6 +22,7 @@ const {
   matchesImageSignature,
   compareIdentityFaces
 } = require('../utils/identityVerification');
+const { extractGovernmentId } = require('../utils/governmentIdOcr');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -57,6 +58,31 @@ const withProfessionalVerificationState = (safeUser, sourceUser) => ({
 const otpFailureMessage = (result, lockedMessage) => result.reason === 'locked'
   ? lockedMessage
   : 'Invalid or expired code.';
+
+const readGovernmentId = async (req, res) => {
+  const image = req.file;
+  try {
+    if (!image) {
+      return res.status(400).json({
+        code: 'GOVERNMENT_ID_IMAGE_REQUIRED',
+        message: 'Choose a government ID image.'
+      });
+    }
+    const result = await extractGovernmentId({
+      selectedType: req.body.governmentIdType,
+      buffer: image.buffer,
+      mimeType: image.mimetype
+    });
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    if (error?.statusCode && error?.code) {
+      return res.status(error.statusCode).json({ code: error.code, message: error.message });
+    }
+    return res.status(500).json({ message: 'The ID could not be read. Please try again.' });
+  } finally {
+    if (Buffer.isBuffer(image?.buffer)) image.buffer.fill(0);
+  }
+};
 
 const sendRegisterOTP = async (req, res) => {
   try {
@@ -152,6 +178,11 @@ const verifyRegisterOTP = async (req, res) => {
     });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
+    const documentRead = await extractGovernmentId({
+      selectedType: userData.governmentIdType,
+      buffer: governmentIdImage.buffer,
+      mimeType: governmentIdImage.mimetype
+    });
     const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
     if (!faceMatch.matched) {
       return res.status(400).json({
@@ -168,6 +199,7 @@ const verifyRegisterOTP = async (req, res) => {
       status: 'verified',
       governmentId: {
         documentType: userData.governmentIdType,
+        detectedType: documentRead.detectedType,
         encryptedImage: encryptedGovernmentId,
         mimeType: governmentIdImage.mimetype,
         size: governmentIdImage.size
@@ -456,6 +488,11 @@ const verifyCurrentUserIdentity = async (req, res) => {
     }
 
     getEncryptionKey();
+    const documentRead = await extractGovernmentId({
+      selectedType: req.body.governmentIdType,
+      buffer: governmentIdImage.buffer,
+      mimeType: governmentIdImage.mimetype
+    });
     const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
     if (!faceMatch.matched) {
       return res.status(400).json({
@@ -468,6 +505,7 @@ const verifyCurrentUserIdentity = async (req, res) => {
       status: 'verified',
       governmentId: {
         documentType: req.body.governmentIdType,
+        detectedType: documentRead.detectedType,
         encryptedImage: encryptIdentityDocument(governmentIdImage.buffer),
         mimeType: governmentIdImage.mimetype,
         size: governmentIdImage.size
@@ -582,6 +620,7 @@ module.exports = {
   toggle2FA,
   verify2FA,
   verifyCurrentUserIdentity,
+  readGovernmentId,
   logout,
   __test: { generateToken, userSummary }
 };

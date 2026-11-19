@@ -44,6 +44,12 @@ const authRateLimits = {
     prefix: 'identity-verification',
     keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}`
   }),
+  identityDocumentRead: createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 8,
+    prefix: 'identity-document-read',
+    keyGenerator: ipKey
+  }),
   storeDocumentOcr: createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 12,

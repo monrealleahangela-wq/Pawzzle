@@ -7,6 +7,7 @@ const identityVerificationSchema = new mongoose.Schema({
   status: { type: String, enum: ['verified', 'review_required', 'rejected'], required: true },
   governmentId: {
     documentType: { type: String, enum: GOVERNMENT_ID_TYPES, required: true },
+    detectedType: { type: String, enum: GOVERNMENT_ID_TYPES },
     encryptedImage: { type: String, required: true },
     mimeType: { type: String, enum: ['image/jpeg', 'image/png'], required: true },
     size: { type: Number, min: 1, max: 5 * 1024 * 1024, required: true }

@@ -32,3 +32,10 @@ test('rejects an oversized government ID before registration', () => {
   expect(onGovernmentIdImage).not.toHaveBeenCalled();
   expect(onFileError).toHaveBeenCalledWith(expect.stringMatching(/no larger than 5 mb/i));
 });
+
+test('shows document type confirmation and mismatch messages', () => {
+  const { rerender } = render(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={jest.fn()} selfieImage={null} onSelfieImage={jest.fn()} documentReview={{ status: 'matched', message: 'Philippine passport confirmed.' }} />);
+  expect(screen.getByRole('status')).toHaveTextContent('Philippine passport confirmed.');
+  rerender(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={jest.fn()} selfieImage={null} onSelfieImage={jest.fn()} documentReview={{ status: 'error', message: 'The attached image appears to be a driver\'s license.' }} />);
+  expect(screen.getByRole('alert')).toHaveTextContent("appears to be a driver's license");
+});
