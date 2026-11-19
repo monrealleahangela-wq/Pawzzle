@@ -117,10 +117,6 @@ const authService = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }).then(response => response.data),
 
-  readGovernmentId: (formData) => api.post('/auth/identity/read-document', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }).then(response => response.data),
-
   updateProfile: (userData) => {
     // Validate session
     const sessionValidation = SessionService.validateSession();

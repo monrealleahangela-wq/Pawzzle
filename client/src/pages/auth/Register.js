@@ -172,9 +172,7 @@ const Register = () => {
       return;
     }
     if (!isGovernmentIdConfirmed(documentReview, formData.governmentIdType)) {
-      toast.error(documentReview.status === 'reading'
-        ? 'Wait for the government ID check to finish.'
-        : 'Upload an ID that matches the selected government ID type.');
+      toast.error('Select the government ID type and attach its image.');
       return;
     }
 

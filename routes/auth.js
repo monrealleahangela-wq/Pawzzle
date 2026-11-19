@@ -21,12 +21,11 @@ const {
   toggle2FA,
   verify2FA,
   verifyCurrentUserIdentity,
-  readGovernmentId,
   logout
 } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
-const { uploadRegistrationIdentity, uploadRegistrationGovernmentId, handleUploadError } = require('../middleware/upload');
+const { uploadRegistrationIdentity, handleUploadError } = require('../middleware/upload');
 const { isGovernmentIdType } = require('../config/governmentIds');
 
 // Validation rules
@@ -131,7 +130,6 @@ const identityVerificationValidation = [
 ];
 
 // ─── Registration with OTP ────────────────────────────────────────────────────
-router.post('/identity/read-document', authRateLimits.authIp, authRateLimits.identityDocumentRead, uploadRegistrationGovernmentId, handleUploadError, readGovernmentId);
 router.post('/register/send-otp', authRateLimits.authIp, authRateLimits.otpSend, registerValidation, sendRegisterOTP);
 router.post('/register/verify-otp', authRateLimits.authIp, authRateLimits.otpVerify, uploadRegistrationIdentity, handleUploadError, otpVerificationValidation, verifyRegisterOTP);
 router.post('/register/resend-otp', authRateLimits.authIp, authRateLimits.otpSend, emailValidation, resendRegisterOTP);

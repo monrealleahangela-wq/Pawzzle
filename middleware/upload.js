@@ -259,7 +259,6 @@ const uploadRegistrationIdentity = registrationIdentityUpload.fields([
   { name: 'governmentIdImage', maxCount: 1 },
   { name: 'selfieImage', maxCount: 1 }
 ]);
-const uploadRegistrationGovernmentId = registrationIdentityUpload.single('governmentIdImage');
 const uploadStoreDocumentOcr = storeDocumentOcrUpload.single('document');
 const uploadServicePhotos = uploadMulti.fields([
   { name: 'images', maxCount: 5 },
@@ -288,7 +287,6 @@ module.exports = {
   uploadAttendanceEvidence,
   uploadReturnEvidence,
   uploadRegistrationIdentity,
-  uploadRegistrationGovernmentId,
   uploadStoreDocumentOcr,
   uploadServicePhotos,
   uploadDoc,

@@ -1,15 +1,10 @@
-import { useRef, useState } from 'react';
-import authService from '../services/authService';
-import { mergeGovernmentIdFields } from '../utils/governmentIdRegistration';
+import { useState } from 'react';
 
 const useGovernmentIdDocument = ({ formData, setFormData }) => {
   const [governmentIdImage, setGovernmentIdImage] = useState(null);
   const [documentReview, setDocumentReview] = useState({ status: 'idle', message: '' });
-  const requestVersion = useRef(0);
 
-  const readDocument = async (file, selectedType) => {
-    const version = requestVersion.current + 1;
-    requestVersion.current = version;
+  const acceptDocument = (file, selectedType) => {
     if (!file) {
       setGovernmentIdImage(null);
       setDocumentReview({ status: 'idle', message: '' });
@@ -17,45 +12,20 @@ const useGovernmentIdDocument = ({ formData, setFormData }) => {
     }
     setGovernmentIdImage(file);
     if (!selectedType) {
-      setDocumentReview({ status: 'error', message: 'Select the government ID type so Pawzzle can confirm the uploaded document.' });
+      setDocumentReview({ status: 'error', message: 'Select the government ID type that matches the attached image.' });
       return;
     }
-
-    setDocumentReview({ status: 'reading', message: 'Reading the ID and confirming its document type…', selectedType });
-    const payload = new FormData();
-    payload.append('governmentIdType', selectedType);
-    payload.append('governmentIdImage', file);
-    try {
-      const result = await authService.readGovernmentId(payload);
-      if (requestVersion.current !== version) return;
-      setFormData(previous => mergeGovernmentIdFields(previous, result.fields));
-      setDocumentReview({
-        status: 'matched',
-        selectedType,
-        detectedTypeLabel: result.detectedTypeLabel,
-        message: `${result.detectedTypeLabel} confirmed. Readable name and address details were filled in; review them before continuing.`
-      });
-    } catch (error) {
-      if (requestVersion.current !== version) return;
-      const code = error.response?.data?.code;
-      const ocrUnavailable = error.response?.status === 503 && [
-        'GOVERNMENT_ID_READING_NOT_CONFIGURED',
-        'GOVERNMENT_ID_READING_UNAVAILABLE'
-      ].includes(code);
-      setDocumentReview({
-        status: ocrUnavailable ? 'manual' : 'error',
-        selectedType,
-        message: ocrUnavailable
-          ? 'Automatic ID reading is unavailable. Review the details you entered, then continue; your ID and live face match are still required.'
-          : error.response?.data?.message || 'The ID could not be read. Upload a clear image showing the full document.'
-      });
-    }
+    setDocumentReview({
+      status: 'manual',
+      selectedType,
+      message: 'ID image attached. Review the personal details you entered, then continue to the required live face match.'
+    });
   };
 
-  const handleGovernmentIdImage = file => readDocument(file, formData.governmentIdType);
+  const handleGovernmentIdImage = file => acceptDocument(file, formData.governmentIdType);
   const handleGovernmentIdType = selectedType => {
     setFormData(previous => ({ ...previous, governmentIdType: selectedType }));
-    if (governmentIdImage) readDocument(governmentIdImage, selectedType);
+    if (governmentIdImage) acceptDocument(governmentIdImage, selectedType);
     else setDocumentReview({ status: 'idle', message: '' });
   };
 

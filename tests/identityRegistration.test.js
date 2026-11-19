@@ -123,8 +123,9 @@ test('all public account creation paths enforce identity verification', () => {
   assert.match(routes, /body\('governmentIdType'\)\.custom\(isGovernmentIdType\)/);
   assert.match(routes, /uploadRegistrationIdentity, handleUploadError, otpVerificationValidation/);
   assert.match(controller, /compareIdentityFaces\(governmentIdImage\.buffer, selfieImage\.buffer\)/);
-  assert.match(controller, /extractGovernmentIdForVerification\([\s\S]*selectedType: userData\.governmentIdType[\s\S]*compareIdentityFaces/);
-  assert.match(controller, /typeVerificationMethod: documentRead\.verificationMethod \|\| 'ocr'/);
+  assert.doesNotMatch(controller, /extractGovernmentId|readGovernmentId/);
+  assert.doesNotMatch(routes, /identity\/read-document/);
+  assert.match(controller, /typeVerificationMethod: 'applicant_declaration'/);
   assert.match(controller, /delete userData\.governmentIdType/);
   assert.doesNotMatch(controller, /selfieImage\.buffer[^\n]*identityVerification/);
   assert.match(passport, /IDENTITY_VERIFICATION_REQUIRED/);
