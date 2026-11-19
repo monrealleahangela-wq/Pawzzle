@@ -28,7 +28,7 @@ test('rejects an oversized government ID before registration', () => {
   const onFileError = jest.fn();
   render(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={onGovernmentIdImage} selfieImage={null} onSelfieImage={jest.fn()} onFileError={onFileError} />);
   const file = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' });
-  fireEvent.change(screen.getByLabelText(/government id image/i), { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText(/^government id image \*$/i), { target: { files: [file] } });
   expect(onGovernmentIdImage).not.toHaveBeenCalled();
   expect(onFileError).toHaveBeenCalledWith(expect.stringMatching(/no larger than 5 mb/i));
 });
@@ -40,7 +40,7 @@ test('shows document type confirmation and mismatch messages', () => {
   expect(screen.getByRole('alert')).toHaveTextContent("appears to be a driver's license");
 });
 
-test('shows OCR outages as a non-blocking manual-entry status', () => {
+test('shows an attached ID as a non-blocking manual-entry status', () => {
   render(<IdentityRegistrationFields formData={data} onChange={jest.fn()} onAddressChange={jest.fn()} governmentIdImage={null} onGovernmentIdImage={jest.fn()} selfieImage={null} onSelfieImage={jest.fn()} documentReview={{ status: 'manual', message: 'Review the details you entered, then continue.' }} />);
   expect(screen.getByRole('status')).toHaveTextContent(/review the details you entered/i);
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();

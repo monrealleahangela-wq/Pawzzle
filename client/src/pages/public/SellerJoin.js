@@ -71,9 +71,7 @@ const SellerJoin = () => {
       return;
     }
     if (!isGovernmentIdConfirmed(documentReview, registration.governmentIdType)) {
-      toast.error(documentReview.status === 'reading'
-        ? 'Wait for the government ID check to finish.'
-        : 'Upload an ID that matches the selected government ID type.');
+      toast.error('Select the government ID type and attach its image.');
       return;
     }
     setLoading(true);

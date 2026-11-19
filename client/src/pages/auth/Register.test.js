@@ -21,7 +21,6 @@ jest.mock('../../services/authService', () => ({
   __esModule: true,
   default: {
     sendRegisterOTP: jest.fn(),
-    readGovernmentId: jest.fn(),
     verifyRegisterOTP: jest.fn(),
     resendRegisterOTP: jest.fn()
   }
@@ -43,7 +42,6 @@ const renderRegister = () => render(
 describe('Register page', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    authService.readGovernmentId.mockResolvedValue({ detectedType: 'passport', detectedTypeLabel: 'Philippine passport', fields: {} });
   });
 
   test('shows a clear, accessible account creation form', () => {
@@ -116,8 +114,8 @@ describe('Register page', () => {
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Secure123!' } });
     fireEvent.click(screen.getByRole('button', { name: 'Select passport' }));
     fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
-    await waitFor(() => expect(authService.readGovernmentId).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByTestId('id-document-status')).toHaveTextContent('matched'));
+    expect(authService.readGovernmentId).toBeUndefined();
+    expect(screen.getByTestId('id-document-status')).toHaveTextContent('manual');
     fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
     fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
@@ -131,28 +129,4 @@ describe('Register page', () => {
     });
   });
 
-  test('continues with manual identity details when secure ID reading is unavailable', async () => {
-    authService.readGovernmentId.mockRejectedValue({
-      response: {
-        status: 503,
-        data: { code: 'GOVERNMENT_ID_READING_UNAVAILABLE', message: 'Secure ID reading is temporarily unavailable.' }
-      }
-    });
-    authService.sendRegisterOTP.mockResolvedValue({ success: true, message: 'Code sent' });
-    renderRegister();
-
-    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'ManualIdentityUser' } });
-    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'manual@example.com' } });
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Secure123!' } });
-    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Secure123!' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Select passport' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
-    await waitFor(() => expect(screen.getByTestId('id-document-status')).toHaveTextContent('manual'));
-    fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-
-    await waitFor(() => expect(authService.sendRegisterOTP).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeInTheDocument();
-  });
 });

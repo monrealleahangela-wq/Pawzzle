@@ -27,14 +27,13 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/authService', () => ({
   __esModule: true,
-  default: { sendRegisterOTP: jest.fn(), readGovernmentId: jest.fn(), verifyRegisterOTP: jest.fn(), resendRegisterOTP: jest.fn() }
+  default: { sendRegisterOTP: jest.fn(), verifyRegisterOTP: jest.fn(), resendRegisterOTP: jest.fn() }
 }));
 jest.mock('react-toastify', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
 
 beforeEach(() => {
   jest.clearAllMocks();
   authService.sendRegisterOTP.mockResolvedValue({ success: true });
-  authService.readGovernmentId.mockResolvedValue({ detectedType: 'passport', detectedTypeLabel: 'Philippine passport', fields: {} });
 });
 
 test('seller join shows the canonical application journey without duplicating the business form', () => {
@@ -61,8 +60,8 @@ test('new seller account proceeds from account details to email verification', a
   fireEvent.change(screen.getByPlaceholderText(/same password again/i), { target: { value: 'SecurePass123!' } });
   fireEvent.click(screen.getByRole('button', { name: 'Select passport' }));
   fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
-  await waitFor(() => expect(authService.readGovernmentId).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(screen.getByTestId('id-document-status')).toHaveTextContent('matched'));
+  expect(authService.readGovernmentId).toBeUndefined();
+  expect(screen.getByTestId('id-document-status')).toHaveTextContent('manual');
   fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
   fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
   fireEvent.click(screen.getByRole('button', { name: /create account & verify email/i }));
