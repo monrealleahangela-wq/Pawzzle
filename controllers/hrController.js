@@ -31,6 +31,7 @@ const { computePayrollPeriodAtomically } = require('../services/payrollComputati
 const { leaveBalances, scheduledDays } = require('../services/leaveBalanceService');
 const { calculateStatutoryPayroll, payPeriodsPerMonth, validatePhilippinePayrollConfig } = require('../utils/philippinePayroll');
 const { deterministicRemittanceId } = require('../utils/governmentRemittance');
+const { attendanceStartDateKey, isAttendanceDateEligible } = require('../utils/attendanceEmploymentWindow');
 const activeStaffFilter = activePayrollEmployeeFilter;
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const safeError = (res, error) => {
@@ -319,16 +320,33 @@ const resolveTimeInEligibility = (employee, store, now = new Date()) => {
     const schedule = getScheduleForDate(employee, store, workDate);
     return { workDate, schedule, window: getTimeInWindow({ dateKey: workDate, schedule, settings: store.hrSettings, now }) };
   });
-  return candidates.find(candidate => candidate.window.allowed) || candidates[0];
+  const eligible = candidates.filter(candidate => isAttendanceDateEligible(employee, candidate.workDate, store.hrSettings?.timezone));
+  if (eligible.length) return eligible.find(candidate => candidate.window.allowed) || eligible[0];
+  const startDate = attendanceStartDateKey(employee, store.hrSettings?.timezone);
+  return {
+    ...candidates[0],
+    window: {
+      ...candidates[0].window,
+      allowed: false,
+      message: `Attendance begins on ${startDate}.`
+    }
+  };
 };
-const addDerivedAbsences = (records, employees, store, from, to) => {
-  const rows = records.map(row => row.toObject ? row.toObject() : row);
+const addDerivedAbsences = (records, employees, store, from, to, now = new Date()) => {
+  const employeeById = new Map(employees.map(employee => [String(employee._id), employee]));
+  const rows = records
+    .map(row => row.toObject ? row.toObject() : row)
+    .filter(row => {
+      const employeeId = String(row.employee?._id || row.employee);
+      return isAttendanceDateEligible(employeeById.get(employeeId) || row.employee, row.workDate, store.hrSettings?.timezone);
+    });
   const seen = new Set(rows.map(row => `${row.employee?._id || row.employee}:${row.workDate}`));
-  const today = dateKeyInTimezone(new Date(), store.hrSettings?.timezone);
+  const today = dateKeyInTimezone(now, store.hrSettings?.timezone);
   dateLoop(from, to, day => {
     const workDate = day.toISOString().slice(0, 10);
     if (workDate >= today) return;
     employees.forEach(employee => {
+      if (!isAttendanceDateEligible(employee, workDate, store.hrSettings?.timezone)) return;
       const key = `${employee._id}:${workDate}`;
       if (seen.has(key)) return;
       const schedule = getScheduleForDate(employee, store, workDate);
@@ -423,7 +441,7 @@ const myAttendance = async (req, res) => {
     const from = req.query.from ? String(req.query.from).slice(0, 10) : dateKeyInTimezone(addDays(new Date(), -30), store.hrSettings?.timezone);
     const to = req.query.to ? String(req.query.to).slice(0, 10) : today;
     const records = await Attendance.find({ store: store._id, employee: req.user._id, workDate: { $gte: from, $lte: to } }).sort({ workDate: -1 });
-    const history = addDerivedAbsences(records, [req.user], store, from, to);
+    const history = addDerivedAbsences(records, [employee], store, from, to);
     const eligibility = resolveTimeInEligibility(employee, store, now);
     const openRecord = history.find(row => row.timeIn?.at && !row.timeOut?.at);
     res.json({
@@ -445,8 +463,8 @@ const managementAttendance = async (req, res) => {
     if (req.query.employeeId) filter.employee = req.query.employeeId;
     if ((parseDate(to) - parseDate(from)) / 86400000 > 92) throw fail('Attendance date range cannot exceed 93 days.');
     const [records, employees] = await Promise.all([
-      Attendance.find(filter).populate('employee', 'firstName lastName role staffType professionalProfile.staffId riderProfile.staffId').sort({ workDate: -1 }),
-      User.find({ store: store._id, ...activeStaffFilter(), ...(req.query.employeeId ? { _id: req.query.employeeId } : {}) }).select('firstName lastName role staffType professionalProfile.availability professionalProfile.leaveSchedule professionalProfile.staffId riderProfile.staffId').lean()
+      Attendance.find(filter).populate('employee', 'firstName lastName role staffType professionalProfile.staffId riderProfile.staffId employmentProfile.dateHired createdAt').sort({ workDate: -1 }),
+      User.find({ store: store._id, ...activeStaffFilter(), ...(req.query.employeeId ? { _id: req.query.employeeId } : {}) }).select('firstName lastName role staffType professionalProfile.availability professionalProfile.leaveSchedule professionalProfile.staffId riderProfile.staffId employmentProfile.dateHired createdAt').lean()
     ]);
     const canReview = hasPermission(req.user, 'attendance.review') || hasPermission(req.user, 'attendance.manage');
     const projected = addDerivedAbsences(records, employees, store, from, to)
@@ -495,6 +513,9 @@ const createManualAttendance = async (req, res) => {
   try {
     const store = await storeFor(req); const employee = await employeeFor(store._id, req.body.employeeId);
     const workDate = parseDate(req.body.workDate).toISOString().slice(0, 10);
+    if (!isAttendanceDateEligible(employee, workDate, store.hrSettings?.timezone)) {
+      throw fail(`Attendance cannot be recorded before the employee start date (${attendanceStartDateKey(employee, store.hrSettings?.timezone)}).`, 409);
+    }
     const reason = String(req.body.reason || '').trim();
     if (reason.length < 5) throw fail('A correction reason of at least 5 characters is required.');
     if (!['present', 'late', 'undertime', 'absent', 'rest_day', 'incomplete'].includes(req.body.status)) throw fail('Use the Leave approval workflow to create On Leave attendance.');
@@ -1100,5 +1121,6 @@ module.exports = {
   reviewPeriod, approvePeriod, payPeriod, paymentObligations, createEmployeePaymentAttempt,
   retryEmployeePaymentAttempt, updateEmployeePaymentAttempt, confirmEmployeePaymentAttempt,
   getEmployeePaymentProof, myPayslips, myPayslip, summarizeAttendance,
-  payrollReports, prepareRemittances, updateRemittance, confirmRemittance
+  payrollReports, prepareRemittances, updateRemittance, confirmRemittance,
+  __test: { addDerivedAbsences, resolveTimeInEligibility }
 };
