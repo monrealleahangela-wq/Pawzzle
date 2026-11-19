@@ -59,6 +59,36 @@ describe('Register page', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
   });
 
+  test('keeps form text theme-aware for dark backgrounds', () => {
+    renderRegister();
+
+    const username = screen.getByLabelText('Username');
+    const email = screen.getByLabelText('Email address');
+    const password = screen.getByLabelText('Password');
+    const confirmation = screen.getByLabelText('Confirm password');
+    const themedText = [
+      screen.getByRole('heading', { name: 'Join Pawzzle' }),
+      screen.getByText(/create one account for shopping/i),
+      username.labels[0],
+      username,
+      email.labels[0],
+      email,
+      password.labels[0],
+      password,
+      confirmation.labels[0],
+      confirmation,
+      screen.getByText(/use at least 8 characters/i),
+      screen.getByText(/already have an account/i)
+    ];
+
+    themedText.forEach(element => {
+      expect(element.className).not.toMatch(/(?:^|\s)!text-/);
+    });
+    expect(screen.getByRole('heading', { name: 'Join Pawzzle' })).toHaveClass('text-slate-950');
+    expect(username).toHaveClass('text-slate-900');
+    expect(username.labels[0]).toHaveClass('text-slate-700');
+  });
+
   test('allows password visibility to be controlled independently', () => {
     renderRegister();
 

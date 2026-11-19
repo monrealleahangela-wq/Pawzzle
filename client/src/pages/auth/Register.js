@@ -319,15 +319,15 @@ const Register = () => {
   return (
     <RegistrationShell>
       <div className="mb-8">
-        <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] !text-primary-700">Create account</p>
-        <h2 className="text-4xl font-black tracking-tight !text-slate-950 sm:text-5xl">Join Pawzzle</h2>
-        <p className="mt-3 text-base font-medium !text-slate-500">Create one account for shopping, pet care, and trusted local services.</p>
+        <p className="mb-3 text-xs font-black uppercase tracking-[0.28em] text-primary-700">Create account</p>
+        <h2 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">Join Pawzzle</h2>
+        <p className="mt-3 text-base font-medium text-slate-500">Create one account for shopping, pet care, and trusted local services.</p>
       </div>
 
       <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-5">
               <div>
-                <label htmlFor="register-username" className="mb-2 block text-sm font-bold !text-slate-700">Username</label>
+                <label htmlFor="register-username" className="mb-2 block text-sm font-bold text-slate-700">Username</label>
                 <div className="relative">
                   <User className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                   <input
@@ -336,7 +336,7 @@ const Register = () => {
                     type="text"
                     required
                     autoComplete="username"
-                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
                     placeholder="Choose a username"
                     value={formData.username}
                     onChange={handleChange}
@@ -345,7 +345,7 @@ const Register = () => {
               </div>
 
               <div>
-                <label htmlFor="register-email" className="mb-2 block text-sm font-bold !text-slate-700">Email address</label>
+                <label htmlFor="register-email" className="mb-2 block text-sm font-bold text-slate-700">Email address</label>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                   <input
@@ -354,7 +354,7 @@ const Register = () => {
                     type="email"
                     required
                     autoComplete="email"
-                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                    className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-5 text-base font-semibold text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
                     placeholder="name@example.com"
                     value={formData.email}
                     onChange={handleChange}
@@ -376,7 +376,7 @@ const Register = () => {
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="register-password" className="mb-2 block text-sm font-bold !text-slate-700">Password</label>
+                  <label htmlFor="register-password" className="mb-2 block text-sm font-bold text-slate-700">Password</label>
                   <div className="relative">
                     <Lock className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     <input
@@ -386,7 +386,7 @@ const Register = () => {
                       required
                       autoComplete="new-password"
                       aria-describedby="password-guidance"
-                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
                       placeholder="Create password"
                       value={formData.password}
                       onChange={handleChange}
@@ -397,7 +397,7 @@ const Register = () => {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="register-confirm-password" className="mb-2 block text-sm font-bold !text-slate-700">Confirm password</label>
+                  <label htmlFor="register-confirm-password" className="mb-2 block text-sm font-bold text-slate-700">Confirm password</label>
                   <div className="relative">
                     <Lock className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     <input
@@ -406,7 +406,7 @@ const Register = () => {
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
                       autoComplete="new-password"
-                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold !text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
+                      className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-14 pr-14 text-base font-semibold text-slate-900 outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10"
                       placeholder="Repeat password"
                       value={formData.confirmPassword}
                       onChange={handleChange}
@@ -421,7 +421,7 @@ const Register = () => {
 
             <div id="password-guidance" className="flex items-start gap-3 rounded-2xl border border-primary-100 bg-primary-50/70 px-4 py-3">
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary-700" aria-hidden="true" />
-              <p className="text-sm font-medium leading-6 !text-slate-600">Use at least 8 characters with an uppercase letter, lowercase letter, number, and symbol.</p>
+              <p className="text-sm font-medium leading-6 text-slate-600">Use at least 8 characters with an uppercase letter, lowercase letter, number, and symbol.</p>
             </div>
 
             <button type="submit" disabled={loading} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-5 text-sm font-black text-white shadow-lg shadow-primary-200/70 transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-500/20 disabled:cursor-wait disabled:opacity-60">
@@ -431,7 +431,7 @@ const Register = () => {
           </form>
 
       <div className="mt-8 border-t border-slate-200 pt-6 text-center">
-        <p className="text-sm font-medium !text-slate-500">
+        <p className="text-sm font-medium text-slate-500">
           Already have an account?{' '}
           <Link to="/login" className="font-black text-primary-700 transition hover:text-primary-800 hover:underline hover:underline-offset-4">Sign in</Link>
         </p>
