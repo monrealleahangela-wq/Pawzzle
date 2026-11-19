@@ -277,8 +277,11 @@ const ProductInventory = () => {
     if (Number(productForm.price) <= 0) {
       return toast.warn('Price must be greater than 0.');
     }
-    if (productForm.productMode !== 'variant' && (productForm.stockQuantity === '' || Number(productForm.stockQuantity) < 0)) {
-      return toast.warn('Stock quantity must be zero or greater.');
+    if (productForm.productMode !== 'variant'
+      && (productForm.stockQuantity === ''
+        || !Number.isInteger(Number(productForm.stockQuantity))
+        || Number(productForm.stockQuantity) < 0)) {
+      return toast.warn('Stock quantity must be a whole number of zero or greater.');
     }
     if (productForm.productMode === 'variant' && !(productForm.normalizedVariants || []).length) {
       return toast.warn('Add at least one explicit variant combination.');
@@ -586,8 +589,13 @@ const ProductInventory = () => {
         </div>
 
         <div className="relative z-10 flex w-full flex-wrap gap-2.5 sm:w-auto">
+          {canUpdate && (
+            <button type="button" onClick={() => handleOpenProductModal()} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 text-[13px] font-bold text-white transition-all hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+              <Plus className="h-4 w-4" /> Add Product
+            </button>
+          )}
           {variantCapabilities.enabled && canUpdate && (
-            <button type="button" onClick={() => { handleOpenProductModal(); setProductForm({ ...initialProductState, productMode: 'variant' }); }} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary-600 px-5 text-[13px] font-bold text-white transition-all hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+            <button type="button" onClick={() => { handleOpenProductModal(); setProductForm({ ...initialProductState, productMode: 'variant' }); }} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-5 text-[13px] font-bold text-primary-700 transition-all hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
               <Plus className="h-4 w-4" /> Add Variant Listing
             </button>
           )}
@@ -1092,9 +1100,10 @@ const ProductInventory = () => {
                         <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-2 duration-300">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Stock Quantity</label>
-                             <input aria-label="Stock Quantity" readOnly value={productForm.stockQuantity ?? 0}
-                               className="w-full cursor-not-allowed rounded-xl border-2 border-slate-100 bg-slate-100 px-5 py-3.5 text-[12px] font-black text-slate-700" />
-                             <p className="px-1 text-[9px] leading-relaxed text-slate-500">Updated only after a supplier order passes receiving inspection.</p>
+                             <input aria-label="Stock Quantity" required={!editingProduct} type="number" min="0" step="1" readOnly={Boolean(editingProduct)} value={productForm.stockQuantity ?? 0}
+                               onChange={(e) => setProductForm({ ...productForm, stockQuantity: e.target.value })}
+                               className={`w-full rounded-xl border-2 border-slate-100 px-5 py-3.5 text-[12px] font-black text-slate-700 ${editingProduct ? 'cursor-not-allowed bg-slate-100' : 'bg-white focus:border-primary-500 focus:outline-none'}`} />
+                             <p className="px-1 text-[9px] leading-relaxed text-slate-500">{editingProduct ? 'Use the stock workflow to change the current inventory balance.' : 'Enter the units currently on hand as the opening inventory balance.'}</p>
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
