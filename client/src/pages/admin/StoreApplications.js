@@ -327,7 +327,7 @@ const StoreApplications = () => {
 
       {/* Review Modal */}
       {showReviewModal && selectedApplication && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[100] animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[1000] animate-fade-in">
           <div className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden max-h-[95vh] flex flex-col font-sans border border-slate-200">
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
               <div>
@@ -341,10 +341,13 @@ const StoreApplications = () => {
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Application Review</p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowReviewModal(false)}
-                className="p-2 w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-95 flex items-center justify-center"
+                aria-label="Close application review"
+                title="Close"
+                className="p-2 w-10 h-10 shrink-0 bg-slate-900 text-white rounded-xl shadow-lg ring-1 ring-white/20 hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all active:scale-95 flex items-center justify-center"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
