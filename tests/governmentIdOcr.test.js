@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   detectGovernmentIdType,
   extractGovernmentId,
+  extractGovernmentIdForVerification,
   normalizeDate
 } = require('../utils/governmentIdOcr');
 
@@ -152,4 +153,28 @@ test('does not retry permanent provider authentication failures', async () => {
   assert.equal(attempts, 1);
   assert.equal(logEntries[0][1].name, 'AccessDeniedException');
   assert.doesNotMatch(JSON.stringify(logEntries), /secret provider response/);
+});
+
+test('verification falls back to the applicant declaration only when OCR is unavailable', async () => {
+  const unavailableClient = { send: async () => {
+    throw Object.assign(new Error('provider unavailable'), { name: 'AccessDeniedException' });
+  } };
+  const fallback = await extractGovernmentIdForVerification(
+    { selectedType: 'philhealth_id', buffer: jpeg(), mimeType: 'image/jpeg' },
+    { client: unavailableClient, logger: { error: () => {} } }
+  );
+
+  assert.equal(fallback.detectedType, null);
+  assert.equal(fallback.verificationMethod, 'applicant_declaration');
+
+  const mismatchClient = { send: async () => ({ Blocks: [
+    { BlockType: 'LINE', Text: 'PASSPORT', Confidence: 99 }
+  ] }) };
+  await assert.rejects(
+    extractGovernmentIdForVerification(
+      { selectedType: 'philhealth_id', buffer: jpeg(), mimeType: 'image/jpeg' },
+      { client: mismatchClient }
+    ),
+    error => error.code === 'GOVERNMENT_ID_TYPE_MISMATCH'
+  );
 });

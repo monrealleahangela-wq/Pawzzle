@@ -38,5 +38,5 @@ export const mergeGovernmentIdFields = (registration, extracted = {}) => {
   };
 };
 
-export const isGovernmentIdConfirmed = (review, selectedType) => review?.status === 'matched'
+export const isGovernmentIdConfirmed = (review, selectedType) => ['matched', 'manual'].includes(review?.status)
   && review.selectedType === selectedType;

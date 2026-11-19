@@ -19,7 +19,7 @@ const IdentityRegistrationFields = ({ formData, onChange, onAddressChange, gover
 
   return (
     <section className="space-y-5 rounded-2xl border border-primary-100 bg-primary-50/30 p-4 sm:p-5" aria-labelledby="identity-registration-heading">
-      <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><ShieldCheck className="h-5 w-5" /></span><div><h3 id="identity-registration-heading" className="text-sm font-black text-slate-900">Verified personal identity</h3><p className="mt-1 text-xs leading-5 text-slate-500">Your ID is securely read to confirm its type and fill readable details, then encrypted. Your live selfie is compared securely and is not stored after verification.</p></div></div>
+      <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><ShieldCheck className="h-5 w-5" /></span><div><h3 id="identity-registration-heading" className="text-sm font-black text-slate-900">Verified personal identity</h3><p className="mt-1 text-xs leading-5 text-slate-500">When available, secure ID reading confirms the document type and suggests readable details. You can enter them manually if reading is unavailable. Your ID is encrypted, and the live selfie is compared securely without being stored.</p></div></div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={labelClass}><UserRound className="mr-1 inline h-3.5 w-3.5" /> First name *<input name="firstName" required autoComplete="given-name" value={formData.firstName} onChange={onChange} className={inputClass} /></label>
@@ -45,11 +45,11 @@ const IdentityRegistrationFields = ({ formData, onChange, onAddressChange, gover
       {documentReview?.status && documentReview.status !== 'idle' && (
         <div
           role={documentReview.status === 'error' ? 'alert' : 'status'}
-          className={`flex items-start gap-3 rounded-xl border p-3 text-xs font-bold leading-5 ${documentReview.status === 'matched' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : documentReview.status === 'reading' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-rose-200 bg-rose-50 text-rose-700'}`}
+          className={`flex items-start gap-3 rounded-xl border p-3 text-xs font-bold leading-5 ${documentReview.status === 'matched' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : documentReview.status === 'manual' ? 'border-amber-200 bg-amber-50 text-amber-800' : documentReview.status === 'reading' ? 'border-sky-200 bg-sky-50 text-sky-800' : 'border-rose-200 bg-rose-50 text-rose-700'}`}
         >
           {documentReview.status === 'reading'
             ? <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
-            : documentReview.status === 'matched'
+            : ['matched', 'manual'].includes(documentReview.status)
               ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               : <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0" />}
           <span>{documentReview.message}</span>
@@ -57,7 +57,7 @@ const IdentityRegistrationFields = ({ formData, onChange, onAddressChange, gover
       )}
 
       <LiveIdentitySelfieCapture value={selfieImage} onCapture={onSelfieImage} />
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4"><input type="checkbox" name="biometricConsent" required checked={Boolean(formData.biometricConsent)} onChange={onChange} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600" /><span className="text-xs font-semibold leading-5 text-slate-600">I consent to Pawzzle securely reading my government ID to confirm its type and suggest form details, and sending the ID and live selfie to AWS Rekognition solely to compare their faces. I understand the selfie is discarded after comparison and the government ID is stored encrypted. *</span></label>
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4"><input type="checkbox" name="biometricConsent" required checked={Boolean(formData.biometricConsent)} onChange={onChange} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-600" /><span className="text-xs font-semibold leading-5 text-slate-600">I consent to Pawzzle attempting to securely read my government ID when that service is available, and sending the ID and live selfie to AWS Rekognition solely to compare their faces. I understand the selfie is discarded after comparison and the government ID is stored encrypted. *</span></label>
     </section>
   );
 };

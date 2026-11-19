@@ -8,6 +8,7 @@ const identityVerificationSchema = new mongoose.Schema({
   governmentId: {
     documentType: { type: String, enum: GOVERNMENT_ID_TYPES, required: true },
     detectedType: { type: String, enum: GOVERNMENT_ID_TYPES },
+    typeVerificationMethod: { type: String, enum: ['ocr', 'applicant_declaration'], default: 'ocr' },
     encryptedImage: { type: String, required: true },
     mimeType: { type: String, enum: ['image/jpeg', 'image/png'], required: true },
     size: { type: Number, min: 1, max: 5 * 1024 * 1024, required: true }

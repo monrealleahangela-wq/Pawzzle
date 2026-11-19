@@ -53,6 +53,10 @@ const FIELD_QUERIES = Object.freeze([
 ]);
 
 const idError = (message, code, statusCode = 422) => Object.assign(new Error(message), { code, statusCode });
+const READING_UNAVAILABLE_CODES = new Set([
+  'GOVERNMENT_ID_READING_NOT_CONFIGURED',
+  'GOVERNMENT_ID_READING_UNAVAILABLE'
+]);
 const normalizeText = value => String(value || '').normalize('NFKC').replace(/\s+/g, ' ').trim();
 const pad = value => String(value).padStart(2, '0');
 
@@ -232,6 +236,23 @@ const extractGovernmentId = async ({ selectedType, buffer, mimeType }, options =
   return { detectedType, detectedTypeLabel: GOVERNMENT_ID_LABELS[detectedType], fields };
 };
 
+const isGovernmentIdReadingUnavailable = error => error?.statusCode === 503
+  && READING_UNAVAILABLE_CODES.has(error?.code);
+
+const extractGovernmentIdForVerification = async (input, options = {}) => {
+  try {
+    return await extractGovernmentId(input, options);
+  } catch (error) {
+    if (!isGovernmentIdReadingUnavailable(error)) throw error;
+    return {
+      detectedType: null,
+      detectedTypeLabel: null,
+      fields: {},
+      verificationMethod: 'applicant_declaration'
+    };
+  }
+};
+
 module.exports = {
   GOVERNMENT_ID_LABELS,
   FIELD_QUERIES,
@@ -239,5 +260,7 @@ module.exports = {
   normalizeDate,
   documentText,
   detectGovernmentIdType,
-  extractGovernmentId
+  extractGovernmentId,
+  extractGovernmentIdForVerification,
+  isGovernmentIdReadingUnavailable
 };
