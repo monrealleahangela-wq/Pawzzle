@@ -182,6 +182,7 @@ test('seller product creation persists normalized weight, cover order, and serve
   const originalServiceCount = Service.countDocuments;
   const originalUserCount = User.countDocuments;
   let saved;
+  let initializedInventory;
   Product.prototype.save = async function save() {
     const error = this.validateSync();
     if (error) throw error;
@@ -189,7 +190,7 @@ test('seller product creation persists normalized weight, cover order, and serve
     return this;
   };
   Product.findById = () => ({ populate: async () => saved });
-  StockSyncService.initializeInventoryForProduct = async () => {};
+  StockSyncService.initializeInventoryForProduct = async (...args) => { initializedInventory = args; };
   const store = { _id: '507f1f77bcf86cd799439011', owner: '507f1f77bcf86cd799439012', subscriptionTier: 'free' };
   Store.findById = () => ({ select: async () => store });
   Store.find = async () => [store];
@@ -217,9 +218,14 @@ test('seller product creation persists normalized weight, cover order, and serve
     assert.equal(saved.category, 'Pet Accessories');
     assert.deepEqual(saved.images, ['/front.jpg', '/side.jpg']);
     assert.equal(saved.coverImage, '/front.jpg');
+    assert.equal(saved.stockQuantity, 4);
+    assert.equal(saved.stockStatus, 'in_stock');
     assert.equal(String(saved.store), '507f1f77bcf86cd799439011');
     assert.equal(String(saved.addedBy), '507f1f77bcf86cd799439012');
     assert.notEqual(saved.isDeleted, true);
+    assert.equal(String(initializedInventory[0]), String(saved._id));
+    assert.equal(String(initializedInventory[1]), '507f1f77bcf86cd799439011');
+    assert.equal(initializedInventory[2], 4);
   } finally {
     Product.prototype.save = originalSave;
     Product.findById = originalFindById;

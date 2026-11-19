@@ -11,7 +11,7 @@ const source = fs.readFileSync(
 test('Product Inventory uses the compact responsive management layout', () => {
   assert.match(source, /p-4 sm:p-6 lg:p-7 space-y-5 sm:space-y-6/);
   assert.match(source, /role="heading" aria-level="1"[^>]*text-\[1\.75rem\][^"\n]*sm:text-\[2rem\]/);
-  assert.match(source, /Add Variant Listing[\s\S]*Update Stock/);
+  assert.match(source, /Add Product[\s\S]*Add Variant Listing[\s\S]*Update Stock/);
   assert.match(source, /h-11[^"\n]*px-5[^"\n]*text-\[13px\]/);
   assert.match(source, /role="tablist" aria-label="Product inventory views"/);
   assert.match(source, /role="tab"[\s\S]*aria-selected=\{activeTab === tab\.id\}/);
@@ -46,6 +46,6 @@ test('Inventory Status keeps compact controls and contains mobile overflow', () 
   assert.match(source, /htmlFor="inventory-search"[^>]*>Search inventory</);
   assert.match(source, /max-w-full overflow-x-auto no-scrollbar/);
   assert.match(source, /min-w-\[720px\] divide-y divide-slate-100/);
-  assert.match(source, /aria-label="Stock Quantity" readOnly/);
+  assert.match(source, /aria-label="Stock Quantity" required=\{!editingProduct\}[\s\S]*readOnly=\{Boolean\(editingProduct\)\}/);
   assert.match(source, /h-10[^"]*px-4[^"]*"[^>]*>\s*Adjust Stock/);
 });

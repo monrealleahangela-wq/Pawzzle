@@ -6,12 +6,12 @@ import ProductInventory from './ProductInventory';
 import { adminProductService, inventoryService } from '../../services/apiService';
 
 jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { role: 'admin' } })
+  useAuth: () => ({ user: { role: 'store_owner' } })
 }));
 
 jest.mock('../../utils/authorization', () => ({
   PLATFORM_ADMIN_ROLES: new Set(['super_admin']),
-  STORE_ADMIN_ROLES: new Set(['admin']),
+  STORE_ADMIN_ROLES: new Set(['admin', 'store_owner']),
   OPERATIONAL_ROLES: new Set(['inventory_staff']),
   hasUiActionPermission: () => true
 }));
@@ -45,18 +45,18 @@ jest.mock('react-toastify', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  window.localStorage.setItem('user', JSON.stringify({ role: 'admin' }));
+  window.localStorage.setItem('user', JSON.stringify({ role: 'store_owner' }));
   adminProductService.getAllProducts.mockImplementation(() => new Promise(() => {}));
   adminProductService.getVariantCapabilities.mockResolvedValue({ data: { enabled: false, reasons: ['test gate'] } });
   inventoryService.getAdjustmentRequests.mockResolvedValue({ data: { requests: [], canReview: true } });
 });
 
-test('store inventory keeps stock management but has no manual product creation action', () => {
+test('store inventory keeps stock management and restores manual product creation', () => {
   render(<MemoryRouter><ProductInventory /></MemoryRouter>);
 
   expect(screen.getByRole('heading', { name: /Product Inventory/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Update Stock/i })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /^Add Product$/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Add Product$/i })).toBeInTheDocument();
 });
 
 test('general stock action loads inventory products even while product catalog is active', async () => {

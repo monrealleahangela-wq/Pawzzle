@@ -51,10 +51,21 @@ test('legacy products remain editable while clearly identifying a missing weight
   expect(screen.getByRole('button', { name: /Save Changes/i })).toBeEnabled();
 });
 
+test('new simple products accept a manual opening stock quantity', () => {
+  render(<Harness startingForm={{ ...initial, stockQuantity: 0 }} />);
+  const stock = screen.getByLabelText(/Stock Quantity/i);
+  expect(stock).not.toHaveAttribute('readonly');
+  expect(stock).toHaveAttribute('min', '0');
+  expect(stock).toHaveAttribute('step', '1');
+  fireEvent.change(stock, { target: { value: '24' } });
+  expect(stock).toHaveValue(24);
+  expect(screen.getByText(/opening inventory balance/i)).toBeInTheDocument();
+});
+
 test('catalog editing cannot change authoritative stock or the established selling unit', () => {
   render(<Harness editingProduct={{ _id: 'existing-product' }} />);
   expect(screen.getByLabelText(/Stock Quantity/i)).toHaveAttribute('readonly');
   expect(screen.getByRole('combobox', { name: /Selling Unit/i })).toBeDisabled();
-  expect(screen.getByText(/received supplier orders add stock/i)).toBeInTheDocument();
+  expect(screen.getByText(/Use the stock workflow to change/i)).toBeInTheDocument();
   expect(screen.getByText(/Locked because existing inventory and orders use this unit/i)).toBeInTheDocument();
 });

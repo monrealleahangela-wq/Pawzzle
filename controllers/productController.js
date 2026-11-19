@@ -282,14 +282,13 @@ const createProduct = async (req, res) => {
         message: 'Create variant products through the gated variant-product workflow so parent and child SKU claims commit together.'
       });
     }
-    const requestedInitialStock = Number(req.body.stockQuantity || 0);
-    if (requestedInitialStock !== 0) {
-      return res.status(409).json({
-        code: 'PURCHASE_ORDER_RECEIVING_REQUIRED',
-        message: 'New catalog products start with zero stock. Place a supplier order and complete receiving inspection to add inventory.'
+    const initialStock = Number(req.body.stockQuantity ?? 0);
+    if (!Number.isInteger(initialStock) || initialStock < 0) {
+      return res.status(400).json({
+        code: 'INVALID_INITIAL_STOCK',
+        message: 'Opening stock must be a whole number of zero or greater.'
       });
     }
-    const initialStock = 0;
     const listingData = pickProductListingFields(req.body);
     listingData.category = requireProductCategory(listingData.category);
     const images = normalizeCatalogImages(listingData.images, { required: true });
@@ -332,7 +331,14 @@ const createProduct = async (req, res) => {
         await StockSyncService.initializeInventoryForProduct(product._id, storeId, initialStock);
       }
     } catch (inventoryError) {
-      console.warn('Failed to initialize inventory for product:', inventoryError.message);
+      const cleanupResults = await Promise.allSettled([
+        Inventory.deleteOne({ product: product._id, store: storeId, productVariant: { $exists: false } }),
+        Product.deleteOne({ _id: product._id, store: storeId })
+      ]);
+      cleanupResults.filter(result => result.status === 'rejected').forEach(result => {
+        console.error('Failed to roll back incomplete product creation:', result.reason);
+      });
+      throw inventoryError;
     }
 
     const populatedProduct = await Product.findById(product._id).populate('addedBy', 'username firstName lastName');
