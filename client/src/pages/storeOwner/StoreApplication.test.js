@@ -11,7 +11,7 @@ jest.mock('../../services/storeApplicationService', () => ({
   __esModule: true,
   default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), saveDraft: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
 }));
-jest.mock('../../components/GoogleMapsLocationPicker', () => ({ onLocationSelected }) => (
+jest.mock('../../components/OpenStreetMapLocationPicker', () => ({ onLocationSelected }) => (
   <button type="button" onClick={() => onLocationSelected({ street: 'Main', city: 'Dasmarinas', barangay: 'San Jose', zipCode: '4114', lat: 14.3, lng: 120.9 })}>
     Confirm test location
   </button>

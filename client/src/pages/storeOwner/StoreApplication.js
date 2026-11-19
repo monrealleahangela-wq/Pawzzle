@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import storeApplicationService from '../../services/storeApplicationService';
 import { FileText, AlertCircle, Building, Mail, MapPin, Check, Shield, Users, ArrowRight, Briefcase, Camera, Truck, Heart, Calendar, TrendingUp } from 'lucide-react';
 import { getCitiesByProvince, getBarangaysByCity } from '../../constants/locationConstants';
-import GoogleMapsLocationPicker from '../../components/GoogleMapsLocationPicker';
+import OpenStreetMapLocationPicker from '../../components/OpenStreetMapLocationPicker';
 import { getAccurateCurrentPosition, getLocationAccuracyPresentation, getLocationErrorMessage } from '../../utils/geolocationAccuracy';
 import { normalizeNominatimAddress, toLocationOptionValue } from '../../utils/nominatimAddress';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
@@ -1060,7 +1060,7 @@ const StoreApplication = () => {
                 </div>
 
                 {addressInputType === 'map' ? (
-                  <GoogleMapsLocationPicker
+                  <OpenStreetMapLocationPicker
                     onLocationSelected={(location) => {
                       setFormData(prev => ({
                         ...prev,
