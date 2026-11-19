@@ -31,6 +31,10 @@ const storeApplicationService = {
 
   withdrawApplication: () => api.patch('/store-applications/my-application/withdraw'),
 
+  searchStoreLocations: (query) => api.get('/store-applications/location/search', { params: { q: query } }),
+
+  reverseStoreLocation: (lat, lng) => api.get('/store-applications/location/reverse', { params: { lat, lng } }),
+
   // Get all applications (Super Admin only)
   getAllApplications: (params) => api.get('/store-applications', { params }),
 

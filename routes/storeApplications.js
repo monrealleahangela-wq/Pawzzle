@@ -36,6 +36,10 @@ const {
   getComplianceDocument,
   reviewComplianceRequest
 } = require('../controllers/storeComplianceController');
+const {
+  reverseStoreLocation,
+  searchStoreLocations
+} = require('../controllers/storeLocationController');
 
 router.get('/audit-count', authenticate, superAdminOnly, getAuditCount);
 
@@ -113,6 +117,8 @@ router.post(
 
 router.get('/my-application', authenticate, getUserApplication);
 router.patch('/my-application/withdraw', authenticate, withdrawApplication);
+router.get('/location/search', authenticate, authRateLimits.storeLocationLookup, searchStoreLocations);
+router.get('/location/reverse', authenticate, authRateLimits.storeLocationLookup, reverseStoreLocation);
 router.get('/compliance/my-store', authenticate, storeOwnerOnly, getMyCompliance);
 router.get('/compliance/my-store/documents/:requirementKey', authenticate, storeOwnerOnly, getCurrentComplianceDocument);
 router.post('/compliance/my-store/requests', authenticate, storeOwnerOnly, storeApplicationUpload.fields([

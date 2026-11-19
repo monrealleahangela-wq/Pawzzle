@@ -268,9 +268,11 @@ Make sure to set these environment variables:
 - `AWS_REKOGNITION_REGION` - Optional Rekognition override; defaults to `ap-southeast-1`
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` when workload credentials are unavailable
 - `AWS_STORE_DOCUMENTS_BUCKET` - Private S3 bucket used for store application and compliance documents; enable Block Public Access
-- `REACT_APP_GOOGLE_MAPS_API_KEY` - Browser-restricted Google Maps JavaScript API key used by the Cavite store-location picker
+- `OPENSTREETMAP_SEARCH_URL` - Optional replacement for the default OpenStreetMap Nominatim search endpoint; no value or API key is required for normal low-volume use
 
 The AWS principal used by the server also needs `textract:AnalyzeDocument` and bucket-scoped `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` permissions for the store application workflow. Keep credentials only in the deployment environment; never place them in the React variables or repository.
+
+The store-location picker uses OpenStreetMap tiles and a user-triggered, server-throttled address search. Keep the provider URL configurable and follow the OpenStreetMap tile and Nominatim usage policies if traffic grows; no Google Maps billing account is needed.
 
 ## Release and Defense Documentation
 
