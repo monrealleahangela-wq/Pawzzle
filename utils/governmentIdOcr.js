@@ -128,10 +128,45 @@ const cleanField = (alias, value) => {
 };
 
 const createClient = () => {
-  const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
+  const region = process.env.AWS_TEXTRACT_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
   if (!region) throw idError('Secure ID reading is temporarily unavailable.', 'GOVERNMENT_ID_READING_NOT_CONFIGURED', 503);
-  return new TextractClient({ region });
+  const configuredAttempts = Number.parseInt(process.env.AWS_TEXTRACT_MAX_ATTEMPTS || '', 10);
+  const maxAttempts = Number.isFinite(configuredAttempts)
+    ? Math.min(6, Math.max(2, configuredAttempts))
+    : 5;
+  return new TextractClient({ region, maxAttempts });
 };
+
+const providerErrorName = error => error?.name || error?.Code || error?.code || 'UnknownProviderError';
+
+const providerErrorDetails = (error, stage) => ({
+  stage,
+  name: providerErrorName(error),
+  httpStatusCode: error?.$metadata?.httpStatusCode,
+  requestId: error?.$metadata?.requestId,
+  attempts: error?.$metadata?.attempts,
+  totalRetryDelay: error?.$metadata?.totalRetryDelay
+});
+
+const logProviderError = (error, stage, logger = console) => {
+  if (typeof logger?.error !== 'function') return;
+  logger.error('Government ID OCR provider request failed', providerErrorDetails(error, stage));
+};
+
+const NON_FALLBACK_PROVIDER_ERRORS = new Set([
+  'AccessDeniedException',
+  'BadDocumentException',
+  'CredentialsProviderError',
+  'DocumentTooLargeException',
+  'ExpiredTokenException',
+  'InvalidClientTokenId',
+  'InvalidSignatureException',
+  'SignatureDoesNotMatch',
+  'UnrecognizedClientException',
+  'UnsupportedDocumentException'
+]);
+
+const shouldTryFormsFallback = error => !NON_FALLBACK_PROVIDER_ERRORS.has(providerErrorName(error));
 
 const mapProviderError = error => {
   if (['BadDocumentException', 'UnsupportedDocumentException', 'DocumentTooLargeException', 'InvalidParameterException'].includes(error?.name)) {
@@ -145,6 +180,7 @@ const extractGovernmentId = async ({ selectedType, buffer, mimeType }, options =
   if (!matchesImageSignature(buffer, mimeType)) throw idError('Choose a valid JPG or PNG government ID image.', 'GOVERNMENT_ID_IMAGE_INVALID', 400);
 
   const client = options.client || createClient();
+  const logger = options.logger || console;
   let response;
   try {
     response = await client.send(new AnalyzeDocumentCommand({
@@ -154,7 +190,18 @@ const extractGovernmentId = async ({ selectedType, buffer, mimeType }, options =
     }));
   } catch (error) {
     if (error?.statusCode && error?.code) throw error;
-    throw mapProviderError(error);
+    logProviderError(error, 'queries', logger);
+    if (!shouldTryFormsFallback(error)) throw mapProviderError(error);
+    try {
+      response = await client.send(new AnalyzeDocumentCommand({
+        Document: { Bytes: buffer },
+        FeatureTypes: ['FORMS']
+      }));
+    } catch (fallbackError) {
+      if (fallbackError?.statusCode && fallbackError?.code) throw fallbackError;
+      logProviderError(fallbackError, 'forms-fallback', logger);
+      throw mapProviderError(fallbackError);
+    }
   }
 
   const detectedType = detectGovernmentIdType(documentText(response.Blocks));

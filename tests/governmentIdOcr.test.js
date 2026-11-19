@@ -96,3 +96,60 @@ test('rejects a readable expired ID', async () => {
     error => error.code === 'GOVERNMENT_ID_EXPIRED' && /expired/.test(error.message)
   );
 });
+
+test('falls back to forms analysis when the queries feature is temporarily unavailable', async () => {
+  const commandInputs = [];
+  const logEntries = [];
+  const client = { send: async command => {
+    commandInputs.push(command.input);
+    if (commandInputs.length === 1) {
+      throw Object.assign(new Error('provider details must not be logged'), {
+        name: 'InternalServerError',
+        $metadata: { httpStatusCode: 500, requestId: 'request-123', attempts: 3 }
+      });
+    }
+    return { Blocks: [
+      { BlockType: 'LINE', Text: 'REPUBLIC OF THE PHILIPPINES', Confidence: 99 },
+      { BlockType: 'LINE', Text: 'PASSPORT', Confidence: 99 }
+    ] };
+  } };
+
+  const result = await extractGovernmentId(
+    { selectedType: 'passport', buffer: jpeg(), mimeType: 'image/jpeg' },
+    { client, logger: { error: (...args) => logEntries.push(args) } }
+  );
+
+  assert.deepEqual(commandInputs.map(input => input.FeatureTypes), [['QUERIES'], ['FORMS']]);
+  assert.equal(commandInputs[1].QueriesConfig, undefined);
+  assert.equal(result.detectedType, 'passport');
+  assert.deepEqual(result.fields, {});
+  assert.equal(logEntries.length, 1);
+  assert.equal(logEntries[0][1].stage, 'queries');
+  assert.equal(logEntries[0][1].name, 'InternalServerError');
+  assert.equal(logEntries[0][1].requestId, 'request-123');
+  assert.doesNotMatch(JSON.stringify(logEntries), /provider details must not be logged/);
+});
+
+test('does not retry permanent provider authentication failures', async () => {
+  let attempts = 0;
+  const logEntries = [];
+  const client = { send: async () => {
+    attempts += 1;
+    throw Object.assign(new Error('secret provider response'), {
+      name: 'AccessDeniedException',
+      $metadata: { httpStatusCode: 400, requestId: 'denied-123' }
+    });
+  } };
+
+  await assert.rejects(
+    extractGovernmentId(
+      { selectedType: 'passport', buffer: jpeg(), mimeType: 'image/jpeg' },
+      { client, logger: { error: (...args) => logEntries.push(args) } }
+    ),
+    error => error.code === 'GOVERNMENT_ID_READING_UNAVAILABLE' && error.statusCode === 503
+  );
+
+  assert.equal(attempts, 1);
+  assert.equal(logEntries[0][1].name, 'AccessDeniedException');
+  assert.doesNotMatch(JSON.stringify(logEntries), /secret provider response/);
+});
