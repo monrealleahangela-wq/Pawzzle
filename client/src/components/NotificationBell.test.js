@@ -74,6 +74,7 @@ test('does not offer unsafe external notification links', () => {
 
 test('preserves legacy notification destinations without crossing role boundaries', () => {
   const customer = { role: 'customer' };
+  const seller = { role: 'admin' };
   const admin = { role: 'super_admin' };
   const id = '507f1f77bcf86cd799439011';
   expect(notificationDestination({ type: 'store_application' }, customer)).toBe('/account-upgrade');
@@ -83,4 +84,6 @@ test('preserves legacy notification destinations without crossing role boundarie
   expect(notificationDestination({ relatedModel: 'Report', relatedId: id }, customer)).toBeNull();
   expect(notificationDestination({ relatedModel: 'Report', relatedId: id }, admin)).toBe('/superadmin/reports');
   expect(notificationDestination({ targetUrl: '/superadmin/reports' }, customer)).toBeNull();
+  expect(notificationDestination({ targetUrl: `/orders/${id}`, relatedModel: 'Order', relatedId: id }, seller)).toBe(`/admin/orders/${id}`);
+  expect(notificationDestination({ targetUrl: `/admin/orders/${id}`, relatedModel: 'Order', relatedId: id }, customer)).toBe(`/orders/${id}`);
 });
