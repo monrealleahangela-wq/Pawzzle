@@ -5,6 +5,19 @@ export const notificationDestination = (notification, user) => {
     const internalPath = typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
         && !target.includes('..') && !target.includes('\\')
         && !Array.from(target).some(character => character.charCodeAt(0) < 32);
+    const id = String(notification?.relatedId || '');
+    const validId = /^[a-f\d]{24}$/i.test(id);
+    const operational = ['admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager', 'delivery_rider'].includes(user?.role);
+
+    // Order notifications must always open the portal that matches the
+    // recipient. Older notices can contain a customer /orders target even
+    // when they were sent to Store staff.
+    if (notification?.relatedModel === 'Order') {
+        if (!validId) return null;
+        if (operational) return `/admin/orders/${id}`;
+        if (user?.role === 'customer') return `/orders/${id}`;
+        return null;
+    }
     if (notification?.relatedModel === 'PetInquiry') {
         if (!internalPath) return null;
         if (target.startsWith('/admin/pet-inquiries')) return ['admin', 'store_owner', 'staff', 'manager'].includes(user?.role) ? target : null;
@@ -20,10 +33,7 @@ export const notificationDestination = (notification, user) => {
         return ['super_admin', 'platform_admin'].includes(user?.role) ? '/superadmin/store-applications' : '/account-upgrade';
     }
     if (notification?.type === 'new_follow') return '/profile?tab=followers';
-    const id = String(notification?.relatedId || '');
-    if (!/^[a-f\d]{24}$/i.test(id)) return null;
-    const operational = ['admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager', 'delivery_rider'].includes(user?.role);
-    if (notification.relatedModel === 'Order') return operational ? `/admin/orders/${id}` : `/orders/${id}`;
+    if (!validId) return null;
     if (notification.relatedModel === 'OrderReturn') return `/returns/${id}`;
     if (notification.relatedModel === 'Booking') return operational ? `/admin/bookings?id=${id}` : `/bookings?id=${id}`;
     if (notification.type === 'chat_message' || notification.relatedModel === 'Conversation') {

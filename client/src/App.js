@@ -181,8 +181,8 @@ function App() {
                   <Route path="staff/payslips" element={<ProtectedRoute roles={['staff']}><EmployeeHR initialTab="payslips" /></ProtectedRoute>} />
                   <Route path="cart" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Cart /></ProtectedRoute>} />
                   <Route path="checkout" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Checkout /></ProtectedRoute>} />
-                  <Route path="orders" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><Orders /></ProtectedRoute>} />
-                  <Route path="orders/:id" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}><OrderDetail /></ProtectedRoute>} />
+                  <Route path="orders" element={<ProtectedRoute roles={['customer']}><Orders /></ProtectedRoute>} />
+                  <Route path="orders/:id" element={<ProtectedRoute roles={['customer']}><OrderDetail /></ProtectedRoute>} />
                   <Route path="returns/:id" element={<ProtectedRoute roles={['customer', 'admin', 'store_owner', 'super_admin', 'platform_admin', 'staff', 'manager']}><ReturnCaseDetail /></ProtectedRoute>} />
                   <Route path="bookings" element={<ProtectedRoute roles={['customer', 'admin', 'super_admin']}>
                     <CustomerPageErrorBoundary pageName="customer bookings" title="Unable to show your bookings" message="Something in a booking record could not be displayed. Please try again." backTo="/services" backLabel="Browse Services">
