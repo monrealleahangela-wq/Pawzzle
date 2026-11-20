@@ -1,6 +1,7 @@
 import api from './apiService';
 
 export const STORE_APPLICATION_UPLOAD_TIMEOUT_MS = 120000;
+export const STORE_DOCUMENT_OCR_TIMEOUT_MS = 120000;
 
 const multipartUploadConfig = {
   headers: { 'Content-Type': 'multipart/form-data' },
@@ -17,7 +18,8 @@ const storeApplicationService = {
     formData.append('documentType', documentType);
     formData.append('expectedValues', JSON.stringify(expectedValues));
     return api.post('/store-applications/ocr/extract', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: STORE_DOCUMENT_OCR_TIMEOUT_MS
     });
   },
 

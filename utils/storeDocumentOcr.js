@@ -1,8 +1,11 @@
 const { AnalyzeDocumentCommand, TextractClient } = require('@aws-sdk/client-textract');
 
-const configurationError = (message, code) => Object.assign(new Error(message), {
+const DEFAULT_TEXTRACT_REGION = 'ap-southeast-1';
+
+const configurationError = (message, code, cause) => Object.assign(new Error(message), {
   statusCode: 503,
-  code
+  code,
+  ...(cause ? { cause } : {})
 });
 
 const inputError = (message, code) => Object.assign(new Error(message), {
@@ -136,12 +139,38 @@ const getConfidenceThreshold = configured => {
   return value;
 };
 
-const createTextractClient = () => {
-  const region = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
-  if (!region) {
-    throw configurationError('The secure document check is temporarily unavailable.', 'STORE_DOCUMENT_OCR_NOT_CONFIGURED');
+const resolveTextractRegion = (environment = process.env) => [
+  environment.AWS_TEXTRACT_REGION,
+  environment.AWS_REGION,
+  environment.AWS_DEFAULT_REGION
+].map(value => String(value || '').trim()).find(Boolean) || DEFAULT_TEXTRACT_REGION;
+
+const resolveTextractCredentials = (environment = process.env) => {
+  const accessKeyId = String(environment.AWS_ACCESS_KEY_ID || '').trim();
+  const secretAccessKey = String(environment.AWS_SECRET_ACCESS_KEY || '').trim();
+  const sessionToken = String(environment.AWS_SESSION_TOKEN || '').trim();
+
+  if (!accessKeyId && !secretAccessKey && !sessionToken) return null;
+  if (!accessKeyId || !secretAccessKey) {
+    throw configurationError(
+      'Secure document reading is not configured for this deployment.',
+      'STORE_DOCUMENT_OCR_CREDENTIALS_INCOMPLETE'
+    );
   }
-  return new TextractClient({ region });
+
+  return {
+    accessKeyId,
+    secretAccessKey,
+    ...(sessionToken ? { sessionToken } : {})
+  };
+};
+
+const createTextractClient = (environment = process.env) => {
+  const credentials = resolveTextractCredentials(environment);
+  return new TextractClient({
+    region: resolveTextractRegion(environment),
+    ...(credentials ? { credentials } : {})
+  });
 };
 
 const pad = value => String(value).padStart(2, '0');
@@ -202,7 +231,22 @@ const mapTextractError = error => {
   if (['BadDocumentException', 'UnsupportedDocumentException', 'DocumentTooLargeException', 'InvalidParameterException'].includes(error?.name)) {
     return inputError('Use a clear, single-page JPG or PNG image of the document.', 'STORE_DOCUMENT_OCR_UNUSABLE_IMAGE');
   }
-  return configurationError('The secure document check is temporarily unavailable.', 'STORE_DOCUMENT_OCR_UNAVAILABLE');
+  if (['CredentialsProviderError', 'CredentialsProviderTimeoutError'].includes(error?.name)) {
+    return configurationError('Secure document reading is not configured for this deployment.', 'STORE_DOCUMENT_OCR_CREDENTIALS_MISSING', error);
+  }
+  if (['UnrecognizedClientException', 'InvalidSignatureException', 'ExpiredTokenException'].includes(error?.name)) {
+    return configurationError('Secure document reading credentials must be updated by Pawzzle support.', 'STORE_DOCUMENT_OCR_CREDENTIALS_INVALID', error);
+  }
+  if (['AccessDeniedException', 'UnauthorizedException'].includes(error?.name)) {
+    return configurationError('Secure document reading is not enabled for this deployment.', 'STORE_DOCUMENT_OCR_ACCESS_DENIED', error);
+  }
+  if (['UnknownEndpoint', 'EndpointError', 'InvalidEndpointException'].includes(error?.name)) {
+    return configurationError('Secure document reading is unavailable in the configured processing region.', 'STORE_DOCUMENT_OCR_REGION_INVALID', error);
+  }
+  if (['ThrottlingException', 'ProvisionedThroughputExceededException', 'TooManyRequestsException'].includes(error?.name)) {
+    return configurationError('Secure document reading is busy. Please retry in a moment.', 'STORE_DOCUMENT_OCR_BUSY', error);
+  }
+  return configurationError('The secure document check is temporarily unavailable.', 'STORE_DOCUMENT_OCR_UNAVAILABLE', error);
 };
 
 const extractStoreDocument = async ({ documentType, buffer, mimeType }, options = {}) => {
@@ -275,5 +319,9 @@ module.exports = {
   normalizeValue,
   queryResultsByAlias,
   extractionReview,
-  extractStoreDocument
+  extractStoreDocument,
+  resolveTextractRegion,
+  resolveTextractCredentials,
+  createTextractClient,
+  mapTextractError
 };

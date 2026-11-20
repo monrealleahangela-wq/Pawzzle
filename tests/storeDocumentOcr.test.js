@@ -8,7 +8,10 @@ const {
   extractionReview,
   extractStoreDocument,
   matchesImageSignature,
-  normalizeDate
+  normalizeDate,
+  resolveTextractCredentials,
+  resolveTextractRegion,
+  mapTextractError
 } = require('../utils/storeDocumentOcr');
 const { extractStoreDocumentFields } = require('../controllers/storeDocumentOcrController');
 
@@ -69,6 +72,27 @@ test('BIR profile has no expiry query and image validation checks file signature
   assert.equal(matchesImageSignature(Buffer.from('not-an-image'), 'image/jpeg'), false);
   assert.equal(normalizeDate('February 29, 2028'), '2028-02-29');
   assert.equal(normalizeDate('February 29, 2027'), '');
+});
+
+test('Textract configuration trims Render secrets and supports a dedicated region', () => {
+  assert.equal(resolveTextractRegion({ AWS_TEXTRACT_REGION: ' ap-southeast-2 ', AWS_REGION: 'ap-southeast-1' }), 'ap-southeast-2');
+  assert.equal(resolveTextractRegion({}), 'ap-southeast-1');
+  assert.deepEqual(resolveTextractCredentials({
+    AWS_ACCESS_KEY_ID: ' ACCESS ',
+    AWS_SECRET_ACCESS_KEY: ' SECRET ',
+    AWS_SESSION_TOKEN: ' SESSION '
+  }), { accessKeyId: 'ACCESS', secretAccessKey: 'SECRET', sessionToken: 'SESSION' });
+  assert.throws(
+    () => resolveTextractCredentials({ AWS_ACCESS_KEY_ID: 'ACCESS' }),
+    error => error.code === 'STORE_DOCUMENT_OCR_CREDENTIALS_INCOMPLETE'
+  );
+});
+
+test('Textract provider errors produce actionable safe availability codes', () => {
+  assert.equal(mapTextractError({ name: 'AccessDeniedException' }).code, 'STORE_DOCUMENT_OCR_ACCESS_DENIED');
+  assert.equal(mapTextractError({ name: 'CredentialsProviderError' }).code, 'STORE_DOCUMENT_OCR_CREDENTIALS_MISSING');
+  assert.equal(mapTextractError({ name: 'ThrottlingException' }).code, 'STORE_DOCUMENT_OCR_BUSY');
+  assert.equal(mapTextractError({ name: 'BadDocumentException' }).statusCode, 400);
 });
 
 test('document review reports friendly mismatches and expired evidence without provider terminology', () => {
