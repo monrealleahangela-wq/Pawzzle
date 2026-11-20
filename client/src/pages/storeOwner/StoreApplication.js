@@ -9,6 +9,7 @@ import { getAccurateCurrentPosition, getLocationAccuracyPresentation, getLocatio
 import { normalizeNominatimAddress, toLocationOptionValue } from '../../utils/nominatimAddress';
 import StoreApplicationProfileDetails from '../../components/stores/StoreApplicationProfileDetails';
 import StoreApplicationJourney, { storeApplicationStageForStep } from '../../components/stores/StoreApplicationJourney';
+import StoreApplicationSubscriptionChoice, { FALLBACK_STORE_SUBSCRIPTION_PLANS } from '../../components/stores/StoreApplicationSubscriptionChoice';
 import '../../components/stores/StoreApplicationFields.css';
 import {
   createStoreApplicationForm,
@@ -56,6 +57,7 @@ const StoreApplication = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [documentAvailability, setDocumentAvailability] = useState({});
   const [documentOcr, setDocumentOcr] = useState({});
+  const [subscriptionPlans, setSubscriptionPlans] = useState(FALLBACK_STORE_SUBSCRIPTION_PLANS);
   const ocrRequestIds = useRef({});
   const [addressInputType, setAddressInputType] = useState('map'); // 'map' or 'manual'
   const [files, setFiles] = useState(() => ({
@@ -77,6 +79,14 @@ const StoreApplication = () => {
 
   useEffect(() => {
     checkExistingApplication();
+    storeApplicationService.getSubscriptionPlans()
+      .then(response => {
+        const plans = response.data?.plans;
+        if (Array.isArray(plans) && plans.length) setSubscriptionPlans(plans);
+      })
+      .catch(() => {
+        // Keep the application usable with the current built-in paid plan catalog.
+      });
   }, []);
 
   useEffect(() => {
@@ -138,6 +148,9 @@ const StoreApplication = () => {
       if (field === 'taxProfile.birRegistrationStatus') {
         Object.keys(next).filter(key => key.startsWith('taxProfile.')).forEach(key => delete next[key]);
         delete next.birRegistration;
+      }
+      if (field === 'subscriptionPreference') {
+        Object.keys(next).filter(key => key.startsWith('subscriptionPreference.')).forEach(key => delete next[key]);
       }
       return next;
     });
@@ -1363,6 +1376,15 @@ const StoreApplication = () => {
                 </div>
               ))}
             </div>
+
+            {user.role !== 'admin' && (
+              <StoreApplicationSubscriptionChoice
+                plans={subscriptionPlans}
+                value={formData.subscriptionPreference}
+                error={fieldErrors['subscriptionPreference.tier'] || fieldErrors['subscriptionPreference.billingInterval'] || fieldErrors['subscriptionPreference.trialAcknowledged']}
+                onChange={value => handleChange('subscriptionPreference', value)}
+              />
+            )}
 
             <div className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-3">
               <div className="rounded-xl border border-slate-200 bg-white p-4">

@@ -331,6 +331,12 @@ const storeApplicationSchema = new mongoose.Schema({
       accountNumber: String
     }
   },
+  subscriptionPreference: {
+    tier: { type: String, enum: ['starter', 'growth', 'professional'], default: 'growth' },
+    billingInterval: { type: String, enum: ['monthly', 'annual'], default: 'monthly' },
+    trialAcknowledged: { type: Boolean, default: false },
+    selectedAt: Date
+  },
   productsOffered: [{
     type: String
   }],

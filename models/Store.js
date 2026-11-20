@@ -448,6 +448,11 @@ const storeSchema = new mongoose.Schema({
   // Legacy marker retained so historic explicit Free choices do not regain
   // the Professional compatibility grant during subscription reconciliation.
   subscriptionLegacyGrantOptOutAt: Date,
+  onboardingSubscriptionPreference: {
+    tier: { type: String, enum: ['starter', 'growth', 'professional'] },
+    billingInterval: { type: String, enum: ['monthly', 'annual'] },
+    selectedAt: Date
+  },
   pendingSubscription: {
     tier: { type: String, enum: ['free', 'starter', 'growth'] },
     effectiveAt: Date,
