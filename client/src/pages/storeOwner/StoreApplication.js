@@ -14,6 +14,7 @@ import {
   createStoreApplicationForm,
   firstInvalidStep,
   hydrateStoreApplicationForm,
+  reconcileStoreApplicationErrors,
   STORE_APPLICATION_FIELD_STEPS,
   validateStoreApplicationForm
 } from '../../utils/storeApplicationForm';
@@ -119,9 +120,12 @@ const StoreApplication = () => {
       return next;
     });
     setFieldErrors(prev => {
-      if (!prev[field]) return prev;
       const next = { ...prev };
       delete next[field];
+      if (field === 'taxProfile.birRegistrationStatus') {
+        Object.keys(next).filter(key => key.startsWith('taxProfile.')).forEach(key => delete next[key]);
+        delete next.birRegistration;
+      }
       return next;
     });
   };
@@ -143,9 +147,9 @@ const StoreApplication = () => {
   const handleFileChange = async (fileType, file) => {
     setFiles(prev => ({ ...prev, [fileType]: file }));
     if (file) setFieldErrors(prev => {
-      if (!prev[fileType]) return prev;
       const next = { ...prev };
       delete next[fileType];
+      if (fileType.startsWith('categoryDocument__')) delete next.categoryDocuments;
       return next;
     });
     const documentType = STORE_DOCUMENT_OCR_TYPES[fileType];
@@ -268,8 +272,8 @@ const StoreApplication = () => {
       : Object.fromEntries(Object.entries(allErrors).filter(([field]) => (
         (STORE_APPLICATION_FIELD_STEPS[field] ?? (field.startsWith('references.') ? 5 : 1)) === step
       )));
+    setFieldErrors(prev => reconcileStoreApplicationErrors(prev, errors, step));
     if (!Object.keys(errors).length) return true;
-    setFieldErrors(prev => ({ ...prev, ...errors }));
     focusFirstError(errors);
     toast.error(Object.values(errors)[0]);
     return false;
@@ -1178,7 +1182,7 @@ const StoreApplication = () => {
                     { [
                       { id: 'businessRegistration', label: 'DTI Certificate or SEC/CDA Registration', required: true },
                       { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: true },
-                      { id: 'birRegistration', label: 'BIR Certificate of Registration (Form 2303)', required: true },
+                      { id: 'birRegistration', label: 'BIR Certificate of Registration (Form 2303)', required: formData.taxProfile.birRegistrationStatus === 'registered' },
                       { id: 'governmentId', label: 'Valid Government-Issued ID', required: true },
                       { id: 'authorityDocument', label: 'Authorization Letter', required: formData.representative.isAuthorizedRepresentative },
                       { id: 'proofOfBusinessAddress', label: 'Proof of Business Address', required: false }

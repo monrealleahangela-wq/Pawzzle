@@ -59,7 +59,7 @@ export const createStoreApplicationForm = user => ({
   },
   barangayClearance: { number: '', issuingBarangay: '', issueDate: '', expiryDate: '' },
   taxProfile: {
-    birRegistrationStatus: 'registered',
+    birRegistrationStatus: 'pending_registration',
     taxpayerClassification: '',
     tin: '',
     branchCode: '000',
@@ -307,10 +307,11 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
       break;
     }
   }
-  if (data.taxProfile?.birRegistrationStatus !== 'registered') {
-    errors['taxProfile.birRegistrationStatus'] = 'A BIR-registered business and Form 2303 are required.';
+  const birRegistrationStatus = data.taxProfile?.birRegistrationStatus;
+  if (!['registered', 'pending_registration', 'not_registered'].includes(birRegistrationStatus)) {
+    errors['taxProfile.birRegistrationStatus'] = 'Select your current BIR registration status.';
   }
-  if (data.taxProfile?.birRegistrationStatus === 'registered') {
+  if (birRegistrationStatus === 'registered') {
     for (const [field, value, message] of [
       ['taxProfile.tin', data.taxProfile.tin, 'TIN is required.'],
       ['taxProfile.branchCode', data.taxProfile.branchCode, 'Branch code is required.'],
@@ -333,3 +334,11 @@ export const firstInvalidStep = errors => Object.keys(errors).reduce((first, fie
   const step = STORE_APPLICATION_FIELD_STEPS[field] ?? 1;
   return first === null || step < first ? step : first;
 }, null);
+
+export const reconcileStoreApplicationErrors = (previousErrors, currentErrors, step = null) => {
+  if (step === null) return { ...currentErrors };
+  const retainedErrors = Object.fromEntries(Object.entries(previousErrors || {}).filter(([field]) => (
+    (STORE_APPLICATION_FIELD_STEPS[field] ?? (field.startsWith('references.') ? 5 : 1)) !== step
+  )));
+  return { ...retainedErrors, ...currentErrors };
+};
