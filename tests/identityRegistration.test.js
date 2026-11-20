@@ -324,10 +324,28 @@ test('authentication uses strict verification metadata without loading encrypted
     const source = fs.readFileSync(path.join(__dirname, file), 'utf8');
     assert.doesNotMatch(source, /\.select\(['"`]\+identityVerification['"`]\)/);
   }
-  assert.match(IDENTITY_VERIFICATION_AUTH_PROJECTION, /identityVerification\.faceMatch\.similarity/);
-  assert.match(IDENTITY_VERIFICATION_AUTH_PROJECTION, /identityVerification\.governmentId\.size/);
-  assert.doesNotMatch(IDENTITY_VERIFICATION_AUTH_PROJECTION, /encryptedImage/);
+  assert.equal(
+    IDENTITY_VERIFICATION_AUTH_PROJECTION,
+    '+identityVerification -identityVerification.governmentId.encryptedImage'
+  );
+
+  const query = User.findById('507f1f77bcf86cd799439011')
+    .select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
+  query._applyPaths();
+  const appliedProjection = query.projection();
+  assert.notEqual(appliedProjection.identityVerification, 0);
+  assert.equal(appliedProjection['identityVerification.governmentId.encryptedImage'], 0);
+  assert.equal(appliedProjection.password, 0);
+
+  const loginQuery = User.findOne().select(`+password ${IDENTITY_VERIFICATION_AUTH_PROJECTION}`);
+  loginQuery._applyPaths();
+  const loginProjection = loginQuery.projection();
+  assert.notEqual(loginProjection.password, 0);
+  assert.notEqual(loginProjection.identityVerification, 0);
+  assert.equal(loginProjection['identityVerification.governmentId.encryptedImage'], 0);
+
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
   assert.match(controller, /select\(`\+password \$\{IDENTITY_VERIFICATION_AUTH_PROJECTION\}`\)/);
   assert.match(controller, /const user = req\.user;[\s\S]*populateAuthStore\(user\)/);
+  assert.match(controller, /applyProfileUpdates\(user[\s\S]*withProfessionalVerificationState\(sanitizeUser\(user\), req\.user\)/);
 });

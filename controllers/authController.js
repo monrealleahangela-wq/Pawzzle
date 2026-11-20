@@ -521,12 +521,14 @@ const updateProfile = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const user = await User.findById(req.user._id).select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
+    // Save a normally projected document so the intentionally omitted encrypted
+    // ID image is never treated as a missing required field during validation.
+    const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     applyProfileUpdates(user, pickProfileUpdates(req.body));
     await user.save();
     await populateAuthStore(user);
-    return res.json({ success: true, user: withProfessionalVerificationState(sanitizeUser(user), user) });
+    return res.json({ success: true, user: withProfessionalVerificationState(sanitizeUser(user), req.user) });
   } catch (error) {
     return res.status(500).json({ message: 'Profile update failed' });
   }
