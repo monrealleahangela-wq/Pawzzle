@@ -32,6 +32,19 @@ import {
   deriveOperationalModules
 } from '../../utils/storeApplicationRequirements';
 
+const SUBMITTED_APPLICATION_STATUSES = new Set(['submitted', 'pending_review', 'under_review', 'approved']);
+
+export const recoverSubmittedStoreApplication = async error => {
+  if (error?.response) return null;
+  try {
+    const response = await storeApplicationService.getUserApplication();
+    const application = response.data?.application;
+    return application && SUBMITTED_APPLICATION_STATUSES.has(application.status) ? application : null;
+  } catch (_) {
+    return null;
+  }
+};
+
 const StoreApplication = () => {
   const { user, updateUser } = useAuth();
   const [application, setApplication] = useState(null);
@@ -324,13 +337,24 @@ const StoreApplication = () => {
       setDocumentAvailability(response.data?.application?.documentAvailability || documentAvailability);
       setFieldErrors({});
     } catch (error) {
+      const recoveredApplication = await recoverSubmittedStoreApplication(error);
+      if (recoveredApplication) {
+        setApplication(recoveredApplication);
+        setDocumentAvailability(recoveredApplication.documentAvailability || documentAvailability);
+        setFieldErrors({});
+        toast.success('Application submitted successfully and is waiting for review.');
+        return;
+      }
       const backendErrors = error.response?.data?.errors || [];
       if (backendErrors.length) {
         const mappedErrors = Object.fromEntries(backendErrors.map(item => [item.field || item.path || 'businessName', item.msg || 'Check this field.']));
         setFieldErrors(mappedErrors);
         focusFirstError(mappedErrors);
       }
-      toast.error(backendErrors[0]?.msg || error.response?.data?.message || 'Error submitting application');
+      const connectionMessage = error.code === 'ECONNABORTED'
+        ? 'The document upload took too long. Your submission status was checked; please try again.'
+        : 'The application could not reach the server. Please check your connection and try again.';
+      toast.error(backendErrors[0]?.msg || error.response?.data?.message || connectionMessage);
     } finally {
       setLoading(false);
     }

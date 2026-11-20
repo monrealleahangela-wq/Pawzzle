@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import StoreApplication from './StoreApplication';
+import StoreApplication, { recoverSubmittedStoreApplication } from './StoreApplication';
 import storeApplicationService from '../../services/storeApplicationService';
 
 jest.mock('../../contexts/AuthContext', () => ({
@@ -108,4 +108,16 @@ test('an uploaded registration image auto-fills reviewable OCR values', async ()
   fireEvent.click(screen.getByRole('button', { name: /store location/i }));
   expect(screen.getByLabelText(/registration or certificate number/i)).toHaveValue('DTI-2027-100');
   expect(screen.getByLabelText(/^expiration date/i)).toHaveValue('2032-11-18');
+});
+
+test('a lost submit response recovers an application already saved for review', async () => {
+  const submitted = { _id: 'application-2', status: 'pending_review', businessName: 'Recovered Store' };
+  storeApplicationService.getUserApplication.mockResolvedValue({ data: { application: submitted } });
+
+  await expect(recoverSubmittedStoreApplication({ code: 'ECONNABORTED' })).resolves.toEqual(submitted);
+});
+
+test('a server validation response is not mistaken for a successful submission', async () => {
+  await expect(recoverSubmittedStoreApplication({ response: { status: 400 } })).resolves.toBeNull();
+  expect(storeApplicationService.getUserApplication).not.toHaveBeenCalled();
 });

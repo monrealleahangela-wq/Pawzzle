@@ -3,6 +3,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const multer = require('multer');
 const { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
+const { NodeHttpHandler } = require('@smithy/node-http-handler');
 const { cloudinary } = require('../middleware/upload');
 const PrivateStoreDocument = require('../models/PrivateStoreDocument');
 
@@ -26,7 +27,11 @@ const privateDocumentClientConfig = env => ({
   region: privateDocumentConfig(env).region,
   // S3 buckets are tied to a region. Following the bucket's signed redirect
   // keeps uploads working when Textract/Rekognition use a different region.
-  followRegionRedirects: true
+  followRegionRedirects: true,
+  // A broken or unreachable bucket must yield quickly to encrypted database
+  // storage instead of outlasting the browser's multipart request.
+  maxAttempts: 1,
+  requestHandler: new NodeHttpHandler({ connectionTimeout: 8000, requestTimeout: 20000 })
 });
 
 const STORE_DOCUMENT_ERROR_NAMES = new Set([
