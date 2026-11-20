@@ -112,6 +112,9 @@ const requestVariantReturn = async ({
   if (!RESOLUTIONS.has(requestedResolution)) throw fail(400, 'INVALID_RESOLUTION', 'Select a valid requested resolution.');
   const order = await Order.findById(orderId);
   if (!order || order.isDeleted || !idsEqual(order.customer, user._id)) throw fail(404, 'ORDER_NOT_FOUND', 'Order not found.');
+  if (order.deliveryMethod === 'pickup') {
+    throw fail(409, 'RETURN_NOT_ELIGIBLE', 'Store pickup purchases must be inspected before the item is handed over and cannot be reported after pickup.');
+  }
   if (!['delivered', 'completed', 'finalized'].includes(order.status) || order.paymentStatus !== 'paid') {
     throw fail(409, 'RETURN_NOT_ELIGIBLE', 'Only paid and delivered product items can be reported.');
   }
