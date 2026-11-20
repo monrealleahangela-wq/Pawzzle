@@ -588,7 +588,7 @@ const OrderDetail = () => {
 
                   {user?.role === 'customer' && ['delivered', 'completed', 'finalized'].includes(order.status) && item.itemType === 'product' && (returnCases[String(item.orderItemId)]
                     ? <Link to={`/returns/${returnCases[String(item.orderItemId)]._id}`} className="mt-3 inline-flex rounded-lg bg-primary-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white">View Return/Refund Case</Link>
-                    : <button type="button" onClick={()=>setIssueTarget(item)} className="mt-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary-800">Report an Issue</button>)}
+                    : order.deliveryMethod !== 'pickup' && <button type="button" onClick={()=>setIssueTarget(item)} className="mt-3 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-primary-800">Report an Issue</button>)}
 
                   {user?.role === 'customer' && ['delivered', 'completed'].includes(order.status) && item.itemType === 'product' && (
                     item.reviewStatus?.isRated ? (

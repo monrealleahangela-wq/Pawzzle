@@ -231,7 +231,7 @@ const Orders = () => {
                           )}
                           {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (returnCases[`${order._id}:${item._id}`]
                             ? <Link to={`/returns/${returnCases[`${order._id}:${item._id}`]._id}`} className="flex min-h-9 items-center rounded-lg bg-primary-700 px-3 text-center text-[9px] font-bold uppercase text-white">View Return/Refund Case</Link>
-                            : <button type="button" onClick={()=>setIssueTarget({order,item})} className="flex min-h-9 items-center rounded-lg border border-primary-200 bg-primary-50 px-3 text-[9px] font-bold uppercase text-primary-800">Report an Issue</button>)}
+                            : order.deliveryMethod !== 'pickup' && <button type="button" onClick={()=>setIssueTarget({order,item})} className="flex min-h-9 items-center rounded-lg border border-primary-200 bg-primary-50 px-3 text-[9px] font-bold uppercase text-primary-800">Report an Issue</button>)}
                         </div>
                       ))}
                     </div>
