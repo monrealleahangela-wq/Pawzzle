@@ -47,6 +47,7 @@ const body = () => ({
     registeredAddress: { street: 'Main St', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114', country: 'PH' }
   }),
   declaration: JSON.stringify({ accepted: true, applicantName: 'Store Owner' }),
+  subscriptionPreference: JSON.stringify({ tier: 'growth', billingInterval: 'monthly', trialAcknowledged: true }),
   references: JSON.stringify([
     { name: 'Reference One', business: 'One Corp', phone: '1', email: 'one@example.com' },
     { name: 'Reference Two', business: 'Two Corp', phone: '2', email: 'two@example.com' }
@@ -64,6 +65,24 @@ test('multipart application mappings preserve supported nested fields and staffi
   assert.equal(data.businessRegistration.registeredName, data.registeredBusinessName);
   assert.equal(data.businessLicense.expiryDate, '2027-12-31');
   assert.equal(data.barangayClearance.expiryDate, '2027-12-31');
+  const { selectedAt, ...preference } = data.subscriptionPreference;
+  assert.deepEqual(preference, { tier: 'growth', billingInterval: 'monthly', trialAcknowledged: true });
+  assert.ok(selectedAt instanceof Date);
+});
+
+test('store applications reject free plans and require explicit trial acknowledgement', () => {
+  const data = buildApplicationData({
+    ...body(),
+    subscriptionPreference: JSON.stringify({ tier: 'free', billingInterval: 'monthly', trialAcknowledged: false })
+  }, '64b000000000000000000001');
+  const errors = applicationValidationErrors(data);
+  assert.ok(errors.some(error => error.field === 'subscriptionPreference.tier'));
+  assert.ok(errors.some(error => error.field === 'subscriptionPreference.trialAcknowledged'));
+});
+
+test('approved stores retain the applicant plan preference while starting the Growth trial', () => {
+  const controller = read('controllers/storeApplicationController.js');
+  assert.match(controller, /\.\.\.trialFields\(new Date\(\)\),[\s\S]*onboardingSubscriptionPreference: application\.subscriptionPreference/);
 });
 
 test('approved permit and barangay expiry dates seed compliance monitoring', () => {

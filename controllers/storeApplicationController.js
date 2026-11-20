@@ -218,6 +218,15 @@ const applicationValidationErrors = (data, files = {}) => {
   if (data.representative?.isAuthorizedRepresentative && !data.representative?.authorityDocumentUrl && !files.authorityDocument) {
     errors.push({ field: 'authorityDocument', msg: 'Proof of authority is required for an authorized representative.' });
   }
+  if (!['starter', 'growth', 'professional'].includes(data.subscriptionPreference?.tier)) {
+    errors.push({ field: 'subscriptionPreference.tier', msg: 'Choose Starter, Growth, or Professional.' });
+  }
+  if (!['monthly', 'annual'].includes(data.subscriptionPreference?.billingInterval)) {
+    errors.push({ field: 'subscriptionPreference.billingInterval', msg: 'Choose monthly or annual billing.' });
+  }
+  if (data.subscriptionPreference?.trialAcknowledged !== true) {
+    errors.push({ field: 'subscriptionPreference.trialAcknowledged', msg: 'Confirm that you understand the Growth trial and payment terms.' });
+  }
   if (data.declaration?.accepted !== true) errors.push({ field: 'declaration.accepted', msg: 'Accept the declaration before submitting.' });
   return errors;
 };
@@ -304,7 +313,8 @@ const buildApplicationData = (body, applicantId) => {
     paymentInfo: safeParse(body.paymentInfo),
     productsOffered: safeParse(body.productsOffered),
     activityDocumentDetails: safeParse(body.activityDocumentDetails),
-    categoryDocumentDetails: safeParse(body.categoryDocumentDetails)
+    categoryDocumentDetails: safeParse(body.categoryDocumentDetails),
+    subscriptionPreference: safeParse(body.subscriptionPreference)
   };
   const data = {
     applicant: applicantId,
@@ -336,6 +346,14 @@ const buildApplicationData = (body, applicantId) => {
     numberOfEmployees: optionalInteger(body.numberOfEmployees, 1),
     hasPhysicalStore: booleanValue(body.hasPhysicalStore, true)
   };
+  if (parsed.subscriptionPreference && typeof parsed.subscriptionPreference === 'object') {
+    data.subscriptionPreference = {
+      tier: String(parsed.subscriptionPreference.tier || '').trim().toLowerCase(),
+      billingInterval: String(parsed.subscriptionPreference.billingInterval || '').trim().toLowerCase(),
+      trialAcknowledged: parsed.subscriptionPreference.trialAcknowledged === true,
+      selectedAt: new Date()
+    };
+  }
   data.operationalModules = deriveOperationalModules(data.businessCategories);
   for (const key of ['staffingConfiguration', 'socialMedia', 'references', 'certifications', 'insurance', 'emergencyContact', 'paymentInfo', 'productsOffered', 'activityDocumentDetails', 'categoryDocumentDetails']) {
     if (parsed[key] !== undefined) data[key] = parsed[key];
@@ -1407,6 +1425,11 @@ const reviewApplication = async (req, res) => {
           },
           verificationStatus: 'verified',
           ...trialFields(new Date()),
+          onboardingSubscriptionPreference: application.subscriptionPreference ? {
+            tier: application.subscriptionPreference.tier,
+            billingInterval: application.subscriptionPreference.billingInterval,
+            selectedAt: application.subscriptionPreference.selectedAt || application.submittedAt || new Date()
+          } : undefined,
           businessProfile: {
             registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || application.businessName,
             tradeName: application.tradeName || application.businessName,
