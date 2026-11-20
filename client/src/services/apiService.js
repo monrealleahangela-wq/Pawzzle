@@ -361,7 +361,10 @@ export const inventoryService = {
 
 // Store services
 export const storeService = {
-  getDashboardStats: () => api.get('/stores/dashboard/stats'),
+  // The operations snapshot spans several collections. Give the server enough
+  // time for a cold Render/Mongo connection without relaxing timeouts for all
+  // other interactive API calls.
+  getDashboardStats: () => api.get('/stores/dashboard/stats', { timeout: 30000 }),
   getAllStores: (params) => api.get('/stores', { params }),
   getStoreById: (id) => api.get(`/stores/${id}`),
   getStoreDetails: (id) => api.get(`/stores/${id}/details`),

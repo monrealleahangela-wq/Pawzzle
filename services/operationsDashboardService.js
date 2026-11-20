@@ -26,6 +26,26 @@ const OPERATIONAL_STAFF_ROLES = [
   'finance_staff', 'veterinarian', 'groomer', 'trainer', 'boarding_staff',
   'delivery_rider'
 ];
+const DASHBOARD_QUERY_MAX_TIME_MS = 8000;
+const ACTIVE_ORDER_STATUSES = [
+  'pending', 'pending_payment', 'paid', 'awaiting_confirmation', 'confirmed',
+  'preparing', 'ready_for_pickup', 'rider_assigned', 'picked_up', 'in_transit',
+  'customer_confirmation_pending', 'processing', 'shipped'
+];
+const ACTIVE_BOOKING_STATUSES = [
+  'pending', 'awaiting_customer_confirmation', 'awaiting_payment', 'confirmed',
+  'approved', 'processing', 'finished'
+];
+const ACTIVE_PURCHASE_ORDER_STATUSES = [
+  'draft', 'submitted', 'confirmed', 'processing', 'shipped', 'issue_reported',
+  'pending_supplier_resolution', 'resolution_submitted', 'resolution_accepted',
+  'resolution_rejected', 'awaiting_replacement', 'return_processing',
+  'return_shipped', 'replacement_processing', 'replacement_shipped', 'reinspection'
+];
+const ACTIVE_DELIVERY_STATUSES = [
+  'pending', 'unassigned', 'assigned', 'accepted', 'picked_up', 'in_transit', 'arrived',
+  'customer_confirmation_pending', 'failed_attempt'
+];
 
 const startOfDay = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 const startOfMonth = date => new Date(date.getFullYear(), date.getMonth(), 1);
@@ -97,10 +117,23 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
   const tomorrow = addDays(today, 1);
   const month = startOfMonth(now);
   const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const historyStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const thirtyDaysAgo = addDays(today, -30);
   const sevenDaysAgo = addDays(today, -6);
   const storeId = store._id;
   const active = { store: storeId, isDeleted: { $ne: true } };
+  const recentOrActiveOrders = {
+    ...active,
+    $or: [{ createdAt: { $gte: historyStart } }, { status: { $in: ACTIVE_ORDER_STATUSES } }]
+  };
+  const recentOrActiveBookings = {
+    ...active,
+    $or: [
+      { createdAt: { $gte: historyStart } },
+      { bookingDate: { $gte: today } },
+      { status: { $in: ACTIVE_BOOKING_STATUSES } }
+    ]
+  };
   const staffFilter = {
     store: storeId,
     isDeleted: { $ne: true },
@@ -117,25 +150,30 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
     $or: [{ role: 'staff' }, { role: { $in: OPERATIONAL_STAFF_ROLES } }]
   };
 
-  const [orders, bookings, petCount, productCount, inventory, movements, purchaseOrders,
+  const [orders, bookings, petCount, productCount, orderCount, bookingCount, inventory, movements, purchaseOrders,
     expenses, procurementPayments, payouts, deliveries, riderEarnings, riderPayouts, specialists, workforceMembers, staffReviews, allReviews] = await Promise.all([
-    Order.find(active).select('customer items totalAmount netAmount platformFee pricingBreakdown shippingFee status paymentStatus createdAt orderNumber').sort({ createdAt: -1 }).lean(),
-    Booking.find(active).select('customer service staff serviceProvider totalPrice netAmount platformFee pricingBreakdown status paymentStatus bookingDate startTime createdAt').populate('service', 'name').lean(),
-    Pet.countDocuments(active),
-    Product.countDocuments(active),
-    Inventory.find({ store: storeId, isActive: { $ne: false } }).populate('product', 'name category sku stockQuantity minStockThreshold').populate('supplierProductRef', 'deliveryLeadTimeDays').lean(),
-    InventoryTransaction.find({ store: storeId, occurredAt: { $gte: addDays(today, -60) } }).select('product type quantity occurredAt').lean(),
-    PurchaseOrder.find(active).populate('supplier', 'businessName performance ratings').lean(),
-    includeFinancials ? Expense.find({ store: storeId, status: { $ne: 'void' } }).lean() : [],
-    includeFinancials ? ProcurementPayment.find({ store: storeId, status: 'recorded' }).lean() : [],
-    includeFinancials ? Payout.find({ store: storeId }).lean() : [],
-    Delivery.find({ store: storeId }).select('status assignmentType assignedRider assignedAt pickedUpAt deliveredAt createdAt').lean(),
-    RiderEarning.find({ store: storeId, earnedAt: { $gte: today } }).lean(),
-    includeFinancials ? RiderPayout.find({ store: storeId, createdAt: { $gte: month } }).lean() : [],
-    User.find(staffFilter).select('firstName lastName role staffType avatar profilePicture professionalProfile').lean(),
-    User.find(workforceFilter).select('firstName lastName role staffType isActive staffStatus professionalProfile createdAt').lean(),
-    Review.find({ storeId, staffId: { $ne: null }, isDeleted: { $ne: true }, isApproved: { $ne: false } }).select('staffId rating createdAt').lean(),
-    Review.find({ storeId, isDeleted: { $ne: true }, isApproved: { $ne: false } }).select('rating createdAt').lean()
+    Order.find(recentOrActiveOrders).select('customer items totalAmount netAmount platformFee pricingBreakdown shippingFee status paymentStatus createdAt orderNumber').sort({ createdAt: -1 }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    Booking.find(recentOrActiveBookings).select('customer service staff serviceProvider totalPrice netAmount platformFee pricingBreakdown status paymentStatus bookingDate startTime createdAt').populate('service', 'name').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    Pet.countDocuments(active).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS),
+    Product.countDocuments(active).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS),
+    Order.countDocuments(active).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS),
+    Booking.countDocuments(active).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS),
+    Inventory.find({ store: storeId, isActive: { $ne: false } }).populate('product', 'name category sku stockQuantity minStockThreshold').populate('supplierProductRef', 'deliveryLeadTimeDays').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    InventoryTransaction.find({ store: storeId, occurredAt: { $gte: addDays(today, -60) } }).select('product type quantity occurredAt').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    PurchaseOrder.find({
+      ...active,
+      $or: [{ createdAt: { $gte: historyStart } }, { status: { $in: ACTIVE_PURCHASE_ORDER_STATUSES } }]
+    }).populate('supplier', 'businessName performance ratings').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    includeFinancials ? Expense.find({ store: storeId, status: { $ne: 'void' }, expenseDate: { $gte: month } }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean() : [],
+    includeFinancials ? ProcurementPayment.find({ store: storeId, status: 'recorded', paymentDate: { $gte: month } }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean() : [],
+    includeFinancials ? Payout.find({ store: storeId, $or: [{ createdAt: { $gte: historyStart } }, { status: { $in: ['pending', 'processing'] } }] }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean() : [],
+    Delivery.find({ store: storeId, $or: [{ createdAt: { $gte: historyStart } }, { status: { $in: ACTIVE_DELIVERY_STATUSES } }] }).select('status assignmentType assignedRider assignedAt pickedUpAt deliveredAt createdAt').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    RiderEarning.find({ store: storeId, earnedAt: { $gte: today } }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    includeFinancials ? RiderPayout.find({ store: storeId, createdAt: { $gte: month } }).maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean() : [],
+    User.find(staffFilter).select('firstName lastName role staffType avatar profilePicture professionalProfile').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    User.find(workforceFilter).select('firstName lastName role staffType isActive staffStatus professionalProfile createdAt').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    Review.find({ storeId, staffId: { $ne: null }, isDeleted: { $ne: true }, isApproved: { $ne: false } }).select('staffId rating createdAt').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean(),
+    Review.find({ storeId, isDeleted: { $ne: true }, isApproved: { $ne: false } }).select('rating createdAt').maxTimeMS(DASHBOARD_QUERY_MAX_TIME_MS).lean()
   ]);
 
   const paidOrders = orders.filter(row => row.paymentStatus === 'paid');
@@ -330,7 +368,7 @@ const buildStoreOperationsSnapshot = async (store, { includeFinancials = false }
     generatedAt: now.toISOString(),
     store: { id: storeId, name: store.name, balance: money(store.balance) },
     compliance: getComplianceSummary(store, now),
-    counts: { pets: petCount, products: productCount, orders: orders.length, bookings: bookings.length },
+    counts: { pets: petCount, products: productCount, orders: orderCount, bookings: bookingCount },
     kpis: {
       todaySales: sum(todayPaidOrders, row => row.totalAmount) + sum(todayPaidBookings, row => row.totalPrice),
       monthlySales: monthSales,

@@ -25,8 +25,15 @@ const {
 const {
   STRICT_FACE_MATCH_VERSION,
   hasVerifiedIdentityEvidence,
-  getIdentityVerificationStatus
+  getIdentityVerificationStatus,
+  IDENTITY_VERIFICATION_AUTH_PROJECTION
 } = require('../utils/identityVerificationStatus');
+
+const AUTH_STORE_PROJECTION = [
+  '_id', 'name', 'logo', 'operationalModules', 'approvedBusinessCategories',
+  'verificationStatus', 'subscriptionTier', 'subscriptionExpires'
+].join(' ');
+const populateAuthStore = query => query.populate('store', AUTH_STORE_PROJECTION);
 
 const generateToken = id => jwt.sign(
   { id },
@@ -261,7 +268,7 @@ const login = async (req, res) => {
         { username: identifier.toLowerCase() }
       ],
       isDeleted: false
-    }).select('+password +identityVerification').populate('store');
+    }).select(`+password ${IDENTITY_VERIFICATION_AUTH_PROJECTION}`);
 
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
     if (!user.isActive) {
@@ -291,6 +298,7 @@ const login = async (req, res) => {
       });
     }
 
+    await populateAuthStore(user);
     await attachStoreRolePolicy(user);
     return res.json({ success: true, token: generateToken(user._id), user: userSummary(user) });
   } catch (error) {
@@ -326,8 +334,9 @@ const verify2FA = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email, isDeleted: false }).select('+identityVerification').populate('store');
+    const user = await User.findOne({ email, isDeleted: false }).select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
     if (!user) return res.status(404).json({ message: 'User not found' });
+    await populateAuthStore(user);
     if (!user.isActive) return res.status(403).json({ message: 'Account disabled. Contact support.' });
 
     await attachStoreRolePolicy(user);
@@ -405,9 +414,8 @@ const resendPasswordResetOTP = async (req, res) => {
 
 const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('+identityVerification').populate('store');
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    await attachStoreRolePolicy(user);
+    const user = req.user;
+    await populateAuthStore(user);
     const safe = withProfessionalVerificationState(sanitizeUser(user), user);
     safe.permissions = serializeEffectivePermissionMap(user);
     if (user.$locals?.rolePolicyPermissions !== undefined) safe.permissionSource = 'store_role';
@@ -421,12 +429,12 @@ const verifyCurrentUserIdentity = async (req, res) => {
   const governmentIdImage = req.files?.governmentIdImage?.[0];
   const selfieImage = req.files?.selfieImage?.[0];
   try {
-    const user = await User.findById(req.user._id).select('+identityVerification');
+    const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if (hasVerifiedIdentityEvidence(user)) {
-      await user.populate('store');
+    if (hasVerifiedIdentityEvidence(req.user)) {
+      await populateAuthStore(user);
       await attachStoreRolePolicy(user);
-      const safe = withProfessionalVerificationState(sanitizeUser(user), user);
+      const safe = withProfessionalVerificationState(sanitizeUser(user), req.user);
       safe.permissions = serializeEffectivePermissionMap(user);
       return res.json({
         success: true,
@@ -483,7 +491,7 @@ const verifyCurrentUserIdentity = async (req, res) => {
       verifiedAt: new Date()
     };
     await user.save();
-    await user.populate('store');
+    await populateAuthStore(user);
     await attachStoreRolePolicy(user);
     await ActivityLog.create({
       user: user._id,
@@ -513,11 +521,11 @@ const updateProfile = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const user = await User.findById(req.user._id).select('+identityVerification');
+    const user = await User.findById(req.user._id).select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
     if (!user) return res.status(404).json({ message: 'User not found' });
     applyProfileUpdates(user, pickProfileUpdates(req.body));
     await user.save();
-    await user.populate('store');
+    await populateAuthStore(user);
     return res.json({ success: true, user: withProfessionalVerificationState(sanitizeUser(user), user) });
   } catch (error) {
     return res.status(500).json({ message: 'Profile update failed' });
