@@ -2,6 +2,7 @@ import {
   createStoreApplicationForm,
   firstInvalidStep,
   hydrateStoreApplicationForm,
+  reconcileStoreApplicationErrors,
   validateStoreApplicationForm
 } from './storeApplicationForm';
 
@@ -85,4 +86,51 @@ test('selected business categories require matching evidence and storefront phot
   const errors = validateStoreApplicationForm(data, { documentAvailability: { businessRegistration: true, mayorsPermit: true, governmentId: true, birRegistration: true, categoryDocuments: {} } });
   expect(errors.storefrontPhotos).toMatch(/two storefront photos/i);
   expect(errors.categoryDocuments).toMatch(/animal facility/i);
+});
+
+test.each(['pending_registration', 'not_registered'])('BIR details are optional while status is %s', birRegistrationStatus => {
+  const data = complete();
+  data.taxProfile = { birRegistrationStatus, registeredAddress: {} };
+  const errors = validateStoreApplicationForm(data, {
+    documentAvailability: {
+      businessRegistration: true,
+      mayorsPermit: true,
+      governmentId: true,
+      storefrontPhotos: 2,
+      categoryDocuments: {}
+    }
+  });
+  expect(errors).toEqual({});
+});
+
+test('uploaded and retained pet-sale documents satisfy the category requirements', () => {
+  const data = complete();
+  data.businessCategories = ['pet_sales'];
+  const facilityField = 'categoryDocument__animal_facility_registration';
+  const welfareField = 'categoryDocument__animal_welfare_compliance';
+  const sharedAvailability = {
+    businessRegistration: true,
+    mayorsPermit: true,
+    governmentId: true,
+    birRegistration: true,
+    storefrontPhotos: 2
+  };
+
+  expect(validateStoreApplicationForm(data, {
+    files: { [facilityField]: new File(['facility'], 'facility.jpg'), [welfareField]: new File(['welfare'], 'welfare.jpg') },
+    documentAvailability: { ...sharedAvailability, categoryDocuments: {} }
+  }).categoryDocuments).toBeUndefined();
+  expect(validateStoreApplicationForm(data, {
+    documentAvailability: {
+      ...sharedAvailability,
+      categoryDocuments: { animal_facility_registration: true, animal_welfare_compliance: true }
+    }
+  }).categoryDocuments).toBeUndefined();
+});
+
+test('resolved validation errors are removed instead of remaining in the summary', () => {
+  expect(reconcileStoreApplicationErrors({ categoryDocuments: 'BAI document is required.', businessName: 'Store name is required.' }, {}, 3)).toEqual({
+    businessName: 'Store name is required.'
+  });
+  expect(reconcileStoreApplicationErrors({ categoryDocuments: 'BAI document is required.' }, {})).toEqual({});
 });

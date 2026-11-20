@@ -138,6 +138,70 @@ test('business references are optional and do not block an otherwise complete ap
   assert.ok(!errors.some(error => error.field.startsWith('references')));
 });
 
+test('unregistered and pending BIR applicants are not required to submit TIN or Form 2303', () => {
+  for (const birRegistrationStatus of ['not_registered', 'pending_registration']) {
+    const data = buildApplicationData({
+      ...body(),
+      taxProfile: JSON.stringify({ birRegistrationStatus, registeredAddress: {} })
+    }, '64b000000000000000000001');
+    data.businessRegistration.documentUrl = 'secure://registration';
+    data.mayorsPermitUrl = 'secure://permit';
+    data.governmentIdUrl = 'secure://government-id';
+    data.storefrontPhotoUrls = ['secure://storefront-1', 'secure://storefront-2'];
+    const errors = applicationValidationErrors(data);
+    assert.ok(!errors.some(error => error.field.startsWith('taxProfile.') || error.field === 'birRegistration'));
+  }
+});
+
+test('retained BAI and animal welfare files satisfy pet-sale document requirements', () => {
+  const data = buildApplicationData({
+    ...body(),
+    businessCategories: JSON.stringify(['pet_sales']),
+    taxProfile: JSON.stringify({ birRegistrationStatus: 'not_registered', registeredAddress: {} })
+  }, '64b000000000000000000001');
+  data.businessRegistration.documentUrl = 'secure://registration';
+  data.mayorsPermitUrl = 'secure://permit';
+  data.governmentIdUrl = 'secure://government-id';
+  data.storefrontPhotoUrls = ['secure://storefront-1', 'secure://storefront-2'];
+  data.categoryDocuments = [
+    { requirementKey: 'animal_facility_registration', documentUrl: 'secure://facility' },
+    { requirementKey: 'animal_welfare_compliance', documentUrl: 'secure://welfare' }
+  ];
+
+  const errors = applicationValidationErrors(data);
+  assert.ok(!errors.some(error => error.field.startsWith('categoryDocument__')));
+});
+
+test('saved category documents are reported as available without exposing their private URLs', () => {
+  const application = new StoreApplication({
+    ...buildApplicationData({
+      ...body(),
+      businessCategories: JSON.stringify(['pet_sales'])
+    }, '64b000000000000000000001'),
+    categoryDocuments: [
+      {
+        requirementKey: 'animal_facility_registration',
+        label: 'BAI animal facility registration or license to operate',
+        level: 'required',
+        categories: ['pet_sales'],
+        documentUrl: 'secure://facility'
+      },
+      {
+        requirementKey: 'animal_welfare_compliance',
+        label: 'Animal welfare compliance document',
+        level: 'required',
+        categories: ['pet_sales'],
+        documentUrl: 'secure://welfare'
+      }
+    ]
+  });
+
+  const response = toApplicationResponse(application);
+  assert.equal(response.documentAvailability.categoryDocuments.animal_facility_registration, true);
+  assert.equal(response.documentAvailability.categoryDocuments.animal_welfare_compliance, true);
+  assert.ok(response.categoryDocuments.every(document => document.documentUrl === undefined));
+});
+
 test('saved response exposes document presence without leaking document URLs', () => {
   const application = new StoreApplication({
     ...buildApplicationData(body(), '64b000000000000000000001'),

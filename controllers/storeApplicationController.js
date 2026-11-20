@@ -183,8 +183,8 @@ const applicationValidationErrors = (data, files = {}) => {
     }
   }
 
-  if (tax.birRegistrationStatus !== 'registered') {
-    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'A BIR-registered business and Form 2303 are required.' });
+  if (!['registered', 'pending_registration', 'not_registered'].includes(tax.birRegistrationStatus)) {
+    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'Select your current BIR registration status.' });
   }
   if (tax.birRegistrationStatus === 'registered') {
     required(tax.tin, 'taxProfile.tin', 'TIN is required for a BIR-registered business.');
