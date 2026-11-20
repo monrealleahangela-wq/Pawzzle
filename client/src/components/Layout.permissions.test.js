@@ -1,4 +1,5 @@
-import { getStaffMenu, isNavigationPathActive } from './Layout';
+import { render, screen } from '@testing-library/react';
+import { AccountVerificationMark, getStaffMenu, isNavigationPathActive } from './Layout';
 
 const permissionMap = permissions => Object.fromEntries(permissions.map(permission => [permission, true]));
 const labels = menu => menu.flatMap(item => [item.label, ...(item.children || []).map(child => child.label)]);
@@ -68,5 +69,14 @@ describe('sidebar route selection', () => {
   test('links without tab parameters remain active on their subpages', () => {
     expect(isNavigationPathActive('/products/product-1', '/products')).toBe(true);
     expect(isNavigationPathActive('/orders?status=pending', '/orders')).toBe(true);
+  });
+});
+
+describe('shared account verification mark', () => {
+  test('shows an accessible check without rendering the Verified word', () => {
+    render(<AccountVerificationMark />);
+
+    expect(screen.getByLabelText('Verified account')).toBeTruthy();
+    expect(screen.queryByText(/verified/i)).toBeNull();
   });
 });

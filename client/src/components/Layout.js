@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { getImageUrl } from '../services/apiService';
-import { Heart, Package, Calendar, ShoppingCart, User, LogOut, LogIn, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Truck, Layers, ChevronsLeft, ChevronsRight, Store, Clock, CalendarOff, ReceiptText } from 'lucide-react';
+import { Heart, Package, Calendar, ShoppingCart, User, LogOut, LogIn, Menu, X, Settings, Home as House, Activity, Users, Building, DollarSign, TrendingUp, FileText, ChevronDown, MessageSquare, ShoppingBag, Archive, Ticket, Star, Wallet, Brain, Moon, Sun, MapPin, AlertCircle, HelpCircle, History, ShieldCheck, Check, Truck, Layers, ChevronsLeft, ChevronsRight, Store, Clock, CalendarOff, ReceiptText } from 'lucide-react';
 import FloatingChatManager from './FloatingChatManager';
 import NotificationBell from './NotificationBell';
 import PasswordChangeModal from './auth/PasswordChangeModal';
@@ -30,6 +30,16 @@ const isNavigationPathActive = (currentPath, targetPath) => {
   return targetQuery.length === 0
     || targetQuery.every(([key, value]) => current.searchParams.get(key) === value);
 };
+
+export const AccountVerificationMark = () => (
+  <span
+    aria-label="Verified account"
+    title="Verified account"
+    className="mt-1.5 inline-flex h-4 w-4 self-end items-center justify-center rounded-full bg-emerald-100 text-emerald-700"
+  >
+    <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
+  </span>
+);
 
 // ═══════════════════════════════════════════════════════════════
 // NAVIGATION DATA — Role-based dropdown menu structures
@@ -672,7 +682,7 @@ const Layout = () => {
                   <Link to="/profile" className="flex items-center gap-3 p-1.5 bg-white rounded-xl border border-slate-50 hover:shadow-medium transition-all group">
                     <div className="flex flex-col text-right hidden sm:flex px-2">
                       <span className="text-sm font-black text-neutral-900 leading-none">{user.firstName}</span>
-                      <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mt-1.5">Verified</span>
+                      <AccountVerificationMark />
                     </div>
                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-primary font-bold overflow-hidden shadow-inner group-hover:scale-105 transition-transform shrink-0">
                       {user.avatar || user.profilePicture ? (
