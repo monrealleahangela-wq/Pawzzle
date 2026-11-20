@@ -4,10 +4,12 @@ const { Readable } = require('stream');
 const multer = require('multer');
 const { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } = require('@aws-sdk/client-s3');
 const { cloudinary } = require('../middleware/upload');
+const PrivateStoreDocument = require('../models/PrivateStoreDocument');
 
 const PUBLIC_IMAGE_FIELDS = new Set(['storeLogo']);
 const ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png']);
+const ENCRYPTED_DATABASE_SCHEME = 'mongo-encrypted';
 
 const safeSegment = value => String(value || 'file')
   .normalize('NFKD')
@@ -81,12 +83,94 @@ const uploadPublicImage = file => new Promise((resolve, reject) => {
   stream.end(file.buffer);
 });
 
+const storeDocumentEncryptionKey = (env = process.env) => {
+  const configured = String(
+    env.STORE_DOCUMENT_ENCRYPTION_KEY
+      || env.IDENTITY_DOCUMENT_ENCRYPTION_KEY
+      || env.GOVERNMENT_ID_ENCRYPTION_KEY
+      || ''
+  ).trim();
+  let key = null;
+  if (/^[a-f0-9]{64}$/i.test(configured)) key = Buffer.from(configured, 'hex');
+  else if (configured) {
+    try { key = Buffer.from(configured, 'base64'); } catch (_) { key = null; }
+  }
+  if (!key || key.length !== 32) {
+    const error = new Error('Private application document protection is not configured.');
+    error.statusCode = 503;
+    error.code = 'STORE_DOCUMENT_ENCRYPTION_NOT_CONFIGURED';
+    throw error;
+  }
+  return key;
+};
+
+const encryptedDatabaseReference = id => `${ENCRYPTED_DATABASE_SCHEME}://${String(id)}`;
+
+const parseEncryptedDatabaseReference = reference => {
+  const match = String(reference || '').match(/^mongo-encrypted:\/\/([a-f0-9]{24})$/i);
+  return match ? { id: match[1] } : null;
+};
+
+const encryptPrivateDocument = (buffer, env = process.env) => {
+  const initializationVector = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', storeDocumentEncryptionKey(env), initializationVector);
+  const encryptedContent = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  return { encryptedContent, initializationVector, authenticationTag: cipher.getAuthTag() };
+};
+
+const decryptPrivateDocument = (record, env = process.env) => {
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    storeDocumentEncryptionKey(env),
+    Buffer.from(record.initializationVector)
+  );
+  decipher.setAuthTag(Buffer.from(record.authenticationTag));
+  return Buffer.concat([decipher.update(Buffer.from(record.encryptedContent)), decipher.final()]);
+};
+
+const persistEncryptedDatabaseDocument = async (file, applicantId, options = {}) => {
+  const encrypted = encryptPrivateDocument(file.buffer, options.env || process.env);
+  const createDocument = options.createPrivateDocument || (values => PrivateStoreDocument.create(values));
+  const record = await createDocument({
+    owner: applicantId,
+    originalName: safeSegment(file.originalname),
+    mimeType: file.mimetype,
+    size: file.size,
+    ...encrypted
+  });
+  if (!record?._id) throw new Error('Encrypted document record was not created.');
+  return record;
+};
+
+const storageUnavailableError = cause => {
+  const error = new Error(
+    'Secure document storage is temporarily unavailable. Your application was not submitted. Please try again shortly or contact Pawzzle support.'
+  );
+  error.name = 'StoreDocumentStorageError';
+  error.statusCode = 503;
+  error.code = 'STORE_DOCUMENT_STORAGE_UNAVAILABLE';
+  error.cause = cause;
+  return error;
+};
+
 const persistApplicationUploads = async (files = {}, applicantId, options = {}) => {
   const entries = Object.values(files).flat();
   const privateFiles = entries.filter(file => !PUBLIC_IMAGE_FIELDS.has(file.fieldname));
-  const s3 = privateFiles.length ? (options.s3 || createS3Client(options.env)) : null;
+  let s3 = options.s3 || null;
+  let s3Available = Boolean(privateFiles.length);
   const uploadedKeys = [];
+  const databaseDocumentIds = [];
   try {
+    if (privateFiles.length && !s3) {
+      try {
+        s3 = createS3Client(options.env);
+      } catch (error) {
+        const normalized = normalizeStoreDocumentError(error);
+        if (normalized?.statusCode !== 503) throw normalized;
+        s3Available = false;
+        options.onFallback?.(normalized);
+      }
+    }
     for (const file of entries) {
       if (PUBLIC_IMAGE_FIELDS.has(file.fieldname)) {
         const result = await (options.uploadPublicImage || uploadPublicImage)(file);
@@ -103,28 +187,52 @@ const persistApplicationUploads = async (files = {}, applicantId, options = {}) 
         safeSegment(file.fieldname),
         `${Date.now()}-${crypto.randomUUID()}${extension}`
       ].join('/');
-      await s3.client.send(new PutObjectCommand({
-        Bucket: s3.bucket,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ContentLength: file.size,
-        ContentDisposition: `attachment; filename="${safeSegment(file.originalname)}"`,
-        ServerSideEncryption: 'AES256',
-        Metadata: {
-          applicant: safeSegment(applicantId),
-          field: safeSegment(file.fieldname)
+      if (s3Available) {
+        try {
+          await s3.client.send(new PutObjectCommand({
+            Bucket: s3.bucket,
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            ContentLength: file.size,
+            ContentDisposition: `attachment; filename="${safeSegment(file.originalname)}"`,
+            ServerSideEncryption: 'AES256',
+            Metadata: {
+              applicant: safeSegment(applicantId),
+              field: safeSegment(file.fieldname)
+            }
+          }));
+          uploadedKeys.push(key);
+          file.path = `s3://${s3.bucket}/${key}`;
+          file.secure_url = undefined;
+          file.storageKey = key;
+        } catch (error) {
+          const normalized = normalizeStoreDocumentError(error);
+          if (normalized?.statusCode !== 503) throw normalized;
+          s3Available = false;
+          options.onFallback?.(normalized);
         }
-      }));
-      uploadedKeys.push(key);
-      file.path = `s3://${s3.bucket}/${key}`;
-      file.secure_url = undefined;
-      file.storageKey = key;
+      }
+      if (!s3Available) {
+        let record;
+        try {
+          record = await persistEncryptedDatabaseDocument(file, applicantId, options);
+        } catch (error) {
+          throw storageUnavailableError(error);
+        }
+        const id = String(record._id);
+        databaseDocumentIds.push(id);
+        file.path = encryptedDatabaseReference(id);
+        file.secure_url = undefined;
+        file.storageDocumentId = id;
+      }
       delete file.buffer;
     }
     return files;
   } catch (error) {
     if (s3) await Promise.allSettled(uploadedKeys.map(Key => s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key }))));
+    const deleteDocument = options.deletePrivateDocument || (id => PrivateStoreDocument.deleteOne({ _id: id }));
+    await Promise.allSettled(databaseDocumentIds.map(id => deleteDocument(id)));
     throw normalizeStoreDocumentError(error);
   }
 };
@@ -134,9 +242,13 @@ const cleanupPersistedUploads = async (files = {}, options = {}) => {
   const tasks = [];
   for (const file of entries) {
     const parsed = parseS3Reference(file.path);
+    const databaseDocument = parseEncryptedDatabaseReference(file.path);
     if (parsed) {
       const client = options.client || new S3Client(privateDocumentClientConfig(options.env || process.env));
       tasks.push(client.send(new DeleteObjectCommand({ Bucket: parsed.bucket, Key: parsed.key })));
+    } else if (databaseDocument) {
+      const deleteDocument = options.deletePrivateDocument || (id => PrivateStoreDocument.deleteOne({ _id: id }));
+      tasks.push(deleteDocument(databaseDocument.id));
     } else if (file.public_id) {
       tasks.push((options.destroyPublicImage || cloudinary.uploader.destroy)(file.public_id));
     }
@@ -158,6 +270,26 @@ const streamStoredDocument = async (reference, res, options = {}) => {
     res.setHeader('Content-Disposition', object.ContentDisposition || 'inline');
     res.setHeader('Cache-Control', 'private, no-store');
     object.Body.pipe(res);
+    return;
+  }
+  const databaseDocument = parseEncryptedDatabaseReference(reference);
+  if (databaseDocument) {
+    const readDocument = options.readPrivateDocument || (id => (
+      PrivateStoreDocument.findById(id)
+        .select('+encryptedContent +initializationVector +authenticationTag')
+        .lean()
+    ));
+    const record = await readDocument(databaseDocument.id);
+    if (!record) {
+      const error = new Error('Stored document is unavailable.');
+      error.statusCode = 404;
+      throw error;
+    }
+    const content = decryptPrivateDocument(record, options.env || process.env);
+    res.setHeader('Content-Type', record.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${safeSegment(record.originalName)}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    Readable.from(content).pipe(res);
     return;
   }
   let legacyUrl;
@@ -210,7 +342,11 @@ module.exports = {
   privateDocumentClientConfig,
   createS3Client,
   cleanupPersistedUploads,
+  decryptPrivateDocument,
+  encryptedDatabaseReference,
+  encryptPrivateDocument,
   normalizeStoreDocumentError,
+  parseEncryptedDatabaseReference,
   persistApplicationUploads,
   parseS3Reference,
   streamStoredDocument,
