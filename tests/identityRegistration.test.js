@@ -11,11 +11,39 @@ const {
   getFaceMatchThreshold,
   resolveRekognitionRegion,
   resolveRekognitionCredentials,
-  compareIdentityFaces
+  compareIdentityFaces,
+  verifyIdentityFaceMatch
 } = require('../utils/identityVerification');
+const {
+  STRICT_FACE_MATCH_VERSION,
+  hasVerifiedIdentityEvidence,
+  getIdentityVerificationStatus
+} = require('../utils/identityVerificationStatus');
 const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
 const { requiresIdentityVerification } = require('../config/permissions');
 const { __test: authControllerTest } = require('../controllers/authController');
+
+const verifiedIdentity = (overrides = {}) => ({
+  status: 'verified',
+  verificationVersion: STRICT_FACE_MATCH_VERSION,
+  governmentId: {
+    documentType: 'passport',
+    encryptedImage: 'protected-id',
+    mimeType: 'image/jpeg',
+    size: 1024
+  },
+  faceMatch: {
+    provider: 'aws_rekognition',
+    similarity: 99.7,
+    threshold: 99,
+    sourceFaceConfidence: 99.5,
+    targetFaceConfidence: 99.4,
+    targetFaceCount: 1
+  },
+  consent: { acceptedAt: new Date('2026-11-20T00:00:00.000Z') },
+  verifiedAt: new Date('2026-11-20T00:00:01.000Z'),
+  ...overrides
+});
 
 test('government ID types and registration identity fields are constrained', () => {
   assert.equal(isGovernmentIdType('passport'), true);
@@ -39,7 +67,9 @@ test('identity image signatures and face-match threshold fail closed', () => {
   assert.equal(matchesImageSignature(Buffer.from([0xff, 0xd8, 0xff, 0x00]), 'image/jpeg'), true);
   assert.equal(matchesImageSignature(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), 'image/png'), true);
   assert.equal(matchesImageSignature(Buffer.from('not an image'), 'image/jpeg'), false);
-  assert.equal(getFaceMatchThreshold(95), 95);
+  assert.equal(getFaceMatchThreshold(99), 99);
+  assert.equal(getFaceMatchThreshold(95), 99);
+  assert.equal(getFaceMatchThreshold(80), 99);
   assert.throws(() => getFaceMatchThreshold(79), error => error.code === 'IDENTITY_FACE_MATCH_INVALID_THRESHOLD');
 });
 
@@ -82,17 +112,87 @@ test('face comparison sends only in-memory bytes and enforces the threshold', as
   let input;
   const client = { send: async command => {
     input = command.input;
-    return { FaceMatches: [{ Similarity: 97.2 }], SourceImageFace: { Confidence: 99.1 } };
+    return {
+      FaceMatches: [{ Similarity: 99.2, Face: { Confidence: 99.3 } }],
+      UnmatchedFaces: [],
+      SourceImageFace: { Confidence: 99.1 }
+    };
   } };
   const id = Buffer.from('id-bytes');
   const selfie = Buffer.from('selfie-bytes');
-  const result = await compareIdentityFaces(id, selfie, { client, threshold: 95 });
+  const result = await compareIdentityFaces(id, selfie, { client, threshold: 99 });
   assert.equal(result.matched, true);
-  assert.equal(result.similarity, 97.2);
+  assert.equal(result.similarity, 99.2);
+  assert.equal(result.targetFaceCount, 1);
   assert.deepEqual(input.SourceImage.Bytes, id);
   assert.deepEqual(input.TargetImage.Bytes, selfie);
   assert.equal(input.QualityFilter, 'HIGH');
-  assert.equal(input.SimilarityThreshold, 95);
+  assert.equal(input.SimilarityThreshold, 99);
+});
+
+test('identity verification rejects mismatched, low-confidence, and multiple-face selfies', async () => {
+  const id = Buffer.from('id-bytes');
+  const selfie = Buffer.from('selfie-bytes');
+  const cases = [
+    {
+      response: {
+        FaceMatches: [],
+        UnmatchedFaces: [{ Confidence: 99 }],
+        SourceImageFace: { Confidence: 99 }
+      },
+      code: 'FACE_MATCH_FAILED'
+    },
+    {
+      response: {
+        FaceMatches: [{ Similarity: 99.5, Face: { Confidence: 89 } }],
+        UnmatchedFaces: [],
+        SourceImageFace: { Confidence: 99 }
+      },
+      code: 'FACE_MATCH_FAILED'
+    },
+    {
+      response: {
+        FaceMatches: [{ Similarity: 99.5, Face: { Confidence: 99 } }],
+        UnmatchedFaces: [{ Confidence: 99 }],
+        SourceImageFace: { Confidence: 99 }
+      },
+      code: 'IDENTITY_SINGLE_FACE_REQUIRED'
+    }
+  ];
+
+  for (const testCase of cases) {
+    const client = { send: async () => testCase.response };
+    await assert.rejects(
+      verifyIdentityFaceMatch(id, selfie, { client, threshold: 99 }),
+      error => error.code === testCase.code && error.statusCode === 400
+    );
+  }
+});
+
+test('verified status alone cannot bypass identity or store-application access', () => {
+  const strictUser = { role: 'customer', identityVerification: verifiedIdentity() };
+  const statusOnlyUser = { role: 'customer', identityVerification: { status: 'verified' } };
+  const mismatchedUser = {
+    role: 'customer',
+    identityVerification: verifiedIdentity({
+      faceMatch: {
+        provider: 'aws_rekognition', similarity: 98.9, threshold: 99,
+        sourceFaceConfidence: 99, targetFaceConfidence: 99, targetFaceCount: 1
+      }
+    })
+  };
+
+  assert.equal(hasVerifiedIdentityEvidence(strictUser), true);
+  assert.equal(getIdentityVerificationStatus(strictUser), 'verified');
+  assert.equal(requiresIdentityVerification(strictUser), false);
+  assert.equal(hasVerifiedIdentityEvidence(statusOnlyUser), false);
+  assert.equal(getIdentityVerificationStatus(statusOnlyUser), 'not_verified');
+  assert.equal(requiresIdentityVerification(statusOnlyUser), true);
+  assert.equal(hasVerifiedIdentityEvidence(mismatchedUser), false);
+  assert.equal(requiresIdentityVerification(mismatchedUser), true);
+
+  const storeRoutes = require('fs').readFileSync(require('path').join(__dirname, '../routes/storeApplications.js'), 'utf8');
+  assert.match(storeRoutes, /router\.post\('\/', authenticate,[\s\S]*submitApplication/);
 });
 
 test('face comparison reports actionable AWS credential and permission failures', async () => {
@@ -122,7 +222,8 @@ test('all public account creation paths enforce identity verification', () => {
   assert.match(routes, /body\('firstName'\).*\.notEmpty\(\)/);
   assert.match(routes, /body\('governmentIdType'\)\.custom\(isGovernmentIdType\)/);
   assert.match(routes, /uploadRegistrationIdentity, handleUploadError, otpVerificationValidation/);
-  assert.match(controller, /compareIdentityFaces\(governmentIdImage\.buffer, selfieImage\.buffer\)/);
+  assert.match(controller, /verifyIdentityFaceMatch\(governmentIdImage\.buffer, selfieImage\.buffer\)/);
+  assert.doesNotMatch(controller, /if \(!faceMatch\.matched\)/);
   assert.doesNotMatch(controller, /extractGovernmentId|readGovernmentId/);
   assert.doesNotMatch(routes, /identity\/read-document/);
   assert.match(controller, /typeVerificationMethod: 'applicant_declaration'/);
@@ -133,7 +234,8 @@ test('all public account creation paths enforce identity verification', () => {
 });
 
 test('verified identity is mandatory while only recovery endpoints remain reachable', () => {
-  assert.equal(hasVerifiedIdentity({ identityVerification: { status: 'verified' } }), true);
+  assert.equal(hasVerifiedIdentity({ identityVerification: verifiedIdentity() }), true);
+  assert.equal(hasVerifiedIdentity({ identityVerification: { status: 'verified' } }), false);
   assert.equal(hasVerifiedIdentity({ identityVerification: { status: 'review_required' } }), false);
   assert.equal(hasVerifiedIdentity({}), false);
   for (const route of ['/me', '/identity/verify', '/change-password', '/logout']) {
@@ -150,14 +252,18 @@ test('platform administrators are exempt from the one-time identity gate', () =>
   assert.equal(requiresIdentityVerification({ role: 'admin' }), true);
   assert.equal(requiresIdentityVerification({
     role: 'customer',
-    identityVerification: { status: 'verified' }
+    identityVerification: verifiedIdentity()
   }), false);
 });
 
 test('login summaries expose identity state without exposing the encrypted ID', () => {
   const summary = authControllerTest.userSummary({
     _id: 'user-1', email: 'user@example.com', role: 'customer',
-    identityVerification: { status: 'verified', governmentId: { encryptedImage: 'secret' } }
+    identityVerification: verifiedIdentity({
+      governmentId: {
+        documentType: 'passport', encryptedImage: 'secret', mimeType: 'image/jpeg', size: 1024
+      }
+    })
   });
   assert.equal(summary.identityVerificationStatus, 'verified');
   assert.equal(summary.identityVerification, undefined);
@@ -183,7 +289,7 @@ test('identity verification is idempotent for accounts already verified in the d
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
   assert.match(
     controller,
-    /identityVerification\?\.status === 'verified'[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
+    /hasVerifiedIdentityEvidence\(user\)[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
   );
   assert.doesNotMatch(controller, /IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified/);
 });
