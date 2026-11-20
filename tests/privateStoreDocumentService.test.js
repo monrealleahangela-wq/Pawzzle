@@ -2,12 +2,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const {
+  cleanupPersistedUploads,
+  decryptPrivateDocument,
+  encryptPrivateDocument,
+  parseEncryptedDatabaseReference,
   privateDocumentConfig,
   privateDocumentClientConfig,
   parseS3Reference,
   persistApplicationUploads,
   streamStoredDocument
 } = require('../services/privateStoreDocumentService');
+
+const encryptionEnv = {
+  STORE_DOCUMENT_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64')
+};
 
 const privateFile = (fieldname = 'businessRegistration') => ({
   fieldname,
@@ -91,6 +99,61 @@ test('private document permission failures do not leak provider details', async 
   );
 });
 
+test('S3 outages fall back to encrypted private database storage', async () => {
+  const file = privateFile();
+  const created = [];
+  const fallbackErrors = [];
+  await persistApplicationUploads({ businessRegistration: [file] }, '507f1f77bcf86cd799439011', {
+    env: encryptionEnv,
+    s3: {
+      bucket: 'private-documents',
+      client: {
+        send: async () => {
+          const error = new Error('not authorized for s3:PutObject');
+          error.name = 'AccessDenied';
+          error.$metadata = { httpStatusCode: 403 };
+          throw error;
+        }
+      }
+    },
+    createPrivateDocument: async values => {
+      created.push(values);
+      return { _id: '507f1f77bcf86cd799439012' };
+    },
+    onFallback: error => fallbackErrors.push(error)
+  });
+  assert.equal(created.length, 1);
+  assert.notEqual(created[0].encryptedContent.toString(), 'test');
+  assert.equal(created[0].mimeType, 'application/pdf');
+  assert.equal(file.path, 'mongo-encrypted://507f1f77bcf86cd799439012');
+  assert.equal(file.secure_url, undefined);
+  assert.equal(file.buffer, undefined);
+  assert.equal(fallbackErrors[0].code, 'STORE_DOCUMENT_STORAGE_UNAVAILABLE');
+});
+
+test('missing S3 configuration does not block an application when encrypted fallback is available', async () => {
+  const file = privateFile();
+  await persistApplicationUploads({ businessRegistration: [file] }, '507f1f77bcf86cd799439011', {
+    env: encryptionEnv,
+    createPrivateDocument: async values => {
+      assert.equal(values.owner, '507f1f77bcf86cd799439011');
+      assert.ok(values.encryptedContent.length);
+      return { _id: '507f1f77bcf86cd799439013' };
+    }
+  });
+  assert.equal(file.path, 'mongo-encrypted://507f1f77bcf86cd799439013');
+});
+
+test('database fallback content is encrypted with authenticated encryption', () => {
+  const encrypted = encryptPrivateDocument(Buffer.from('private-document'), encryptionEnv);
+  assert.notEqual(encrypted.encryptedContent.toString(), 'private-document');
+  assert.equal(decryptPrivateDocument(encrypted, encryptionEnv).toString(), 'private-document');
+  assert.deepEqual(
+    parseEncryptedDatabaseReference('mongo-encrypted://507f1f77bcf86cd799439012'),
+    { id: '507f1f77bcf86cd799439012' }
+  );
+});
+
 test('the public store logo keeps using the public media uploader', async () => {
   const file = { ...privateFile('storeLogo'), originalname: 'store.jpg', mimetype: 'image/jpeg' };
   await persistApplicationUploads({ storeLogo: [file] }, 'applicant-1', {
@@ -117,6 +180,37 @@ test('private S3 references stream through the authenticated response with no-st
   assert.equal(Buffer.concat(chunks).toString(), 'document');
   assert.equal(response.headers['Cache-Control'], 'private, no-store');
   assert.deepEqual(parseS3Reference('s3://private-documents/path/file.pdf'), { bucket: 'private-documents', key: 'path/file.pdf' });
+});
+
+test('encrypted database documents stream only through the authenticated response', async () => {
+  const encrypted = encryptPrivateDocument(Buffer.from('fallback-document'), encryptionEnv);
+  const chunks = [];
+  const response = new PassThrough();
+  response.setHeader = (name, value) => { response.headers = { ...(response.headers || {}), [name]: value }; };
+  response.on('data', chunk => chunks.push(chunk));
+  const done = new Promise(resolve => response.on('end', resolve));
+  await streamStoredDocument('mongo-encrypted://507f1f77bcf86cd799439012', response, {
+    env: encryptionEnv,
+    readPrivateDocument: async () => ({
+      ...encrypted,
+      mimeType: 'application/pdf',
+      originalName: 'permit.pdf'
+    })
+  });
+  await done;
+  assert.equal(Buffer.concat(chunks).toString(), 'fallback-document');
+  assert.equal(response.headers['Content-Type'], 'application/pdf');
+  assert.equal(response.headers['Cache-Control'], 'private, no-store');
+});
+
+test('cleanup removes encrypted database fallback records', async () => {
+  const deleted = [];
+  await cleanupPersistedUploads({ businessRegistration: [{
+    path: 'mongo-encrypted://507f1f77bcf86cd799439012'
+  }] }, {
+    deletePrivateDocument: async id => deleted.push(id)
+  });
+  assert.deepEqual(deleted, ['507f1f77bcf86cd799439012']);
 });
 
 test('legacy document proxy rejects arbitrary external URLs', async () => {
