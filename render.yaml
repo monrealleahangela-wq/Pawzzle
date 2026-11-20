@@ -28,3 +28,35 @@ services:
         sync: false
       - key: IDENTITY_FACE_MATCH_THRESHOLD
         value: "95"
+      # Product-variant switches stay operator-controlled. Run the guarded
+      # readiness procedures before setting any verification flag to true.
+      - key: SELLER_VARIANTS_ENABLED
+        sync: false
+      - key: SELLER_VARIANTS_CONCURRENCY_VERIFIED
+        sync: false
+      - key: SELLER_VARIANTS_AUTHORIZATION_VERIFIED
+        sync: false
+      - key: SELLER_VARIANT_INVENTORY_ENABLED
+        sync: false
+      - key: SELLER_VARIANT_INVENTORY_CONCURRENCY_VERIFIED
+        sync: false
+      - key: CUSTOMER_VARIANT_BROWSING_ENABLED
+        sync: false
+      - key: CUSTOMER_VARIANT_PURCHASING_ENABLED
+        sync: false
+      - key: CUSTOMER_VARIANT_RESERVATION_CONCURRENCY_VERIFIED
+        sync: false
+      - key: CUSTOMER_VARIANT_PAYMENT_RECONCILIATION_VERIFIED
+        sync: false
+      - key: CUSTOMER_VARIANT_AUTHORIZATION_VERIFIED
+        sync: false
+      - key: SUPPLIER_VARIANTS_ENABLED
+        sync: false
+      - key: SUPPLIER_VARIANT_MAPPING_ENABLED
+        sync: false
+      - key: SUPPLIER_VARIANT_PROCUREMENT_ENABLED
+        sync: false
+      - key: SUPPLIER_VARIANT_PROCUREMENT_CONCURRENCY_VERIFIED
+        sync: false
+      - key: SUPPLIER_VARIANT_RECEIVING_ENABLED
+        sync: false

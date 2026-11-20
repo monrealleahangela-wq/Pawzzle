@@ -13,8 +13,8 @@ import {
 
 const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, onImageUpload, onVariantImageUpload, loading, onAdvanced, variantCapabilities }) => {
   const image = form.images?.[0];
-  const priceValid = Number(form.price) > 0;
   const variantMode = form.productMode === 'variant';
+  const priceValid = variantMode || Number(form.price) > 0;
   const stockValid = variantMode || (form.stockQuantity !== ''
     && Number.isInteger(Number(form.stockQuantity))
     && Number(form.stockQuantity) >= 0);
@@ -72,12 +72,18 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
         {!editingProduct && <div className="mb-3 grid gap-2 sm:grid-cols-2">
           {[['simple', 'Simple Product', 'One price and one inventory balance.'], ['variant', 'Product With Variants', 'Separate combinations, prices, and inventory balances.']].map(([value, label, detail]) => (
             <button key={value} type="button" disabled={value === 'variant' && !variantCapabilities?.enabled}
-              onClick={() => set('productMode', value)}
+              onClick={() => setForm(current => ({
+                ...current,
+                productMode: value,
+                visibility: value === 'variant' && !variantCapabilities?.customerBrowsingEnabled
+                  ? 'draft'
+                  : current.visibility
+              }))}
               className={`rounded-xl border p-3 text-left ${form.productMode === value ? 'border-primary-600 bg-primary-50' : 'border-slate-200 bg-white'} disabled:cursor-not-allowed disabled:opacity-50`}>
               <span className="block text-[11px] font-black text-slate-800">{label}</span><span className="mt-1 block text-[9px] text-slate-500">{detail}</span>
             </button>
           ))}
-          {!variantCapabilities?.enabled && <p className="sm:col-span-2 rounded-xl bg-slate-100 p-3 text-[10px] text-slate-600">Variant creation is safely disabled until the database indexes and Store SKU registry are verified.</p>}
+          {!variantCapabilities?.enabled && <p className="sm:col-span-2 rounded-xl bg-slate-100 p-3 text-[10px] text-slate-600">Product variants require one-time platform activation. Complete the seller variant readiness procedure, then refresh this page.</p>}
         </div>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-[11px] font-bold text-slate-700">Product Name<RequiredMark /><input value={form.name} onChange={event => set('name', event.target.value)} className={compactInputClass} placeholder="Product name" />{!form.name?.trim() && <span className="mt-1 block text-[10px] text-rose-600">Product name is required.</span>}</label>
@@ -101,7 +107,8 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
           : 'Set the selling price and opening stock for this product.'}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-[11px] font-bold text-slate-700">Price (₱)<RequiredMark /><input type="number" min="0.01" step="0.01" value={form.price} onChange={event => set('price', event.target.value)} className={compactInputClass} placeholder="0.00" />{!priceValid && <span className="mt-1 block text-[10px] text-rose-600">Product price must be greater than zero.</span>}</label>
+          {variantMode ? <div className="rounded-xl border border-primary-100 bg-primary-50 p-3 sm:col-span-2"><p className="text-[11px] font-bold text-primary-900">Customer price is calculated from the variants</p><p className="mt-1 text-[10px] text-primary-700">Set a retail price on every sellable combination below. Product cards display the lowest active variant price.</p></div>
+            : <label className="text-[11px] font-bold text-slate-700">Price (₱)<RequiredMark /><input type="number" min="0.01" step="0.01" value={form.price} onChange={event => set('price', event.target.value)} className={compactInputClass} placeholder="0.00" />{!priceValid && <span className="mt-1 block text-[10px] text-rose-600">Product price must be greater than zero.</span>}</label>}
           {!variantMode && <label className="text-[11px] font-bold text-slate-700">Stock Quantity{!editingProduct && <RequiredMark />}<input aria-label="Stock Quantity" required={!editingProduct} type="number" min="0" step="1" readOnly={Boolean(editingProduct)} value={form.stockQuantity ?? 0} onChange={event => set('stockQuantity', event.target.value)} className={`${compactInputClass} ${editingProduct ? 'cursor-not-allowed bg-slate-100' : ''}`} /><span className="mt-1 block text-[10px] font-normal text-slate-500">{editingProduct ? 'Use the stock workflow to change the current inventory balance.' : 'Enter the units currently on hand. This becomes the opening inventory balance.'}</span>{!stockValid && <span className="mt-1 block text-[10px] text-rose-600">Stock quantity must be a whole number of zero or greater.</span>}</label>}
           <label className="text-[11px] font-bold text-slate-700">Low Stock Threshold <span className="font-normal text-slate-400">(optional)</span><input type="number" min="0" value={form.lowStockThreshold ?? ''} onChange={event => set('lowStockThreshold', event.target.value)} className={compactInputClass} /></label>
           <label className="text-[11px] font-bold text-slate-700">Selling Unit{!editingProduct && <RequiredMark />}<select disabled={Boolean(editingProduct)} value={form.unit || 'piece'} onChange={event => set('unit', event.target.value)} className={`${compactInputClass} disabled:cursor-not-allowed disabled:bg-slate-100`}><option value="piece">Piece</option><option value="pack">Pack</option><option value="box">Box</option><option value="bottle">Bottle</option><option value="bag">Bag</option><option value="kg">Kilogram</option></select>{editingProduct && <span className="mt-1 block text-[10px] font-normal text-slate-500">Locked because existing inventory and orders use this unit.</span>}</label>
@@ -111,7 +118,7 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
         </div>
       </CompactFormSection>
 
-      {variantMode && <CompactFormSection step="5" icon={SlidersHorizontal} title="Sellable Variants" description="Add only combinations you actually sell. Stock is added later through exact-variant receiving.">
+      {variantMode && <CompactFormSection step="5" icon={SlidersHorizontal} title="Sellable Variants" description="Add only combinations you actually sell. Each combination has its own SKU, price, and inventory balance.">
         <div className="space-y-3">
           {(form.normalizedVariants || []).map((variant, index) => <div key={variant._id || index} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="grid gap-2 sm:grid-cols-2">
@@ -140,7 +147,7 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
 
       <CompactFormSection step={variantMode ? '6' : '5'} icon={Eye} title="Visibility" description="Control whether this product is available to customers.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="text-[11px] font-bold text-slate-700">Catalog Visibility<select disabled={variantMode} value={variantMode ? 'draft' : (form.visibility || 'published')} onChange={event => set('visibility', event.target.value)} className={compactInputClass}><option value="published">Published</option><option value="draft">Draft</option><option value="hidden">Hidden</option></select>{variantMode && <span className="mt-1 block text-[10px] font-normal text-slate-500">Variant listings remain draft until customer variant selection is safely enabled.</span>}</label>
+          <label className="text-[11px] font-bold text-slate-700">Catalog Visibility<select disabled={variantMode && !variantCapabilities?.customerBrowsingEnabled} value={variantMode && !variantCapabilities?.customerBrowsingEnabled ? 'draft' : (form.visibility || 'published')} onChange={event => set('visibility', event.target.value)} className={compactInputClass}><option value="published">Published</option><option value="draft">Draft</option><option value="hidden">Hidden</option></select>{variantMode && !variantCapabilities?.customerBrowsingEnabled && <span className="mt-1 block text-[10px] font-normal text-slate-500">Saved as Draft until customer variant browsing is activated. You can still configure variants and link supplier inventory.</span>}{variantMode && variantCapabilities?.customerBrowsingEnabled && <span className="mt-1 block text-[10px] font-normal text-slate-500">Published products appear after at least one active variant has available stock.</span>}</label>
           {!variantMode && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-[11px] font-bold text-slate-700">Inventory availability</p><p className="mt-1 text-[10px] text-slate-500">{Number(form.stockQuantity || 0) > 0 ? 'In stock' : 'Out of stock'} — calculated from the inventory balance.</p></div>}
         </div>
       </CompactFormSection>
