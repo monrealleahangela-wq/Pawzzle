@@ -19,6 +19,18 @@ const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
 const isIdentityRecoveryRoute = req => req.baseUrl === '/api/auth'
   && ['/me', '/identity/verify', '/change-password', '/logout'].includes(req.path);
 
+const isSubscriptionRecoveryRoute = req => (
+  req.baseUrl === '/api/auth' && ['/me', '/logout', '/change-password'].includes(req.path)
+) || (
+  req.baseUrl === '/api/stores' && (
+    req.path === '/subscription-plans'
+    || req.path === '/my-store/subscription'
+    || req.path === '/my-store/subscription/payments'
+    || req.path === '/my-store/subscription/checkout'
+    || /^\/my-store\/subscription\/payments\/[^/]+\/(verify|cancel)$/.test(req.path)
+  )
+);
+
 const hasVerifiedIdentity = hasVerifiedIdentityEvidence;
 
 // Authentication middleware
@@ -60,6 +72,23 @@ const authenticate = async (req, res, next) => {
         code: 'PROFESSIONAL_VERIFICATION_REQUIRED',
         verificationStatus: getProfessionalVerificationStatus(user)
       });
+    }
+    if ((isStoreAdmin(user) || isOperationalStaff(user)) && !isSubscriptionRecoveryRoute(req)) {
+      const { resolveOperationalStore } = require('../services/storeAccessService');
+      const { reconcileStoreSubscriptionLifecycle } = require('../services/storeSubscriptionLifecycleService');
+      const store = await resolveOperationalStore(user);
+      if (store) {
+        const currentStore = await reconcileStoreSubscriptionLifecycle(store, { sendNotifications: false });
+        if (currentStore?.subscriptionAccessStatus === 'suspended') {
+          return res.status(403).json({
+            code: 'STORE_SUBSCRIPTION_SUSPENDED',
+            message: currentStore.subscriptionSuspensionReason || 'Your store subscription ended. Choose a paid plan to restore seller access.',
+            subscriptionPath: '/admin/settings?section=plan',
+            suspendedAt: currentStore.subscriptionSuspendedAt,
+            storeOnVacation: true
+          });
+        }
+      }
     }
     await attachStoreRolePolicy(user);
     

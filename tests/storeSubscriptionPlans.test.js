@@ -7,22 +7,23 @@ const Module = require('node:module');
 const root = path.join(__dirname, '..');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
-test('seller plan catalog uses the approved allowances, prices, annual discount, and trial', () => {
-  const { SUBSCRIPTION_PLANS, ENTITLEMENTS, normalizeSubscriptionTier } = require('../config/subscriptionPlans');
+test('seller plan catalog removes Free and uses the approved prices and one-month Growth trial', () => {
+  const { SUBSCRIPTION_PLANS, ENTITLEMENTS, normalizeSubscriptionTier, getPublicPlanCatalog } = require('../config/subscriptionPlans');
   assert.equal(SUBSCRIPTION_PLANS.free.listingLimit, 10);
   assert.equal(SUBSCRIPTION_PLANS.starter.listingLimit, 30);
   assert.equal(SUBSCRIPTION_PLANS.growth.listingLimit, 70);
   assert.equal(SUBSCRIPTION_PLANS.professional.listingLimit, null);
   assert.equal(SUBSCRIPTION_PLANS.starter.termDays, 30);
   assert.equal(SUBSCRIPTION_PLANS.growth.locationLimit, 1);
-  assert.equal(SUBSCRIPTION_PLANS.professional.locationLimit, 3);
+  assert.equal(SUBSCRIPTION_PLANS.professional.locationLimit, 1);
   assert.equal(SUBSCRIPTION_PLANS.starter.monthlyPrice, 299);
   assert.equal(SUBSCRIPTION_PLANS.growth.monthlyPrice, 699);
   assert.equal(SUBSCRIPTION_PLANS.professional.monthlyPrice, 1499);
   assert.equal(SUBSCRIPTION_PLANS.starter.annualPrice, 3049);
   assert.equal(SUBSCRIPTION_PLANS.growth.annualPrice, 7129);
   assert.equal(SUBSCRIPTION_PLANS.professional.annualPrice, 15289);
-  assert.equal(SUBSCRIPTION_PLANS.growth.trialDays, 14);
+  assert.equal(SUBSCRIPTION_PLANS.growth.trialDays, 30);
+  assert.deepEqual(getPublicPlanCatalog().map(plan => plan.id), ['starter', 'growth', 'professional']);
   assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.SUPPLIER_CATALOG));
   assert.ok(SUBSCRIPTION_PLANS.free.entitlements.includes(ENTITLEMENTS.MANUAL_RESTOCKING));
   for (const tier of ['free', 'starter', 'growth', 'professional']) {
@@ -31,7 +32,9 @@ test('seller plan catalog uses the approved allowances, prices, annual discount,
   assert.ok(!SUBSCRIPTION_PLANS.starter.entitlements.includes(ENTITLEMENTS.SUPPLIER_PROCUREMENT));
   assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.PRODUCT_VARIANTS));
   assert.ok(SUBSCRIPTION_PLANS.growth.entitlements.includes(ENTITLEMENTS.SUPPLIER_PROCUREMENT));
-  assert.ok(SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY));
+  assert.ok(!SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.MULTI_LOCATION));
+  assert.ok(!SUBSCRIPTION_PLANS.professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY));
+  assert.ok(!SUBSCRIPTION_PLANS.professional.features.some(feature => /store location/i.test(feature)));
   assert.equal(normalizeSubscriptionTier('basic'), 'free');
   assert.equal(normalizeSubscriptionTier('premium'), 'growth');
   assert.equal(normalizeSubscriptionTier('enterprise'), 'professional');
@@ -235,14 +238,14 @@ test('subscription gates use the shared operational store resolver', async () =>
 test('dashboard consumes the same subscription-resolved store used by the entitlement gate', () => {
   const controller = read('controllers/storeController.js');
   assert.match(controller, /if \(req\.subscriptionStoreId\) \{\s*store = await Store\.findById\(req\.subscriptionStoreId\)/);
-  assert.match(controller, /const getMyStoreSubscription[\s\S]*?const context = await resolveSubscriptionContext\(req\.user\)/);
+  assert.match(controller, /const getMyStoreSubscription[\s\S]*?let context = await resolveSubscriptionContext\(req\.user\)/);
   assert.match(read('controllers/supplierController.js'), /const resolveAuthorizedStore = resolveOperationalStore/);
 });
 
-test('explicit Free plan choices opt out of the legacy Professional compatibility grant', () => {
-  assert.match(read('controllers/subscriptionController.js'), /subscriptionLegacyGrantOptOutAt = now/);
-  assert.match(read('controllers/storeController.js'), /subscriptionLegacyGrantOptOutAt: new Date\(\)/);
-  assert.match(read('models/Store.js'), /subscriptionLegacyGrantOptOutAt: Date/);
+test('seller plan changes cannot select or schedule the removed Free plan', () => {
+  assert.match(read('controllers/subscriptionController.js'), /FREE_PLAN_REMOVED/);
+  assert.doesNotMatch(read('client/src/components/settings/SubscriptionPlanSettings.js'), /Schedule Free/);
+  assert.match(read('controllers/storeController.js'), /Select Starter, Growth, or Professional/);
 });
 
 test('subscription summary counts all customer-facing listing types and active staff', async () => {
@@ -337,7 +340,9 @@ test('seller settings expose usage and the complete plan comparison', () => {
   assert.match(component, /PayMongo confirmation/);
   assert.match(component, /Monthly/);
   assert.match(component, /Annual/);
-  assert.match(component, /14-day Growth trial/);
+  assert.match(component, /one-month Pawzzle Growth trial/);
+  assert.match(component, /subscription\.billingInterval !== 'trial'/);
+  assert.doesNotMatch(component, /Store locations/);
   assert.match(component, /no marketplace platform fee/i);
   assert.match(settings, /\['plan', 'Subscription'\]/);
   assert.match(settings, /<SubscriptionPlanSettings/);

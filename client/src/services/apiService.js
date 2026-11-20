@@ -83,6 +83,13 @@ api.interceptors.response.use(
       window.location.assign('/identity-verification');
     }
 
+    if (error.response?.status === 403
+      && error.response?.data?.code === 'STORE_SUBSCRIPTION_SUSPENDED') {
+      sessionStorage.setItem('storeSubscriptionNotice', error.response.data.message || 'Your seller access is temporarily suspended until a paid plan is confirmed.');
+      const planPath = '/admin/settings?section=plan';
+      if (`${window.location.pathname}${window.location.search}` !== planPath) window.location.assign(planPath);
+    }
+
     return Promise.reject(error);
   }
 );
@@ -381,9 +388,6 @@ export const storeService = {
   getMySubscription: () => api.get('/stores/my-store/subscription'),
   getSubscriptionPayments: () => api.get('/stores/my-store/subscription/payments'),
   createSubscriptionCheckout: (tier, billingInterval = 'monthly') => api.post('/stores/my-store/subscription/checkout', { tier, billingInterval }),
-  startGrowthTrial: () => api.post('/stores/my-store/subscription/trial'),
-  scheduleSubscriptionDowngrade: (tier) => api.post('/stores/my-store/subscription/downgrade', { tier }),
-  cancelSubscriptionDowngrade: () => api.delete('/stores/my-store/subscription/downgrade'),
   getPlanLocations: () => api.get('/stores/my-store/locations'),
   createPlanLocation: (data) => api.post('/stores/my-store/locations', data),
   updatePlanLocation: (id, data) => api.patch(`/stores/my-store/locations/${id}`, data),

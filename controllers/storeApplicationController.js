@@ -10,6 +10,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { isPlatformAdmin } = require('../config/permissions');
 const { FIELD_LABELS } = require('../utils/storeDocumentOcr');
 const { deliverHtmlEmail, wrapInTemplate } = require('../utils/emailService');
+const { trialFields } = require('../services/storeSubscriptionLifecycleService');
 const {
   BUSINESS_CATEGORIES,
   combinedCategoryRequirements,
@@ -1387,6 +1388,7 @@ const reviewApplication = async (req, res) => {
             }
           },
           verificationStatus: 'verified',
+          ...trialFields(new Date()),
           businessProfile: {
             registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || application.businessName,
             tradeName: application.tradeName || application.businessName,
