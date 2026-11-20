@@ -19,7 +19,7 @@ const {
   hasVerifiedIdentityEvidence,
   getIdentityVerificationStatus
 } = require('../utils/identityVerificationStatus');
-const { hasVerifiedIdentity, isIdentityRecoveryRoute } = require('../middleware/auth');
+const { hasVerifiedIdentity, isIdentityRecoveryRoute, isProfessionalRecoveryRoute } = require('../middleware/auth');
 const { requiresIdentityVerification } = require('../config/permissions');
 const { __test: authControllerTest } = require('../controllers/authController');
 
@@ -243,6 +243,17 @@ test('verified identity is mandatory while only recovery endpoints remain reacha
   }
   assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/auth', path: '/profile' }), false);
   assert.equal(isIdentityRecoveryRoute({ baseUrl: '/api/orders', path: '/' }), false);
+});
+
+test('pending professionals may finish identity verification and submit credentials before admin approval', () => {
+  for (const route of ['/me', '/identity/verify', '/change-password', '/logout']) {
+    assert.equal(isProfessionalRecoveryRoute({ baseUrl: '/api/auth', path: route }), true);
+  }
+  for (const route of ['/me/professional-profile', '/me/credentials']) {
+    assert.equal(isProfessionalRecoveryRoute({ baseUrl: '/api/staff', path: route }), true);
+  }
+  assert.equal(isProfessionalRecoveryRoute({ baseUrl: '/api/staff', path: '/me/attendance' }), false);
+  assert.equal(isProfessionalRecoveryRoute({ baseUrl: '/api/orders', path: '/' }), false);
 });
 
 test('platform administrators are exempt from the one-time identity gate', () => {

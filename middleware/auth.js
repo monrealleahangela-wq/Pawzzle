@@ -12,7 +12,7 @@ const {
 } = require('../utils/identityVerificationStatus');
 
 const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
-  && ['/me', '/change-password', '/logout'].includes(req.path))
+  && ['/me', '/identity/verify', '/change-password', '/logout'].includes(req.path))
   || (req.baseUrl === '/api/staff' && ['/me/professional-profile', '/me/credentials'].includes(req.path));
 
 const isIdentityRecoveryRoute = req => req.baseUrl === '/api/auth'
@@ -227,5 +227,6 @@ module.exports = {
   requirePasswordChangeCompleted,
   canAccessResource,
   hasVerifiedIdentity,
-  isIdentityRecoveryRoute
+  isIdentityRecoveryRoute,
+  isProfessionalRecoveryRoute
 };

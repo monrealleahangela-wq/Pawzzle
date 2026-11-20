@@ -10,7 +10,11 @@ import {
   GOVERNMENT_ID_TYPES,
   MAX_ID_IMAGE_BYTES
 } from '../../constants/governmentIdTypes';
-import { isIdentityVerificationRequired, portalHomeForUser } from '../../utils/authorization';
+import { isIdentityVerificationRequired, isProfessionalVerificationPending, portalHomeForUser } from '../../utils/authorization';
+
+const destinationAfterIdentityVerification = user => isProfessionalVerificationPending(user)
+  ? '/professional-verification'
+  : portalHomeForUser(user);
 
 const IdentityVerification = () => {
   const navigate = useNavigate();
@@ -24,7 +28,7 @@ const IdentityVerification = () => {
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-slate-50"><div className="h-12 w-12 animate-spin rounded-full border-4 border-primary-100 border-t-primary-600" /></div>;
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
-  if (!isIdentityVerificationRequired(user)) return <Navigate to={portalHomeForUser(user)} replace />;
+  if (!isIdentityVerificationRequired(user)) return <Navigate to={destinationAfterIdentityVerification(user)} replace />;
 
   const chooseGovernmentId = event => {
     const file = event.target.files?.[0] || null;
@@ -54,8 +58,11 @@ const IdentityVerification = () => {
       data.append('selfieImage', selfieImage);
       const result = await authService.verifyIdentity(data);
       updateUser(result.user);
-      toast.success('Identity verified. Pawzzle features are now unlocked.');
-      navigate(portalHomeForUser(result.user), { replace: true });
+      const professionalReviewPending = isProfessionalVerificationPending(result.user);
+      toast.success(professionalReviewPending
+        ? 'Identity verified. Submit your professional credentials for Platform Admin review.'
+        : 'Identity verified. Pawzzle features are now unlocked.');
+      navigate(destinationAfterIdentityVerification(result.user), { replace: true });
     } catch (requestError) {
       if (requestError.response?.data?.code === 'IDENTITY_ALREADY_VERIFIED') {
         try {
@@ -63,8 +70,10 @@ const IdentityVerification = () => {
           const refreshedUser = response.user || response;
           updateUser(refreshedUser);
           if (!isIdentityVerificationRequired(refreshedUser)) {
-            toast.success('Identity is already verified. Pawzzle features are unlocked.');
-            navigate(portalHomeForUser(refreshedUser), { replace: true });
+            toast.success(isProfessionalVerificationPending(refreshedUser)
+              ? 'Identity is already verified. Submit your professional credentials for Platform Admin review.'
+              : 'Identity is already verified. Pawzzle features are unlocked.');
+            navigate(destinationAfterIdentityVerification(refreshedUser), { replace: true });
             return;
           }
         } catch (_refreshError) {
