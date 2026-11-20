@@ -6,21 +6,14 @@ const MINIMUM_FACE_CONFIDENCE = 90;
 // Never hydrate the encrypted government-ID image for every authenticated API
 // call; it can be several megabytes and is only needed by the verification
 // workflow itself.
-const IDENTITY_VERIFICATION_AUTH_PROJECTION = [
-  '+identityVerification.status',
-  '+identityVerification.verificationVersion',
-  '+identityVerification.governmentId.documentType',
-  '+identityVerification.governmentId.mimeType',
-  '+identityVerification.governmentId.size',
-  '+identityVerification.faceMatch.provider',
-  '+identityVerification.faceMatch.similarity',
-  '+identityVerification.faceMatch.threshold',
-  '+identityVerification.faceMatch.sourceFaceConfidence',
-  '+identityVerification.faceMatch.targetFaceConfidence',
-  '+identityVerification.faceMatch.targetFaceCount',
-  '+identityVerification.consent.acceptedAt',
-  '+identityVerification.verifiedAt'
-].join(' ');
+// identityVerification is hidden at its parent schema path. Selecting only
+// nested `+identityVerification.*` paths does not override that parent and
+// silently returns no verification state, which sends verified users back to
+// the verification page. Include the parent, then exclude only the large
+// encrypted image so session checks receive the strict metadata without
+// loading several megabytes on every request.
+const IDENTITY_VERIFICATION_AUTH_PROJECTION =
+  '+identityVerification -identityVerification.governmentId.encryptedImage';
 
 const finiteNumber = value => {
   const number = Number(value);
