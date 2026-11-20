@@ -141,7 +141,7 @@ const storeApplicationSchema = new mongoose.Schema({
     birRegistrationStatus: {
       type: String,
       enum: ['registered', 'not_registered', 'pending_registration'],
-      default: 'pending_registration'
+      default: 'registered'
     },
     taxpayerClassification: { type: String, trim: true },
     tin: { type: String, trim: true, select: false },

@@ -59,7 +59,7 @@ export const createStoreApplicationForm = user => ({
   },
   barangayClearance: { number: '', issuingBarangay: '', issueDate: '', expiryDate: '' },
   taxProfile: {
-    birRegistrationStatus: 'pending_registration',
+    birRegistrationStatus: 'registered',
     taxpayerClassification: '',
     tin: '',
     branchCode: '000',
@@ -157,6 +157,7 @@ export const hydrateStoreApplicationForm = (application, user) => {
     taxProfile: {
       ...defaults.taxProfile,
       ...taxProfile,
+      birRegistrationStatus: 'registered',
       registeredAddress: { ...defaults.taxProfile.registeredAddress, ...registeredAddress }
     },
     declaration: { accepted: false, applicantName: application?.declaration?.applicantName || defaults.declaration.applicantName },
@@ -307,24 +308,22 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
     }
   }
   const birRegistrationStatus = data.taxProfile?.birRegistrationStatus;
-  if (!['registered', 'pending_registration', 'not_registered'].includes(birRegistrationStatus)) {
-    errors['taxProfile.birRegistrationStatus'] = 'Select your current BIR registration status.';
+  if (birRegistrationStatus !== 'registered') {
+    errors['taxProfile.birRegistrationStatus'] = 'A BIR-registered business is required to apply for a Pawzzle store.';
   }
-  if (birRegistrationStatus === 'registered') {
-    for (const [field, value, message] of [
-      ['taxProfile.tin', data.taxProfile.tin, 'TIN is required.'],
-      ['taxProfile.branchCode', data.taxProfile.branchCode, 'Branch code is required.'],
-      ['taxProfile.registeredName', data.taxProfile.registeredName, 'BIR registered name is required.'],
-      ['taxProfile.lineOfBusiness', data.taxProfile.lineOfBusiness, 'BIR line of business is required.'],
-      ['taxProfile.declaredTaxStatus', data.taxProfile.declaredTaxStatus, 'Declared tax status is required.'],
-      ['taxProfile.registeredAddress.street', data.taxProfile.registeredAddress?.street, 'BIR registered street is required.'],
-      ['taxProfile.registeredAddress.barangay', data.taxProfile.registeredAddress?.barangay, 'BIR registered barangay is required.'],
-      ['taxProfile.registeredAddress.city', data.taxProfile.registeredAddress?.city, 'BIR registered city is required.'],
-      ['taxProfile.registeredAddress.province', data.taxProfile.registeredAddress?.province, 'BIR registered province is required.'],
-      ['taxProfile.registeredAddress.postalCode', data.taxProfile.registeredAddress?.postalCode, 'BIR registered postal code is required.']
-    ]) requireField(field, value, message);
-    if (!files.birRegistration && !documentAvailability.birRegistration) errors.birRegistration = 'BIR Form 2303 is required.';
-  }
+  for (const [field, value, message] of [
+    ['taxProfile.tin', data.taxProfile.tin, 'TIN is required.'],
+    ['taxProfile.branchCode', data.taxProfile.branchCode, 'Branch code is required.'],
+    ['taxProfile.registeredName', data.taxProfile.registeredName, 'BIR registered name is required.'],
+    ['taxProfile.lineOfBusiness', data.taxProfile.lineOfBusiness, 'BIR line of business is required.'],
+    ['taxProfile.declaredTaxStatus', data.taxProfile.declaredTaxStatus, 'Declared tax status is required.'],
+    ['taxProfile.registeredAddress.street', data.taxProfile.registeredAddress?.street, 'BIR registered street is required.'],
+    ['taxProfile.registeredAddress.barangay', data.taxProfile.registeredAddress?.barangay, 'BIR registered barangay is required.'],
+    ['taxProfile.registeredAddress.city', data.taxProfile.registeredAddress?.city, 'BIR registered city is required.'],
+    ['taxProfile.registeredAddress.province', data.taxProfile.registeredAddress?.province, 'BIR registered province is required.'],
+    ['taxProfile.registeredAddress.postalCode', data.taxProfile.registeredAddress?.postalCode, 'BIR registered postal code is required.']
+  ]) requireField(field, value, message);
+  if (!files.birRegistration && !documentAvailability.birRegistration) errors.birRegistration = 'BIR Form 2303 is required.';
   if (data.declaration?.accepted !== true) errors['declaration.accepted'] = 'Accept the declaration before submitting.';
   return errors;
 };

@@ -110,19 +110,17 @@ const validateProposal = ({ proposedProfile, reason, files, existingDocuments })
   requireField(representative.email, 'representative.email', 'Representative email is required.');
   if (!files.businessRegistration && !existingDocuments.businessRegistration) errors.push({ field: 'businessRegistration', message: 'Business registration document is required.' });
   if (representative.isAuthorizedRepresentative && !files.authorityDocument && !existingDocuments.authorityDocument) errors.push({ field: 'authorityDocument', message: 'Proof of authority is required for an authorized representative.' });
-  if (!['registered', 'not_registered', 'pending_registration'].includes(tax.birRegistrationStatus)) errors.push({ field: 'tax.birRegistrationStatus', message: 'Select the BIR registration status.' });
-  if (tax.birRegistrationStatus === 'registered') {
-    requireField(tax.tin, 'tax.tin', 'TIN is required.');
-    requireField(tax.branchCode, 'tax.branchCode', 'Branch code is required.');
-    requireField(tax.registeredName, 'tax.registeredName', 'BIR registered name is required.');
-    requireField(tax.lineOfBusiness, 'tax.lineOfBusiness', 'BIR line of business is required.');
-    for (const [key, label] of [['street', 'street'], ['barangay', 'barangay'], ['city', 'city / municipality'], ['province', 'province'], ['postalCode', 'postal code']]) {
-      requireField(tax.registeredAddress?.[key], `tax.registeredAddress.${key}`, `BIR registered ${label} is required.`);
-    }
-    if (!TAX_STATUSES.includes(tax.declaredTaxStatus)) errors.push({ field: 'tax.declaredTaxStatus', message: 'Declared VAT or Non-VAT status is required.' });
-    if (tax.tin && !/^\d{3}[- ]?\d{3}[- ]?\d{3,6}$/.test(String(tax.tin).trim())) errors.push({ field: 'tax.tin', message: 'Enter a valid TIN.' });
-    if (!files.birCertificate && !existingDocuments.birCertificate) errors.push({ field: 'birCertificate', message: 'BIR Certificate of Registration (Form 2303) is required.' });
+  if (tax.birRegistrationStatus !== 'registered') errors.push({ field: 'tax.birRegistrationStatus', message: 'A BIR-registered business is required for a Pawzzle store.' });
+  requireField(tax.tin, 'tax.tin', 'TIN is required.');
+  requireField(tax.branchCode, 'tax.branchCode', 'Branch code is required.');
+  requireField(tax.registeredName, 'tax.registeredName', 'BIR registered name is required.');
+  requireField(tax.lineOfBusiness, 'tax.lineOfBusiness', 'BIR line of business is required.');
+  for (const [key, label] of [['street', 'street'], ['barangay', 'barangay'], ['city', 'city / municipality'], ['province', 'province'], ['postalCode', 'postal code']]) {
+    requireField(tax.registeredAddress?.[key], `tax.registeredAddress.${key}`, `BIR registered ${label} is required.`);
   }
+  if (!TAX_STATUSES.includes(tax.declaredTaxStatus)) errors.push({ field: 'tax.declaredTaxStatus', message: 'Declared VAT or Non-VAT status is required.' });
+  if (tax.tin && !/^\d{3}[- ]?\d{3}[- ]?\d{3,6}$/.test(String(tax.tin).trim())) errors.push({ field: 'tax.tin', message: 'Enter a valid TIN.' });
+  if (!files.birCertificate && !existingDocuments.birCertificate) errors.push({ field: 'birCertificate', message: 'BIR Certificate of Registration (Form 2303) is required.' });
   return errors;
 };
 
@@ -436,4 +434,13 @@ const reviewComplianceRequest = async (req, res) => {
   }
 };
 
-module.exports = { getMyCompliance, getCurrentComplianceDocument, submitComplianceRequest, listComplianceRequests, getComplianceRequest, getComplianceDocument, reviewComplianceRequest };
+module.exports = {
+  getMyCompliance,
+  getCurrentComplianceDocument,
+  submitComplianceRequest,
+  listComplianceRequests,
+  getComplianceRequest,
+  getComplianceDocument,
+  reviewComplianceRequest,
+  __test: { validateProposal }
+};

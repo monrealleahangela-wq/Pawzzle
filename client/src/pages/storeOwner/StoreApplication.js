@@ -1160,10 +1160,9 @@ const StoreApplication = () => {
               </section>
             </div>
             <section className="rounded-2xl border border-primary-100 bg-primary-50 p-5 space-y-4">
-              <div><h3 className="text-base font-black text-slate-900">BIR and tax information</h3><p className="mt-1 text-xs text-slate-600">Choose your current BIR registration status. Pawzzle will verify registered details using your BIR Form 2303.</p></div>
+              <div><h3 className="text-base font-black text-slate-900">BIR and tax information</h3><p className="mt-1 text-xs text-slate-600">BIR registration and a valid Form 2303 are required for every Pawzzle store application.</p></div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="store-field-label">Current BIR registration status<select className="input-premium mt-2" value={formData.taxProfile.birRegistrationStatus} onChange={(e) => handleChange('taxProfile.birRegistrationStatus', e.target.value)}><option value="registered">Registered with BIR</option><option value="pending_registration">BIR registration is in progress</option><option value="not_registered">Not yet registered with BIR</option></select></label>
-                {formData.taxProfile.birRegistrationStatus === 'registered' && <>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800">Registered with BIR <span className="store-field-label__status">Required</span></div>
                   <label className="store-field-label">Taxpayer Identification Number (TIN) <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Example: 000-000-000" value={formData.taxProfile.tin} onChange={(e) => handleChange('taxProfile.tin', e.target.value)} required /></label>
                   <label className="store-field-label">BIR branch code <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter the code on Form 2303" value={formData.taxProfile.branchCode} onChange={(e) => handleChange('taxProfile.branchCode', e.target.value)} required /></label>
                   <label className="store-field-label">Business name registered with BIR <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Copy the name from Form 2303" value={formData.taxProfile.registeredName} onChange={(e) => handleChange('taxProfile.registeredName', e.target.value)} required /></label>
@@ -1175,7 +1174,6 @@ const StoreApplication = () => {
                   <label className="store-field-label">City or municipality <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter city or municipality" value={formData.taxProfile.registeredAddress.city} onChange={(e) => handleChange('taxProfile.registeredAddress.city', e.target.value)} required /></label>
                   <label className="store-field-label">Province <span className="store-field-label__status">Required</span><input className="input-premium mt-2" placeholder="Enter province" value={formData.taxProfile.registeredAddress.province} onChange={(e) => handleChange('taxProfile.registeredAddress.province', e.target.value)} required /></label>
                   <label className="store-field-label">Postal code <span className="store-field-label__status">Required</span><input className="input-premium mt-2" inputMode="numeric" placeholder="Enter postal code" value={formData.taxProfile.registeredAddress.postalCode} onChange={(e) => handleChange('taxProfile.registeredAddress.postalCode', e.target.value)} required /></label>
-                </>}
               </div>
             </section>
             <section data-field="storefrontPhotos" className={`md:col-span-2 rounded-2xl border p-5 ${fieldErrors.storefrontPhotos ? 'border-rose-300 bg-rose-50' : 'border-slate-100 bg-white'}`}>
@@ -1206,7 +1204,7 @@ const StoreApplication = () => {
                     { [
                       { id: 'businessRegistration', label: 'DTI Certificate or SEC/CDA Registration', required: true },
                       { id: 'mayorsPermit', label: 'Mayor\'s / Business Permit', required: true },
-                      { id: 'birRegistration', label: 'BIR Certificate of Registration (Form 2303)', required: formData.taxProfile.birRegistrationStatus === 'registered' },
+                      { id: 'birRegistration', label: 'BIR Certificate of Registration (Form 2303)', required: true },
                       { id: 'governmentId', label: 'Valid Government-Issued ID', required: true },
                       { id: 'authorityDocument', label: 'Authorization Letter', required: formData.representative.isAuthorizedRepresentative },
                       { id: 'proofOfBusinessAddress', label: 'Proof of Business Address', required: false }

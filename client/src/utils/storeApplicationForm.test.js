@@ -35,13 +35,14 @@ test('hydrates every nested edit section while retaining safe defaults', () => {
     staffingConfiguration: { hasStaff: 'yes' },
     businessRegistration: { registrationDate: '2025-01-02T00:00:00.000Z' },
     barangayClearance: { number: 'BC-1', issueDate: '2027-01-02T00:00:00.000Z', expiryDate: '2027-12-31T00:00:00.000Z' },
-    taxProfile: { birRegistrationStatus: 'registered' },
+    taxProfile: { birRegistrationStatus: 'not_registered' },
     contactInfo: { address: { street: 'Saved Street', coordinates: { lat: 14.3, lng: 120.9 } } }
   }, { email: 'owner@example.com' });
   expect(hydrated.staffingConfiguration.hasStaff).toBe('yes');
   expect(hydrated.staffingConfiguration.staffQuantityRange).toBe('1-5');
   expect(hydrated.businessRegistration.registrationDate).toBe('2025-01-02');
   expect(hydrated.barangayClearance).toMatchObject({ number: 'BC-1', issueDate: '2027-01-02', expiryDate: '2027-12-31' });
+  expect(hydrated.taxProfile.birRegistrationStatus).toBe('registered');
   expect(hydrated.taxProfile.registeredAddress).toBeDefined();
   expect(hydrated.contactInfo.address.coordinates.lat).toBe(14.3);
 });
@@ -103,7 +104,7 @@ test('selected business categories require matching evidence and storefront phot
   expect(errors.categoryDocuments).toMatch(/animal facility/i);
 });
 
-test.each(['pending_registration', 'not_registered'])('BIR details are optional while status is %s', birRegistrationStatus => {
+test.each(['pending_registration', 'not_registered'])('BIR registration and Form 2303 are required when legacy status is %s', birRegistrationStatus => {
   const data = complete();
   data.taxProfile = { birRegistrationStatus, registeredAddress: {} };
   const errors = validateStoreApplicationForm(data, {
@@ -115,7 +116,9 @@ test.each(['pending_registration', 'not_registered'])('BIR details are optional 
       categoryDocuments: {}
     }
   });
-  expect(errors).toEqual({});
+  expect(errors['taxProfile.birRegistrationStatus']).toMatch(/BIR-registered business is required/i);
+  expect(errors['taxProfile.tin']).toMatch(/required/i);
+  expect(errors.birRegistration).toMatch(/Form 2303 is required/i);
 });
 
 test('uploaded and retained pet-sale documents satisfy the category requirements', () => {
