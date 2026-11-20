@@ -39,6 +39,23 @@ const optionalInteger = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeTaxProfileForPersistence = value => {
+  const taxProfile = value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...value }
+    : {};
+  if (taxProfile.birRegistrationStatus !== 'registered') {
+    delete taxProfile.declaredTaxStatus;
+  }
+  return taxProfile;
+};
+
+const applicationValidationMessage = (field, detail) => {
+  if (field === 'taxProfile.declaredTaxStatus') {
+    return 'Choose VAT or Non-VAT only when the business is registered with BIR.';
+  }
+  return detail?.message || 'Check this application field.';
+};
+
 const booleanValue = (value, fallback = false) => {
   if (value === undefined || value === null || value === '') return fallback;
   return value === true || value === 'true';
@@ -313,7 +330,7 @@ const buildApplicationData = (body, applicantId) => {
     representative: parsed.representative || {},
     businessRegistration: parsed.businessRegistration || {},
     barangayClearance: parsed.barangayClearance || {},
-    taxProfile: parsed.taxProfile || {},
+    taxProfile: normalizeTaxProfileForPersistence(parsed.taxProfile),
     declaration: parsed.declaration || {},
     businessDescription: body.businessDescription,
     legalStructure: body.legalStructure,
@@ -903,7 +920,10 @@ const submitApplication = async (req, res) => {
     if (error?.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Please review the application details and submit again.',
-        errors: Object.entries(error.errors || {}).map(([field, detail]) => ({ field, msg: detail.message }))
+        errors: Object.entries(error.errors || {}).map(([field, detail]) => ({
+          field,
+          msg: applicationValidationMessage(field, detail)
+        }))
       });
     }
     res.status(error.statusCode || 500).json({
@@ -1937,7 +1957,9 @@ module.exports = {
   getApplicationDocument,
   correctDocumentReviewInformation,
   applicationValidationErrors,
+  applicationValidationMessage,
   buildApplicationData,
+  normalizeTaxProfileForPersistence,
   maskTin,
   toApplicationResponse,
   submitExpansionRequest,
