@@ -360,8 +360,8 @@ const StoreApplications = () => {
       {/* Review Modal */}
       {showReviewModal && selectedApplication && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 z-[1000] animate-fade-in">
-          <div className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden max-h-[95vh] flex flex-col font-sans border border-slate-200">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
+          <div data-testid="store-application-review-modal" className="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain font-sans border border-slate-200">
+            <div className="sticky top-0 z-30 p-5 border-b border-slate-100 flex items-center justify-between bg-white">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <ShieldAlert className="h-2.5 w-2.5 text-primary-600" />
@@ -383,7 +383,7 @@ const StoreApplications = () => {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8 no-scrollbar">
+            <div data-testid="store-application-review-content" className="p-6 sm:p-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-8">
                   <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 flex flex-col items-center justify-center text-center">
@@ -662,7 +662,7 @@ const StoreApplications = () => {
                 )}
               </div>
             ) : (
-              <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 relative z-20 shadow-inner">
+              <div data-testid="store-application-review-actions" className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 shadow-inner">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                   
                   {/* Left Column: Requested corrections */}
