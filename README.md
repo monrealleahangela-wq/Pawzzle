@@ -268,6 +268,7 @@ Make sure to set these environment variables:
 - `AWS_REKOGNITION_REGION` - Optional Rekognition override; defaults to `ap-southeast-1`
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` when workload credentials are unavailable
 - `AWS_STORE_DOCUMENTS_BUCKET` - Private S3 bucket used for store application and compliance documents; enable Block Public Access
+- `AWS_STORE_DOCUMENTS_REGION` - Optional S3 bucket-region override (for example `ap-southeast-2` for Sydney); defaults to `AWS_REGION`
 - `OPENSTREETMAP_SEARCH_URL` - Optional replacement for the default OpenStreetMap Nominatim search endpoint; no value or API key is required for normal low-volume use
 
 The AWS principal used by the server also needs `textract:AnalyzeDocument` and bucket-scoped `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` permissions for the store application workflow. Keep credentials only in the deployment environment; never place them in the React variables or repository.

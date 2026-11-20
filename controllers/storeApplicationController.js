@@ -905,7 +905,10 @@ const submitApplication = async (req, res) => {
         errors: Object.entries(error.errors || {}).map(([field, detail]) => ({ field, msg: detail.message }))
       });
     }
-    res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
+    res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Server error',
+      ...(error.code ? { code: error.code } : {})
+    });
   }
 };
 
@@ -981,7 +984,10 @@ const saveApplicationDraft = async (req, res) => {
   } catch (error) {
     console.error('Save store application draft error:', error);
     await cleanupPersistedUploads(req.files || {});
-    return res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Unable to save the draft. Try again.' });
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Unable to save the draft. Try again.',
+      ...(error.code ? { code: error.code } : {})
+    });
   }
 };
 
