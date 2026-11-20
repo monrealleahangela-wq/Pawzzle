@@ -110,6 +110,26 @@ test('an uploaded registration image auto-fills reviewable OCR values', async ()
   expect(screen.getByLabelText(/^expiration date/i)).toHaveValue('2032-11-18');
 });
 
+test('a transient document reading failure can be retried without selecting the file again', async () => {
+  storeApplicationService.extractDocument
+    .mockRejectedValueOnce({ response: { data: { message: 'Secure document reading is busy. Please retry in a moment.' } } })
+    .mockResolvedValueOnce({ data: { extraction: { fields: {
+      'businessLicense.number': { value: 'BP-2027-200', confidence: 98 }
+    } } } });
+
+  const { container } = render(<StoreApplication />);
+  await waitFor(() => expect(storeApplicationService.getUserApplication).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /documents/i }));
+  const input = container.querySelector('input[data-field="mayorsPermit"]');
+  fireEvent.change(input, { target: { files: [new File(['image'], 'permit.png', { type: 'image/png' })] } });
+
+  const retry = await screen.findByRole('button', { name: /retry document reading/i });
+  fireEvent.click(retry);
+
+  await waitFor(() => expect(storeApplicationService.extractDocument).toHaveBeenCalledTimes(2));
+  expect(await screen.findByText(/1 field suggested/i)).toBeVisible();
+});
+
 test('a lost submit response recovers an application already saved for review', async () => {
   const submitted = { _id: 'application-2', status: 'pending_review', businessName: 'Recovered Store' };
   storeApplicationService.getUserApplication.mockResolvedValue({ data: { application: submitted } });

@@ -33,6 +33,12 @@ const extractStoreDocumentFields = async (req, res) => {
       }
     });
   } catch (error) {
+    if (!error.statusCode || error.statusCode >= 500) {
+      console.error('Store document reading failed', {
+        code: error.code || 'STORE_DOCUMENT_OCR_FAILED',
+        providerError: error.cause?.name || error.name || 'Error'
+      });
+    }
     return res.status(error.statusCode || 500).json({
       message: error.statusCode ? error.message : 'The secure document check failed.',
       code: error.code

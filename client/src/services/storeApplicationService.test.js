@@ -1,4 +1,7 @@
-import storeApplicationService, { STORE_APPLICATION_UPLOAD_TIMEOUT_MS } from './storeApplicationService';
+import storeApplicationService, {
+  STORE_APPLICATION_UPLOAD_TIMEOUT_MS,
+  STORE_DOCUMENT_OCR_TIMEOUT_MS
+} from './storeApplicationService';
 import api from './apiService';
 
 jest.mock('./apiService', () => ({
@@ -23,4 +26,21 @@ test.each([
     timeout: 120000,
     headers: { 'Content-Type': 'multipart/form-data' }
   }));
+});
+
+test('document reading allows enough time for secure processing', async () => {
+  api.post.mockResolvedValue({ data: { extraction: { fields: {} } } });
+  const file = new File(['image'], 'permit.png', { type: 'image/png' });
+
+  await storeApplicationService.extractDocument(file, 'business_permit', {});
+
+  expect(STORE_DOCUMENT_OCR_TIMEOUT_MS).toBe(120000);
+  expect(api.post).toHaveBeenCalledWith(
+    '/store-applications/ocr/extract',
+    expect.any(FormData),
+    expect.objectContaining({
+      timeout: 120000,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  );
 });
