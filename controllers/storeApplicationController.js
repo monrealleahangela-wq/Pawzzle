@@ -182,22 +182,20 @@ const applicationValidationErrors = (data, files = {}) => {
     }
   }
 
-  if (!['registered', 'pending_registration', 'not_registered'].includes(tax.birRegistrationStatus)) {
-    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'Select your current BIR registration status.' });
+  if (tax.birRegistrationStatus !== 'registered') {
+    errors.push({ field: 'taxProfile.birRegistrationStatus', msg: 'A BIR-registered business is required to apply for a Pawzzle store.' });
   }
-  if (tax.birRegistrationStatus === 'registered') {
-    required(tax.tin, 'taxProfile.tin', 'TIN is required for a BIR-registered business.');
-    required(tax.branchCode, 'taxProfile.branchCode', 'BIR branch code is required.');
-    required(tax.registeredName, 'taxProfile.registeredName', 'BIR registered name is required.');
-    required(tax.lineOfBusiness, 'taxProfile.lineOfBusiness', 'BIR line of business is required.');
-    for (const [key, label] of [['street', 'street'], ['barangay', 'barangay'], ['city', 'city / municipality'], ['province', 'province'], ['postalCode', 'postal code']]) {
-      required(tax.registeredAddress?.[key], `taxProfile.registeredAddress.${key}`, `BIR registered ${label} is required.`);
-    }
-    if (!DECLARED_TAX_STATUSES.includes(tax.declaredTaxStatus)) errors.push({ field: 'taxProfile.declaredTaxStatus', msg: 'Declared VAT or Non-VAT status is required.' });
-    if (!tax.corDocumentUrl && !files.birRegistration) errors.push({ field: 'birRegistration', msg: 'BIR Certificate of Registration (Form 2303) is required.' });
-    if (tax.tin && !/^\d{3}[- ]?\d{3}[- ]?\d{3,6}$/.test(String(tax.tin).trim())) {
-      errors.push({ field: 'taxProfile.tin', msg: 'Enter a valid TIN using digits and optional hyphens.' });
-    }
+  required(tax.tin, 'taxProfile.tin', 'TIN is required for a BIR-registered business.');
+  required(tax.branchCode, 'taxProfile.branchCode', 'BIR branch code is required.');
+  required(tax.registeredName, 'taxProfile.registeredName', 'BIR registered name is required.');
+  required(tax.lineOfBusiness, 'taxProfile.lineOfBusiness', 'BIR line of business is required.');
+  for (const [key, label] of [['street', 'street'], ['barangay', 'barangay'], ['city', 'city / municipality'], ['province', 'province'], ['postalCode', 'postal code']]) {
+    required(tax.registeredAddress?.[key], `taxProfile.registeredAddress.${key}`, `BIR registered ${label} is required.`);
+  }
+  if (!DECLARED_TAX_STATUSES.includes(tax.declaredTaxStatus)) errors.push({ field: 'taxProfile.declaredTaxStatus', msg: 'Declared VAT or Non-VAT status is required.' });
+  if (!tax.corDocumentUrl && !files.birRegistration) errors.push({ field: 'birRegistration', msg: 'BIR Certificate of Registration (Form 2303) is required.' });
+  if (tax.tin && !/^\d{3}[- ]?\d{3}[- ]?\d{3,6}$/.test(String(tax.tin).trim())) {
+    errors.push({ field: 'taxProfile.tin', msg: 'Enter a valid TIN using digits and optional hyphens.' });
   }
   if (data.representative?.isAuthorizedRepresentative && !data.representative?.authorityDocumentUrl && !files.authorityDocument) {
     errors.push({ field: 'authorityDocument', msg: 'Proof of authority is required for an authorized representative.' });

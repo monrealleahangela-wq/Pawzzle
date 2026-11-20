@@ -35,7 +35,15 @@ const body = () => ({
   businessLicense: JSON.stringify({ number: 'BP-100', issuingAuthority: 'Dasmarinas City', issueDate: '2027-01-02', expiryDate: '2027-12-31' }),
   businessRegistration: JSON.stringify({ authority: 'sec', certificateNumber: 'SEC-123', registeredName: 'Pawzzle Store OPC' }),
   barangayClearance: JSON.stringify({ number: 'BC-100', issuingBarangay: 'San Jose', issueDate: '2027-01-02', expiryDate: '2027-12-31' }),
-  taxProfile: JSON.stringify({ birRegistrationStatus: 'not_registered', registeredAddress: {} }),
+  taxProfile: JSON.stringify({
+    birRegistrationStatus: 'registered',
+    tin: '123-456-789',
+    branchCode: '000',
+    registeredName: 'Pawzzle Store OPC',
+    lineOfBusiness: 'Pet supplies',
+    declaredTaxStatus: 'non_vat_registered',
+    registeredAddress: { street: 'Main St', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114', country: 'PH' }
+  }),
   declaration: JSON.stringify({ accepted: true, applicantName: 'Store Owner' }),
   references: JSON.stringify([
     { name: 'Reference One', business: 'One Corp', phone: '1', email: 'one@example.com' },
@@ -147,7 +155,7 @@ test('registration number is optional while the registration document remains re
   assert.ok(!errors.some(error => error.field === 'businessRegistration'));
 });
 
-test('unregistered and pending BIR applicants are not required to submit TIN or Form 2303', () => {
+test('unregistered and pending BIR applicants cannot submit a store application', () => {
   for (const birRegistrationStatus of ['not_registered', 'pending_registration']) {
     const data = buildApplicationData({
       ...body(),
@@ -158,15 +166,26 @@ test('unregistered and pending BIR applicants are not required to submit TIN or 
     data.governmentIdUrl = 'secure://government-id';
     data.storefrontPhotoUrls = ['secure://storefront-1', 'secure://storefront-2'];
     const errors = applicationValidationErrors(data);
-    assert.ok(!errors.some(error => error.field.startsWith('taxProfile.') || error.field === 'birRegistration'));
+    assert.ok(errors.some(error => error.field === 'taxProfile.birRegistrationStatus' && /BIR-registered business is required/i.test(error.msg)));
+    assert.ok(errors.some(error => error.field === 'taxProfile.tin'));
+    assert.ok(errors.some(error => error.field === 'birRegistration'));
   }
+});
+
+test('registered BIR details and Form 2303 satisfy mandatory tax requirements', () => {
+  const data = buildApplicationData(body(), '64b000000000000000000001');
+  data.businessRegistration.documentUrl = 'secure://registration';
+  data.mayorsPermitUrl = 'secure://permit';
+  data.governmentIdUrl = 'secure://government-id';
+  data.storefrontPhotoUrls = ['secure://storefront-1', 'secure://storefront-2'];
+  const errors = applicationValidationErrors(data, { birRegistration: [{ path: 'secure://bir-2303' }] });
+  assert.ok(!errors.some(error => error.field.startsWith('taxProfile.') || error.field === 'birRegistration'));
 });
 
 test('retained BAI and animal welfare files satisfy pet-sale document requirements', () => {
   const data = buildApplicationData({
     ...body(),
-    businessCategories: JSON.stringify(['pet_sales']),
-    taxProfile: JSON.stringify({ birRegistrationStatus: 'not_registered', registeredAddress: {} })
+    businessCategories: JSON.stringify(['pet_sales'])
   }, '64b000000000000000000001');
   data.businessRegistration.documentUrl = 'secure://registration';
   data.mayorsPermitUrl = 'secure://permit';

@@ -19,7 +19,15 @@ const requestBody = name => ({
   contactInfo: JSON.stringify({ phone: '09171234567', email: 'store@example.com', address: { street: 'Main', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', zipCode: '4114', coordinates: { lat: 14.3, lng: 120.9 } } }),
   representative: JSON.stringify({ fullName: 'Store Owner', role: 'Owner', phone: '09171234567', email: 'owner@example.com', isAuthorizedRepresentative: false }),
   businessRegistration: JSON.stringify({ authority: 'sec', certificateNumber: 'SEC-123', registeredName: `${name} OPC` }),
-  taxProfile: JSON.stringify({ birRegistrationStatus: 'not_registered', registeredAddress: {} }),
+  taxProfile: JSON.stringify({
+    birRegistrationStatus: 'registered',
+    tin: '123-456-789',
+    branchCode: '000',
+    registeredName: `${name} OPC`,
+    lineOfBusiness: 'Pet supplies',
+    declaredTaxStatus: 'non_vat_registered',
+    registeredAddress: { street: 'Main', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114' }
+  }),
   declaration: JSON.stringify({ accepted: true, applicantName: 'Store Owner' }),
   references: JSON.stringify([
     { name: 'One', business: 'One Corp', phone: '1', email: 'one@example.com' },

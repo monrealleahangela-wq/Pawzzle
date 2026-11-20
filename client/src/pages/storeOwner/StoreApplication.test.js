@@ -47,6 +47,10 @@ test('all six required sections remain reachable on the responsive canonical for
   expect(screen.getByLabelText(/registration or certificate number/i)).not.toBeRequired();
   expect(screen.getByLabelText(/business contact number/i)).toBeVisible();
   expect(screen.getByText(/bir and tax information/i)).toBeVisible();
+  expect(screen.getByText(/BIR registration and a valid Form 2303 are required/i)).toBeVisible();
+  expect(screen.getByLabelText(/Taxpayer Identification Number/i)).toBeRequired();
+  expect(screen.queryByText(/BIR registration is in progress/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/Not yet registered with BIR/i)).not.toBeInTheDocument();
   const locationHeading = screen.getByRole('heading', { name: /store location/i });
   const locationSection = locationHeading.closest('section');
   expect(locationSection).toContainElement(screen.getByRole('button', { name: /choose on map/i }));
@@ -88,6 +92,8 @@ test('rejected application reopens with every nested persisted section prepopula
   expect(screen.getByLabelText(/public store name/i)).toHaveValue('Saved Store');
   expect(screen.getByLabelText(/legal business name/i)).toHaveValue('Saved Store OPC');
   expect(screen.getByLabelText(/full legal name/i)).toHaveValue('Saved Owner');
+  fireEvent.click(screen.getByRole('button', { name: /store location/i }));
+  expect(screen.getByLabelText(/Taxpayer Identification Number/i)).toBeVisible();
 });
 
 test('an uploaded registration image auto-fills reviewable OCR values', async () => {
