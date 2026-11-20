@@ -87,3 +87,17 @@ test('a failed order refresh keeps the page usable and exposes retry', async () 
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(screen.getByText('Dog Food')).toBeInTheDocument());
 });
+
+test('hides new issue reporting for store pickup while retaining product review actions', async () => {
+  orderService.getAllOrders.mockResolvedValue({
+    data: {
+      orders: [{ ...order, deliveryMethod: 'pickup' }],
+      pagination: { currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false }
+    }
+  });
+
+  render(<MemoryRouter><Orders /></MemoryRouter>);
+  await waitFor(() => expect(screen.getByText('Dog Food')).toBeInTheDocument());
+  expect(screen.queryByRole('button', { name: /report an issue/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /review product/i })).toBeInTheDocument();
+});
