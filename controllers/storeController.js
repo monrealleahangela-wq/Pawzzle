@@ -30,6 +30,11 @@ const {
 const { buildPublicPetFilter } = require('../utils/catalogListing');
 const { buildCustomerProductStockFilter } = require('../services/customerProductAvailabilityService');
 const { getPublicPlanCatalog, normalizeSubscriptionTier, SUBSCRIPTION_PLANS } = require('../config/subscriptionPlans');
+const {
+  activateGrowthTrialIfEligible,
+  reconcileStoreSubscriptionLifecycle
+} = require('../services/storeSubscriptionLifecycleService');
+const { restoreSubscriptionAccess } = require('../utils/storeSubscriptionState');
 const { getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
 const { resolveOperationalStore, resolveSubscriptionContext } = require('../services/storeAccessService');
 
@@ -282,6 +287,7 @@ const createStore = async (req, res) => {
 
     const store = new Store(storeData);
     await store.save();
+    await activateGrowthTrialIfEligible(store);
 
     const populatedStore = await Store.findById(store._id).populate('owner', 'username firstName lastName');
 
@@ -528,6 +534,7 @@ const approveVerification = async (req, res) => {
     store.verification.adminNotes = 'Identity and documents verified by Super Admin.';
     
     await store.save();
+    await activateGrowthTrialIfEligible(store);
 
     res.json({ message: 'Store successfully verified!', store });
   } catch (error) {
@@ -867,8 +874,10 @@ const getSubscriptionPlans = async (_req, res) => {
 
 const getMyStoreSubscription = async (req, res) => {
   try {
-    const context = await resolveSubscriptionContext(req.user);
+    let context = await resolveSubscriptionContext(req.user);
     if (!context?.operationalStore) return res.status(404).json({ message: 'Store not found.' });
+    await reconcileStoreSubscriptionLifecycle(context.operationalStore, { sendNotifications: false });
+    context = await resolveSubscriptionContext(req.user);
     const subscription = await getStoreSubscriptionSummary(context.operationalStore, {
       authoritativeSubscription: context.authoritativeSubscription
     });
@@ -881,8 +890,8 @@ const getMyStoreSubscription = async (req, res) => {
 const updateStoreSubscription = async (req, res) => {
   try {
     const tier = normalizeSubscriptionTier(req.body.tier);
-    if (!SUBSCRIPTION_PLANS[tier] || !['free', 'starter', 'growth', 'professional'].includes(String(req.body.tier || '').toLowerCase())) {
-      return res.status(400).json({ message: 'Select Free, Starter, Growth, or Professional.' });
+    if (!SUBSCRIPTION_PLANS[tier] || !['starter', 'growth', 'professional'].includes(String(req.body.tier || '').toLowerCase())) {
+      return res.status(400).json({ message: 'Select Starter, Growth, or Professional.' });
     }
     const expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && Number.isNaN(expiresAt.getTime())) return res.status(400).json({ message: 'Enter a valid subscription expiry date.' });
@@ -891,14 +900,23 @@ const updateStoreSubscription = async (req, res) => {
       {
         $set: {
           subscriptionTier: tier,
-          subscriptionExpires: tier === 'free' ? null : expiresAt,
-          ...(tier === 'free' ? { subscriptionLegacyGrantOptOutAt: new Date() } : {})
+          subscriptionExpires: expiresAt,
+          subscriptionAccessStatus: 'active'
         },
-        ...(tier !== 'free' ? { $unset: { subscriptionLegacyGrantOptOutAt: 1 } } : {})
+        $unset: {
+          subscriptionLegacyGrantOptOutAt: 1,
+          subscriptionSuspendedAt: 1,
+          subscriptionSuspensionReason: 1
+        }
       },
       { new: true, runValidators: true }
     );
     if (!store) return res.status(404).json({ message: 'Store not found.' });
+    store.subscriptionBillingInterval = store.subscriptionBillingInterval === 'trial'
+      ? 'monthly'
+      : store.subscriptionBillingInterval;
+    restoreSubscriptionAccess(store);
+    await store.save();
     await ActivityLog.create({
       user: req.user._id,
       action: 'Store Subscription Updated',

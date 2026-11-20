@@ -7,7 +7,6 @@ const {
   buildPlanSnapshot,
   finalizeSubscriptionPayment
 } = require('../services/storeSubscriptionPaymentService');
-const { getEffectiveTier } = require('../services/storeSubscriptionService');
 const { findCanonicalOwnedStore } = require('../services/storeAccessService');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
@@ -233,62 +232,39 @@ const startGrowthTrial = async (req, res) => {
     }
     const priorPaidPlan = await StoreSubscriptionPayment.exists({ store: store._id, status: 'paid' });
     if (priorPaidPlan) return res.status(409).json({ message: 'The Growth trial is for stores that have not previously activated a paid plan.' });
-    const trialEnd = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const trialEnd = new Date(now.getTime() + (SUBSCRIPTION_PLANS.growth.trialDays * 24 * 60 * 60 * 1000));
     const updated = await Store.findOneAndUpdate({
       _id: store._id,
       $or: [{ subscriptionTrialUsedAt: { $exists: false } }, { subscriptionTrialUsedAt: null }]
     }, {
       $set: {
         subscriptionTier: 'growth', subscriptionExpires: trialEnd,
-        subscriptionBillingInterval: 'trial', subscriptionTrialUsedAt: now
+        subscriptionBillingInterval: 'trial', subscriptionTrialUsedAt: now,
+        subscriptionAccessStatus: 'trial',
+        'vacationMode.isActive': false,
+        'vacationMode.endedAt': now
       },
-      $unset: { pendingSubscription: 1 }
+      $unset: {
+        pendingSubscription: 1,
+        subscriptionSuspendedAt: 1,
+        subscriptionSuspensionReason: 1,
+        'vacationMode.source': 1,
+        'vacationMode.reason': 1
+      }
     }, { new: true, runValidators: true });
     if (!updated) return res.status(409).json({ message: 'The Growth trial was already claimed. Refresh to see the current plan.' });
     await ActivityLog.create({ user: req.user._id, store: store._id, action: 'Growth Trial Started', details: `Growth trial activated through ${trialEnd.toISOString()}.` }).catch(() => {});
-    return res.json({ message: 'Your 14-day Growth trial is active.', endsAt: trialEnd });
+    return res.json({ message: 'Your one-month Pawzzle Growth trial is active.', endsAt: trialEnd });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ message: error.message || 'Unable to start the Growth trial.' });
   }
 };
 
 const scheduleSubscriptionDowngrade = async (req, res) => {
-  try {
-    const targetTier = normalizeSubscriptionTier(req.body?.tier);
-    if (String(req.body?.tier || '').toLowerCase() !== 'free') {
-      return res.status(400).json({ message: 'Paid plan changes require PayMongo confirmation. Only a change to Free can be scheduled without payment.' });
-    }
-    const store = await getOwnedStore(req.user._id);
-    if (!store) return res.status(404).json({ message: 'Store not found.' });
-    const currentTier = getEffectiveTier(store);
-    if (targetTier === currentTier || currentTier === 'free') {
-      return res.status(400).json({ message: 'This store is already on the Free plan.' });
-    }
-    if (store.pendingSubscription?.paid) {
-      return res.status(409).json({ message: 'A paid plan is already queued for the next term. Contact support if the payment needs review.' });
-    }
-    const now = new Date();
-    store.subscriptionLegacyGrantOptOutAt = now;
-    const effectiveAt = store.subscriptionExpires && new Date(store.subscriptionExpires) > now
-      ? new Date(store.subscriptionExpires) : now;
-    if (effectiveAt <= now) {
-      store.subscriptionTier = targetTier;
-      store.subscriptionExpires = null;
-      store.subscriptionBillingInterval = 'monthly';
-      store.pendingSubscription = undefined;
-    } else {
-      store.pendingSubscription = { tier: targetTier, effectiveAt, paid: false, requestedAt: now, requestedBy: req.user._id };
-    }
-    await store.save();
-    await ActivityLog.create({ user: req.user._id, store: store._id, action: 'Store Subscription Downgrade Scheduled', details: `${SUBSCRIPTION_PLANS[targetTier].name} takes effect ${effectiveAt.toISOString()}; no listings or records will be deleted.` }).catch(() => {});
-    return res.json({
-      message: effectiveAt > now ? 'Downgrade scheduled for the end of the current term.' : 'Plan changed.',
-      pendingSubscription: store.pendingSubscription || null,
-      effectiveAt
-    });
-  } catch (error) {
-    return res.status(error.statusCode || 500).json({ message: error.message || 'Unable to schedule the downgrade.' });
-  }
+  return res.status(410).json({
+    code: 'FREE_PLAN_REMOVED',
+    message: 'The Free seller plan is no longer available. Choose Starter, Growth, or Professional before the current term ends.'
+  });
 };
 
 const cancelSubscriptionDowngrade = async (req, res) => {

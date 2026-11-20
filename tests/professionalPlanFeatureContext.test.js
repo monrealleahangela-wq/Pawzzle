@@ -2,10 +2,9 @@ const assert = require('node:assert/strict');
 const Module = require('node:module');
 const test = require('node:test');
 
-const controllerPath = require.resolve('../controllers/storePlanFeaturesController');
 const subscriptionServicePath = require.resolve('../services/storeSubscriptionService');
 
-test('location allowance uses the authoritative Professional tier instead of stale Free metadata', async () => {
+test('Professional remains a single-location plan and cannot add another location', async () => {
   const originalLoad = Module._load;
   const emptyCountModel = { countDocuments: async () => 0 };
   Module._load = function load(request, parent, isMain) {
@@ -19,108 +18,35 @@ test('location allowance uses the authoritative Professional tier instead of sta
 
   delete require.cache[subscriptionServicePath];
   try {
-    const { assertCanAddLocation } = require('../services/storeSubscriptionService');
+    const { assertCanAddLocation, getStoreSubscriptionSummary } = require('../services/storeSubscriptionService');
     const store = {
-      _id: 'assigned-professional-store',
-      subscriptionTier: 'free',
+      _id: 'professional-store',
+      subscriptionTier: 'professional',
       subscriptionLegacyGrantOptOutAt: new Date(),
-      operatingLocations: [{ isActive: true }]
+      operatingLocations: []
     };
 
-    const summary = await assertCanAddLocation(store, {
-      authoritativeSubscription: {
-        tier: 'professional', sourceStoreId: store._id, payment: { targetTier: 'professional' }
-      }
-    });
-
+    const summary = await getStoreSubscriptionSummary(store);
     assert.equal(summary.tier, 'professional');
-    assert.equal(summary.usage.activeLocations, 2);
-    assert.equal(summary.allowances.locations, 3);
-    assert.equal(summary.capabilities.canAddLocation, true);
+    assert.equal(summary.allowances.locations, 1);
+    assert.equal(summary.capabilities.canAddLocation, false);
+    await assert.rejects(
+      () => assertCanAddLocation(store),
+      error => error?.code === 'SUBSCRIPTION_LOCATION_LIMIT'
+    );
   } finally {
     Module._load = originalLoad;
     delete require.cache[subscriptionServicePath];
   }
 });
 
-test('Professional seller location creation uses the same authoritative plan context as settings', async () => {
-  const originalLoad = Module._load;
-  const entitlementCalls = [];
-  const locationLimitCalls = [];
-  let resolvedUser;
-  let saved = false;
+test('Professional catalog no longer advertises or grants multi-location features', () => {
+  const { SUBSCRIPTION_PLANS, ENTITLEMENTS, getPublicPlanCatalog } = require('../config/subscriptionPlans');
+  const professional = SUBSCRIPTION_PLANS.professional;
+  const publicProfessional = getPublicPlanCatalog().find(plan => plan.id === 'professional');
 
-  const operatingLocations = [];
-  operatingLocations.at = Array.prototype.at;
-  const professionalStore = {
-    _id: 'assigned-professional-store',
-    name: 'Pawzzle',
-    operatingLocations,
-    save: async () => { saved = true; }
-  };
-  const authoritativeSubscription = {
-    tier: 'professional',
-    sourceStoreId: professionalStore._id,
-    payment: { targetTier: 'professional' }
-  };
-
-  Module._load = function load(request, parent, isMain) {
-    if (request === '../models/Store') return {};
-    if (request === '../models/Inventory') return {};
-    if (request === '../models/Order') return {};
-    if (request === '../models/Booking') return {};
-    if (request === '../models/User') return {};
-    if (request === '../services/storeAccessService') return {
-      resolveSubscriptionContext: async user => {
-        resolvedUser = user;
-        return { operationalStore: professionalStore, authoritativeSubscription };
-      }
-    };
-    if (request === '../services/storeSubscriptionService') return {
-      getStoreSubscriptionSummary: async () => ({ tier: 'professional' }),
-      assertStoreEntitlement: async (...args) => entitlementCalls.push(args),
-      assertCanAddLocation: async (...args) => locationLimitCalls.push(args)
-    };
-    return originalLoad.call(this, request, parent, isMain);
-  };
-
-  delete require.cache[controllerPath];
-  try {
-    const { createLocation } = require('../controllers/storePlanFeaturesController');
-    const user = { _id: 'seller-account', role: 'admin', store: professionalStore._id };
-    const req = {
-      user,
-      body: {
-        name: 'Silang Branch',
-        code: 'slg',
-        address: {
-          street: 'Pawzzle Silang', barangay: 'Narra 2', city: 'Silang', state: 'Cavite'
-        }
-      }
-    };
-    let responseStatus;
-    let responseBody;
-    const res = {
-      status(code) { responseStatus = code; return this; },
-      json(body) { responseBody = body; return body; }
-    };
-
-    await createLocation(req, res);
-
-    assert.equal(resolvedUser, user);
-    assert.equal(entitlementCalls.length, 1);
-    assert.equal(entitlementCalls[0][0], professionalStore);
-    assert.equal(entitlementCalls[0][1], 'multi_location');
-    assert.equal(entitlementCalls[0][2].authoritativeSubscription, authoritativeSubscription);
-    assert.equal(locationLimitCalls.length, 1);
-    assert.equal(locationLimitCalls[0][0], professionalStore);
-    assert.equal(locationLimitCalls[0][1].authoritativeSubscription, authoritativeSubscription);
-    assert.equal(saved, true);
-    assert.equal(responseStatus, 201);
-    assert.equal(responseBody.message, 'Store location added.');
-    assert.equal(professionalStore.operatingLocations[0].code, 'SLG');
-  } finally {
-    Module._load = originalLoad;
-    delete require.cache[controllerPath];
-  }
+  assert.equal(professional.locationLimit, 1);
+  assert.equal(professional.entitlements.includes(ENTITLEMENTS.MULTI_LOCATION), false);
+  assert.equal(professional.entitlements.includes(ENTITLEMENTS.CONSOLIDATED_INVENTORY), false);
+  assert.equal(publicProfessional.features.some(feature => /store location/i.test(feature)), false);
 });

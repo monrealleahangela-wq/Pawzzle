@@ -88,6 +88,12 @@ mongoose.connect(process.env.MONGODB_URI)
       processDssAlerts(io).catch(error => console.error('DSS alert sweep failed:', error.message));
     }, 6 * 60 * 60000);
     dssAlertTimer.unref();
+    const { processStoreSubscriptionLifecycles } = require('./services/storeSubscriptionLifecycleService');
+    processStoreSubscriptionLifecycles().catch(error => console.error('Store subscription lifecycle sweep failed:', error.message));
+    const storeSubscriptionTimer = setInterval(() => {
+      processStoreSubscriptionLifecycles().catch(error => console.error('Store subscription lifecycle sweep failed:', error.message));
+    }, 60 * 60000);
+    storeSubscriptionTimer.unref();
   })
   .catch((error) => console.error('❌ MongoDB connection error:', error));
 

@@ -33,6 +33,9 @@ const loadController = mocks => {
     if (request === '../models/ActivityLog') return { create: async () => {} };
     if (request === '../services/paymongoService') return mocks.PayMongo;
     if (request === '../services/storeSubscriptionPaymentService') return mocks.subscriptionService;
+    if (request === '../services/storeAccessService') return {
+      findCanonicalOwnedStore: async ownerId => mocks.Store.findOne?.({ owner: ownerId })
+    };
     return originalLoad.call(this, request, parent, isMain);
   };
   delete require.cache[require.resolve('../services/storeAccessService')];

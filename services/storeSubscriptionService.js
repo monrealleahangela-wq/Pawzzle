@@ -41,7 +41,7 @@ const activeListingQueries = storeId => [
 ];
 
 const idString = value => String(value?._id || value || '');
-const storeSubscriptionFields = 'owner name createdAt updatedAt isActive isDeleted verificationStatus subscriptionLegacyGrantOptOutAt subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt pendingSubscription operatingLocations';
+const storeSubscriptionFields = 'owner name createdAt updatedAt isActive isDeleted verificationStatus subscriptionLegacyGrantOptOutAt subscriptionTier subscriptionExpires subscriptionBillingInterval subscriptionTrialUsedAt subscriptionAccessStatus subscriptionSuspendedAt subscriptionSuspensionReason subscriptionLifecycle vacationMode pendingSubscription operatingLocations';
 
 const queryWithOptionalSelect = async (query, fields) => (
   typeof query?.select === 'function' ? query.select(fields) : query
@@ -59,6 +59,9 @@ const newestActivePayment = payments => [...(payments || [])].sort((left, right)
 })[0] || null;
 
 const getEffectiveTier = store => {
+  if (store?.subscriptionAccessStatus === 'suspended') {
+    return isLegacyProfessionalStore(store) ? 'professional' : normalizeSubscriptionTier(store.subscriptionTier);
+  }
   if (store?.pendingSubscription?.tier && store?.pendingSubscription?.effectiveAt
     && new Date(store.pendingSubscription.effectiveAt).getTime() <= Date.now()) {
     if (store.pendingSubscription.expiresAt
@@ -183,6 +186,11 @@ const getStoreSubscriptionSummary = async (storeOrId, options = {}) => {
       type: authoritative.payment ? 'paid_subscription' : 'store_configuration'
     },
     trialAvailable: !store.subscriptionTrialUsedAt,
+    accessStatus: store.subscriptionAccessStatus || (store.subscriptionBillingInterval === 'trial' ? 'trial' : 'active'),
+    suspendedAt: store.subscriptionSuspendedAt || null,
+    suspensionReason: store.subscriptionSuspensionReason || null,
+    storeOnVacation: Boolean(store.vacationMode?.isActive),
+    trialDays: SUBSCRIPTION_PLANS.growth.trialDays,
     pendingSubscription: pending,
     plan,
     usage: {
@@ -197,14 +205,14 @@ const getStoreSubscriptionSummary = async (storeOrId, options = {}) => {
       locations: plan.locationLimit
     },
     capabilities: {
-      canAddListing: plan.listingLimit === null || activeListings < plan.listingLimit,
-      canAddStaff: staff < plan.staffLimit,
-      canAddLocation: activeLocations < plan.locationLimit,
+      canAddListing: store.subscriptionAccessStatus !== 'suspended' && (plan.listingLimit === null || activeListings < plan.listingLimit),
+      canAddStaff: store.subscriptionAccessStatus !== 'suspended' && staff < plan.staffLimit,
+      canAddLocation: false,
       multiLocationOperationsAvailable: planHasEntitlement(effectiveTier, 'multi_location'),
       entitlements: Object.fromEntries(plan.entitlements.map(entitlement => [entitlement, true])),
       overListingLimit: plan.listingLimit !== null && activeListings > plan.listingLimit,
       overStaffLimit: staff > plan.staffLimit,
-      overLocationLimit: activeLocations > plan.locationLimit
+      overLocationLimit: false
     }
   };
 };
