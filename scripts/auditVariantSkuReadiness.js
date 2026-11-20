@@ -7,7 +7,7 @@
  * plan emitted here.
  */
 const mongoose = require('mongoose');
-const { getSupplierVariantReadiness } = require('../services/supplierVariantReadinessService');
+const { getSellerVariantReadiness } = require('../services/sellerVariantReadinessService');
 
 const run = async () => {
   const uri = process.env.MONGODB_VARIANT_READINESS_AUDIT_URI;
@@ -17,7 +17,7 @@ const run = async () => {
   }
   await mongoose.connect(uri, { autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 10000 });
   try {
-    const report = await getSupplierVariantReadiness({ auditWhenDisabled: true });
+    const report = await getSellerVariantReadiness();
     console.log(JSON.stringify({
       database: mongoose.connection.name,
       generatedAt: new Date().toISOString(),

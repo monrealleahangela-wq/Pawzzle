@@ -27,6 +27,7 @@ const createProductValidation = [
   body('name').trim().notEmpty().withMessage('Product name is required'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('stockQuantity').optional().isInt({ min: 0 }).withMessage('Stock quantity must be a whole number of zero or greater'),
+  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('description').trim().notEmpty().withMessage('Description is required'),
   body('category').custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
 
@@ -67,6 +68,7 @@ const updateProductValidation = [
   body('productMode').optional().isIn(['simple', 'variant']).withMessage('Product type must be simple or variant'),
   body('name').optional().trim().notEmpty().withMessage('Product name cannot be empty'),
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('description').optional().trim().notEmpty().withMessage('Description cannot be empty'),
   body('category').optional().custom(value => Boolean(normalizeProductCategory(value))).withMessage('Invalid product category'),
 

@@ -1,3 +1,5 @@
+const { hasVerifiedIdentityEvidence } = require('../utils/identityVerificationStatus');
+
 const ROLE_PERMISSIONS = {
   super_admin: ['*'],
   platform_admin: ['*'],
@@ -141,7 +143,7 @@ const isPlatformAdmin = userOrRole => PLATFORM_ADMIN_ROLES.has(
 
 const requiresIdentityVerification = user => Boolean(user)
   && !isPlatformAdmin(user)
-  && user.identityVerification?.status !== 'verified';
+  && !hasVerifiedIdentityEvidence(user);
 
 const isStoreAdmin = userOrRole => STORE_ADMIN_ROLES.has(
   typeof userOrRole === 'string' ? userOrRole : userOrRole?.role

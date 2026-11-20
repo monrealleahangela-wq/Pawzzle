@@ -27,6 +27,7 @@ const { authenticate } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
 const { uploadRegistrationIdentity, handleUploadError } = require('../middleware/upload');
 const { isGovernmentIdType } = require('../config/governmentIds');
+const { getIdentityVerificationStatus } = require('../utils/identityVerificationStatus');
 
 // Validation rules
 const registerValidation = [
@@ -177,7 +178,7 @@ const issueTokenAndRedirect = async (req, res) => {
       permissions: serializeEffectivePermissionMap(user),
       avatar: user.avatar || '',
       authProvider: user.authProvider,
-      identityVerificationStatus: user.identityVerification?.status || null
+      identityVerificationStatus: getIdentityVerificationStatus(user)
     });
 
     res.redirect(`${getFrontendUrl()}/oauth-callback?token=${token}&user=${encodeURIComponent(userData)}`);

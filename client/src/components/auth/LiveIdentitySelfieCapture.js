@@ -72,11 +72,11 @@ const LiveIdentitySelfieCapture = ({ value, onCapture }) => {
     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><Camera className="h-4 w-4" /></span>
-        <div><p className="text-sm font-black text-slate-800">Live identity selfie <span className="text-rose-600">*</span></p><p className="mt-1 text-xs leading-5 text-slate-500">Use the camera now. Uploaded or saved selfie files are not accepted.</p></div>
+        <div><p className="text-sm font-black text-slate-800">Live identity selfie <span className="text-rose-600">*</span></p><p className="mt-1 text-xs leading-5 text-slate-500">Use the camera now. Uploaded or saved selfie files are not accepted. Keep other people and face photos out of view.</p></div>
       </div>
       <div className="mt-4 overflow-hidden rounded-xl bg-slate-950">
         {previewUrl ? <img src={previewUrl} alt="Captured identity selfie" className="aspect-video w-full object-contain" /> : <video ref={videoRef} muted playsInline className={`aspect-video w-full object-cover ${cameraActive ? 'block' : 'hidden'}`} />}
-        {!previewUrl && !cameraActive && <div className="flex aspect-video items-center justify-center px-5 text-center text-xs font-semibold text-slate-300">Start the camera and keep one unobstructed face centered in clear lighting.</div>}
+        {!previewUrl && !cameraActive && <div className="flex aspect-video items-center justify-center px-5 text-center text-xs font-semibold text-slate-300">Start the camera and keep exactly one unobstructed face centered in clear lighting. Remove other people and face photos from the background.</div>}
       </div>
       <canvas ref={canvasRef} className="hidden" />
       {error && <p role="alert" className="mt-3 text-xs font-bold text-rose-600">{error}</p>}

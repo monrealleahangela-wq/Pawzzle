@@ -72,3 +72,34 @@ test('new seller account proceeds from account details to email verification', a
   expect(await screen.findByRole('heading', { name: /verify your email address/i })).toBeVisible();
   expect(screen.getAllByLabelText(/verification digit/i)).toHaveLength(6);
 });
+
+test('seller application never opens when the government ID and live selfie do not match', async () => {
+  authService.verifyRegisterOTP.mockRejectedValue({
+    response: {
+      data: {
+        code: 'FACE_MATCH_FAILED',
+        message: 'Your live selfie did not match the face on the government ID.'
+      }
+    }
+  });
+  render(<MemoryRouter><SellerJoin /></MemoryRouter>);
+
+  fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Store' } });
+  fireEvent.change(screen.getByLabelText(/surname/i), { target: { value: 'Owner' } });
+  fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'owner@example.com' } });
+  fireEvent.change(screen.getByPlaceholderText(/create a secure password/i), { target: { value: 'SecurePass123!' } });
+  fireEvent.change(screen.getByPlaceholderText(/same password again/i), { target: { value: 'SecurePass123!' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Select passport' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Attach valid government ID' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Capture live selfie' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Accept face-match consent' }));
+  fireEvent.click(screen.getByRole('button', { name: /create account & verify email/i }));
+
+  const digits = await screen.findAllByLabelText(/verification digit/i);
+  '123456'.split('').forEach((digit, index) => fireEvent.change(digits[index], { target: { value: digit } }));
+  fireEvent.click(screen.getByRole('button', { name: /verify & continue to application/i }));
+
+  await waitFor(() => expect(authService.verifyRegisterOTP).toHaveBeenCalledTimes(1));
+  expect(mockNavigate).not.toHaveBeenCalledWith('/account-upgrade', expect.anything());
+  expect(screen.getByRole('heading', { name: /verify your email address/i })).toBeVisible();
+});

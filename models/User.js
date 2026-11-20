@@ -5,6 +5,7 @@ const { GOVERNMENT_ID_TYPES } = require('../config/governmentIds');
 
 const identityVerificationSchema = new mongoose.Schema({
   status: { type: String, enum: ['verified', 'review_required', 'rejected'], required: true },
+  verificationVersion: { type: String, enum: ['strict-face-match-v2'] },
   governmentId: {
     documentType: { type: String, enum: GOVERNMENT_ID_TYPES, required: true },
     detectedType: { type: String, enum: GOVERNMENT_ID_TYPES },
@@ -16,8 +17,10 @@ const identityVerificationSchema = new mongoose.Schema({
   faceMatch: {
     provider: { type: String, enum: ['aws_rekognition'], required: true },
     similarity: { type: Number, min: 0, max: 100, required: true },
-    threshold: { type: Number, min: 80, max: 100, required: true },
-    sourceFaceConfidence: { type: Number, min: 0, max: 100, default: 0 }
+    threshold: { type: Number, min: 99, max: 100, required: true },
+    sourceFaceConfidence: { type: Number, min: 0, max: 100, default: 0 },
+    targetFaceConfidence: { type: Number, min: 0, max: 100, default: 0 },
+    targetFaceCount: { type: Number, min: 0, max: 1, default: 0 }
   },
   consent: {
     acceptedAt: { type: Date, required: true },

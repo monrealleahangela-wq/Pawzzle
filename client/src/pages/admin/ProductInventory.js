@@ -274,7 +274,7 @@ const ProductInventory = () => {
     if (!productForm.name?.trim() || !productForm.category || !productForm.description?.trim()) {
       return toast.warn('Complete the required product information.');
     }
-    if (Number(productForm.price) <= 0) {
+    if (productForm.productMode !== 'variant' && Number(productForm.price) <= 0) {
       return toast.warn('Price must be greater than 0.');
     }
     if (productForm.productMode !== 'variant'
@@ -285,6 +285,14 @@ const ProductInventory = () => {
     }
     if (productForm.productMode === 'variant' && !(productForm.normalizedVariants || []).length) {
       return toast.warn('Add at least one explicit variant combination.');
+    }
+    if (productForm.productMode === 'variant' && productForm.normalizedVariants.some(variant => (
+      !(variant.attributes || []).length
+      || variant.attributes.some(attribute => !attribute.label?.trim() || !attribute.valueLabel?.trim())
+      || !variant.sku?.trim()
+      || Number(variant.price) <= 0
+    ))) {
+      return toast.warn('Every variant needs complete options, a unique SKU, and a price greater than 0.');
     }
     if (productForm.images.length < 1) {
       return toast.warn('Media Error: Minimum 1 image required.');
@@ -303,11 +311,19 @@ const ProductInventory = () => {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const isAdminOrStaff = PLATFORM_ADMIN_ROLES.has(userData.role) || STORE_ADMIN_ROLES.has(userData.role) || OPERATIONAL_ROLES.has(userData.role);
 
+      const activeVariantPrices = productForm.productMode === 'variant'
+        ? productForm.normalizedVariants
+          .filter(variant => !variant.markDiscontinued && variant.isActive !== false)
+          .map(variant => Number(variant.price))
+          .filter(price => Number.isFinite(price) && price > 0)
+        : [];
       const payload = {
         ...productForm,
         sku: productForm.sku?.trim() || `PZ-${productForm.name.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
         shortDescription: productForm.shortDescription?.trim() || productForm.description.trim().slice(0, 160),
-        price: Number(productForm.price),
+        price: productForm.productMode === 'variant'
+          ? Math.min(...(activeVariantPrices.length ? activeVariantPrices : [Number(productForm.price) || 0.01]))
+          : Number(productForm.price),
         stockQuantity: Number(productForm.stockQuantity || 0),
         weight: hasProductWeight ? Number(productForm.weight) : undefined,
         weightUnit: hasProductWeight ? (productForm.weightUnit || 'kg') : undefined,
@@ -315,7 +331,10 @@ const ProductInventory = () => {
         packagingWeight: productForm.weightIncludesPackaging || productForm.packagingWeight === ''
           ? undefined
           : Number(productForm.packagingWeight),
-        packagingWeightUnit: productForm.packagingWeightUnit || 'g'
+        packagingWeightUnit: productForm.packagingWeightUnit || 'g',
+        visibility: productForm.productMode === 'variant' && !variantCapabilities.customerBrowsingEnabled
+          ? 'draft'
+          : productForm.visibility
       };
       if (productForm.productMode === 'variant') {
         payload.stockQuantity = 0;
@@ -595,7 +614,7 @@ const ProductInventory = () => {
             </button>
           )}
           {variantCapabilities.enabled && canUpdate && (
-            <button type="button" onClick={() => { handleOpenProductModal(); setProductForm({ ...initialProductState, productMode: 'variant' }); }} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-5 text-[13px] font-bold text-primary-700 transition-all hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
+            <button type="button" onClick={() => { handleOpenProductModal(); setProductForm({ ...initialProductState, productMode: 'variant', visibility: variantCapabilities.customerBrowsingEnabled ? 'published' : 'draft' }); }} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-primary-200 bg-primary-50 px-5 text-[13px] font-bold text-primary-700 transition-all hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 sm:flex-none">
               <Plus className="h-4 w-4" /> Add Variant Listing
             </button>
           )}

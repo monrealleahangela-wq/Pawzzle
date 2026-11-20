@@ -1,5 +1,9 @@
 const crypto = require('crypto');
 const { RekognitionClient, CompareFacesCommand } = require('@aws-sdk/client-rekognition');
+const {
+  MINIMUM_FACE_MATCH_THRESHOLD,
+  MINIMUM_FACE_CONFIDENCE
+} = require('./identityVerificationStatus');
 
 const DEFAULT_REKOGNITION_REGION = 'ap-southeast-1';
 
@@ -60,7 +64,7 @@ const getFaceMatchThreshold = configured => {
   if (!Number.isFinite(value) || value < 80 || value > 100) {
     throw configurationError('Identity face-match configuration is invalid.', 'IDENTITY_FACE_MATCH_INVALID_THRESHOLD');
   }
-  return value;
+  return Math.max(value, MINIMUM_FACE_MATCH_THRESHOLD);
 };
 
 const resolveRekognitionRegion = (environment = process.env) => [
@@ -155,13 +159,26 @@ const compareIdentityFaces = async (governmentIdImage, selfieImage, options = {}
       SimilarityThreshold: threshold,
       QualityFilter: 'HIGH'
     }));
-    const similarity = Math.max(0, ...((response.FaceMatches || []).map(match => Number(match.Similarity || 0))));
+    const faceMatches = response.FaceMatches || [];
+    const unmatchedFaces = response.UnmatchedFaces || [];
+    const bestMatch = faceMatches.reduce((best, match) => (
+      Number(match?.Similarity || 0) > Number(best?.Similarity || 0) ? match : best
+    ), null);
+    const similarity = Number(bestMatch?.Similarity || 0);
+    const sourceFaceConfidence = Number(response.SourceImageFace?.Confidence || 0);
+    const targetFaceConfidence = Number(bestMatch?.Face?.Confidence || 0);
+    const targetFaceCount = faceMatches.length + unmatchedFaces.length;
     return {
-      matched: similarity >= threshold,
+      matched: similarity >= threshold
+        && sourceFaceConfidence >= MINIMUM_FACE_CONFIDENCE
+        && targetFaceConfidence >= MINIMUM_FACE_CONFIDENCE
+        && targetFaceCount === 1,
       similarity,
       threshold,
       provider: 'aws_rekognition',
-      sourceFaceConfidence: Number(response.SourceImageFace?.Confidence || 0)
+      sourceFaceConfidence,
+      targetFaceConfidence,
+      targetFaceCount
     };
   } catch (error) {
     if (error?.statusCode && error?.code) throw error;
@@ -179,6 +196,23 @@ const compareIdentityFaces = async (governmentIdImage, selfieImage, options = {}
   }
 };
 
+const verifyIdentityFaceMatch = async (governmentIdImage, selfieImage, options = {}) => {
+  const result = await compareIdentityFaces(governmentIdImage, selfieImage, options);
+  if (result.targetFaceCount !== 1) {
+    throw Object.assign(new Error('Keep exactly one unobstructed face in the live selfie and remove other people or face images from view.'), {
+      statusCode: 400,
+      code: 'IDENTITY_SINGLE_FACE_REQUIRED'
+    });
+  }
+  if (!result.matched) {
+    throw Object.assign(new Error('Your live selfie did not match the face on the government ID. Retake both images in clear lighting and try again.'), {
+      statusCode: 400,
+      code: 'FACE_MATCH_FAILED'
+    });
+  }
+  return result;
+};
+
 module.exports = {
   getEncryptionKey,
   encryptIdentityDocument,
@@ -187,5 +221,6 @@ module.exports = {
   getFaceMatchThreshold,
   resolveRekognitionRegion,
   resolveRekognitionCredentials,
-  compareIdentityFaces
+  compareIdentityFaces,
+  verifyIdentityFaceMatch
 };
