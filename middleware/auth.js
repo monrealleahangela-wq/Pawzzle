@@ -8,7 +8,8 @@ const { attachStoreRolePolicy } = require('../services/rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
 const {
   hasVerifiedIdentityEvidence,
-  getIdentityVerificationStatus
+  getIdentityVerificationStatus,
+  IDENTITY_VERIFICATION_AUTH_PROJECTION
 } = require('../utils/identityVerificationStatus');
 
 const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
@@ -30,7 +31,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('+identityVerification');
+    const user = await User.findById(decoded.id).select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
     if (!user) {
       return res.status(401).json({ message: 'Invalid token.' });
     }

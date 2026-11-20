@@ -16,6 +16,7 @@ const {
 } = require('../utils/identityVerification');
 const {
   STRICT_FACE_MATCH_VERSION,
+  IDENTITY_VERIFICATION_AUTH_PROJECTION,
   hasVerifiedIdentityEvidence,
   getIdentityVerificationStatus
 } = require('../utils/identityVerificationStatus');
@@ -172,6 +173,12 @@ test('identity verification rejects mismatched, low-confidence, and multiple-fac
 test('verified status alone cannot bypass identity or store-application access', () => {
   const strictUser = { role: 'customer', identityVerification: verifiedIdentity() };
   const statusOnlyUser = { role: 'customer', identityVerification: { status: 'verified' } };
+  const metadataOnlyUser = {
+    role: 'customer',
+    identityVerification: verifiedIdentity({
+      governmentId: { documentType: 'passport', mimeType: 'image/jpeg', size: 1024 }
+    })
+  };
   const mismatchedUser = {
     role: 'customer',
     identityVerification: verifiedIdentity({
@@ -188,6 +195,7 @@ test('verified status alone cannot bypass identity or store-application access',
   assert.equal(hasVerifiedIdentityEvidence(statusOnlyUser), false);
   assert.equal(getIdentityVerificationStatus(statusOnlyUser), 'not_verified');
   assert.equal(requiresIdentityVerification(statusOnlyUser), true);
+  assert.equal(hasVerifiedIdentityEvidence(metadataOnlyUser), true);
   assert.equal(hasVerifiedIdentityEvidence(mismatchedUser), false);
   assert.equal(requiresIdentityVerification(mismatchedUser), true);
 
@@ -286,7 +294,7 @@ test('HTTP and socket feature access fail closed until face matching succeeds', 
   const routes = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
   const sockets = fs.readFileSync(path.join(__dirname, '../services/socketAuthorization.js'), 'utf8');
-  assert.match(middleware, /select\('\+identityVerification'\)/);
+  assert.match(middleware, /select\(IDENTITY_VERIFICATION_AUTH_PROJECTION\)/);
   assert.match(middleware, /IDENTITY_VERIFICATION_REQUIRED/);
   assert.match(middleware, /requiresIdentityVerification\(user\)/);
   assert.match(routes, /router\.post\('\/identity\/verify',[\s\S]*authenticate[\s\S]*authRateLimits\.identityVerification[\s\S]*uploadRegistrationIdentity[\s\S]*verifyCurrentUserIdentity/);
@@ -300,12 +308,12 @@ test('identity verification is idempotent for accounts already verified in the d
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
   assert.match(
     controller,
-    /hasVerifiedIdentityEvidence\(user\)[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
+    /hasVerifiedIdentityEvidence\(req\.user\)[\s\S]*alreadyVerified: true[\s\S]*Pawzzle features are unlocked[\s\S]*user: safe/
   );
   assert.doesNotMatch(controller, /IDENTITY_ALREADY_VERIFIED', message: 'This account is already identity verified/);
 });
 
-test('every authentication path selects the hidden identity record before applying the one-time gate', () => {
+test('authentication uses strict verification metadata without loading encrypted ID images', () => {
   const files = [
     '../middleware/auth.js',
     '../controllers/authController.js',
@@ -314,9 +322,12 @@ test('every authentication path selects the hidden identity record before applyi
   ];
   for (const file of files) {
     const source = fs.readFileSync(path.join(__dirname, file), 'utf8');
-    assert.doesNotMatch(source, /\+identityVerification\.status/);
+    assert.doesNotMatch(source, /\.select\(['"`]\+identityVerification['"`]\)/);
   }
+  assert.match(IDENTITY_VERIFICATION_AUTH_PROJECTION, /identityVerification\.faceMatch\.similarity/);
+  assert.match(IDENTITY_VERIFICATION_AUTH_PROJECTION, /identityVerification\.governmentId\.size/);
+  assert.doesNotMatch(IDENTITY_VERIFICATION_AUTH_PROJECTION, /encryptedImage/);
   const controller = fs.readFileSync(path.join(__dirname, '../controllers/authController.js'), 'utf8');
-  assert.match(controller, /select\('\+password \+identityVerification'\)/);
-  assert.match(controller, /select\('\+identityVerification'\)/);
+  assert.match(controller, /select\(`\+password \$\{IDENTITY_VERIFICATION_AUTH_PROJECTION\}`\)/);
+  assert.match(controller, /const user = req\.user;[\s\S]*populateAuthStore\(user\)/);
 });

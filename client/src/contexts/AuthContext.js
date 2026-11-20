@@ -123,8 +123,10 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    // Check role every 30 seconds
-    const intervalId = setInterval(checkRoleChange, 30000);
+    // Role policy changes are rare. Polling every 30 seconds made every signed-in
+    // browser repeatedly rehydrate its account and store, competing with actual
+    // page-data requests. Explicit admin actions still call refreshUserRole.
+    const intervalId = setInterval(checkRoleChange, 5 * 60 * 1000);
 
     // Also check role when user focuses back to the tab
     const handleVisibilityChange = () => {

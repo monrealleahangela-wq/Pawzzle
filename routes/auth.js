@@ -27,7 +27,15 @@ const { authenticate } = require('../middleware/auth');
 const { authRateLimits } = require('../middleware/authRateLimit');
 const { uploadRegistrationIdentity, handleUploadError } = require('../middleware/upload');
 const { isGovernmentIdType } = require('../config/governmentIds');
-const { getIdentityVerificationStatus } = require('../utils/identityVerificationStatus');
+const {
+  getIdentityVerificationStatus,
+  IDENTITY_VERIFICATION_AUTH_PROJECTION
+} = require('../utils/identityVerificationStatus');
+
+const AUTH_STORE_PROJECTION = [
+  '_id', 'name', 'logo', 'operationalModules', 'approvedBusinessCategories',
+  'verificationStatus', 'subscriptionTier', 'subscriptionExpires'
+].join(' ');
 
 // Validation rules
 const registerValidation = [
@@ -163,7 +171,9 @@ const getFrontendUrl = () => process.env.FRONTEND_URL
 // ─── Helper: issue JWT after OAuth and redirect to frontend ───────────────────
 const issueTokenAndRedirect = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('+identityVerification').populate('store');
+    const user = await User.findById(req.user._id)
+      .select(IDENTITY_VERIFICATION_AUTH_PROJECTION)
+      .populate('store', AUTH_STORE_PROJECTION);
     if (!user) return res.redirect(`${getFrontendUrl()}/login?error=oauth_failed`);
     await attachStoreRolePolicy(user);
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });

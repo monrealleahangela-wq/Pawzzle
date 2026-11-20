@@ -57,6 +57,7 @@ test('dashboard clients use the existing aggregate endpoint with authenticated l
   const superAdmin = read('client/src/pages/superadmin/Dashboard.js');
   const app = read('client/src/App.js');
   const socket = read('client/src/utils/socket.js');
+  const api = read('client/src/services/apiService.js');
   assert.match(admin, /storeService\.getDashboardStats\(\)/);
   assert.match(admin, /setInterval\(\(\) => fetchDashboard\(\{ quiet: true \}\), 60000\)/);
   assert.match(admin, /\/admin\/purchase-orders/);
@@ -64,6 +65,17 @@ test('dashboard clients use the existing aggregate endpoint with authenticated l
   assert.match(superAdmin, /dssService\.getSuperAdminInsights\(\)/);
   assert.match(superAdmin, /onDashboardUpdate: liveRefresh/);
   assert.match(socket, /localStorage\.getItem\('token'\)/);
+  assert.match(api, /getDashboardStats: \(\) => api\.get\('\/stores\/dashboard\/stats', \{ timeout: 30000 \}\)/);
+});
+
+test('dashboard queries are time-bounded and do not load unlimited transaction history', () => {
+  const source = read('services/operationsDashboardService.js');
+  assert.match(source, /DASHBOARD_QUERY_MAX_TIME_MS = 8000/);
+  assert.match(source, /historyStart = new Date\(now\.getFullYear\(\), now\.getMonth\(\) - 5, 1\)/);
+  assert.match(source, /Order\.find\(recentOrActiveOrders\)[\s\S]*maxTimeMS\(DASHBOARD_QUERY_MAX_TIME_MS\)/);
+  assert.match(source, /Booking\.find\(recentOrActiveBookings\)[\s\S]*maxTimeMS\(DASHBOARD_QUERY_MAX_TIME_MS\)/);
+  assert.doesNotMatch(source, /Order\.find\(active\)/);
+  assert.doesNotMatch(source, /Booking\.find\(active\)/);
 });
 
 test('dashboard update rooms remain server-authorized and tenant-scoped', () => {

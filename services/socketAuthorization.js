@@ -15,6 +15,7 @@ const { canAccessStore, idsEqual } = require('../utils/authorizationPolicy');
 const { canAccessConversation } = require('../utils/conversationAuthorization');
 const { attachStoreRolePolicy } = require('./rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
+const { IDENTITY_VERIFICATION_AUTH_PROJECTION } = require('../utils/identityVerificationStatus');
 
 const socketCredentials = socket => ({
   token: socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, ''),
@@ -26,7 +27,7 @@ const authenticateSocket = async (socket, next) => {
     const { token, deliveryToken } = socketCredentials(socket);
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select('+identityVerification');
+      const user = await User.findById(decoded.id).select(IDENTITY_VERIFICATION_AUTH_PROJECTION);
       if (!user || !user.isActive || user.isDeleted) return next(new Error('Authentication failed'));
       if (requiresIdentityVerification(user)) {
         return next(new Error('Identity verification required'));
