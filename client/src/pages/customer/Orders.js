@@ -26,10 +26,14 @@ const STATUS_META = {
   in_transit: { label: 'Out for Delivery', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', icon: Truck },
   customer_confirmation_pending: { label: 'Confirm Receipt', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: Package },
   delivered: { label: 'Delivered', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle },
+  completed: { label: 'Completed', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', icon: XCircle },
 };
 
 const statusMetaForOrder = (order, effectiveStatus) => {
+  if (order.deliveryMethod === 'pickup' && ['completed', 'delivered'].includes(effectiveStatus)) {
+    return { label: 'Picked up', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', icon: CheckCircle };
+  }
   if (effectiveStatus !== 'ready_for_pickup' || order.deliveryMethod !== 'pickup') {
     return STATUS_META[effectiveStatus] || STATUS_META.pending_payment;
   }
@@ -171,7 +175,10 @@ const Orders = () => {
                   'finalized': 'completed'
                 };
                 
-                const effectiveStatus = legacyToNew[order.status] || order.status;
+                let effectiveStatus = legacyToNew[order.status] || order.status;
+                if (effectiveStatus === 'pending_payment' && ['paid', 'settled'].includes(String(order.paymentStatus || '').toLowerCase())) {
+                  effectiveStatus = 'paid';
+                }
                 const meta = statusMetaForOrder(order, effectiveStatus);
                 const StatusIcon = meta.icon;
                 const orderPolicy = normalizeRefundPolicy(order.refundPolicySnapshot || order.store?.refundPolicy);
@@ -231,7 +238,7 @@ const Orders = () => {
                           )}
                           {['delivered', 'completed'].includes(effectiveStatus) && item.itemType === 'product' && (returnCases[`${order._id}:${item._id}`]
                             ? <Link to={`/returns/${returnCases[`${order._id}:${item._id}`]._id}`} className="flex min-h-9 items-center rounded-lg bg-primary-700 px-3 text-center text-[9px] font-bold uppercase text-white">View Return/Refund Case</Link>
-                            : <button type="button" onClick={()=>setIssueTarget({order,item})} className="flex min-h-9 items-center rounded-lg border border-primary-200 bg-primary-50 px-3 text-[9px] font-bold uppercase text-primary-800">Report an Issue</button>)}
+                            : order.deliveryMethod !== 'pickup' && <button type="button" onClick={()=>setIssueTarget({order,item})} className="flex min-h-9 items-center rounded-lg border border-primary-200 bg-primary-50 px-3 text-[9px] font-bold uppercase text-primary-800">Report an Issue</button>)}
                         </div>
                       ))}
                     </div>

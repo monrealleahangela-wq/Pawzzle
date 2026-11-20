@@ -12,7 +12,8 @@ test('product order history uses compact cards without hiding financial details'
   assert.match(source, /PaymentBreakdown summary=\{orderPaymentSummary\(order\)\} compact className="!space-y-1 !text-\[9px\] leading-tight"/);
   assert.match(source, /refundPolicyLabel\(orderPolicy\.type\)/);
   assert.match(source, /Payment: \{order\.paymentStatus/);
-  assert.match(source, /Delivery: \{meta\.label\}/);
+  assert.match(source, /order\.deliveryMethod === 'pickup' \? 'Pickup' : 'Delivery'/);
+  assert.match(source, /\}: \{meta\.label\}/);
 });
 
 test('product order actions stay clear and compact across mobile and desktop', () => {

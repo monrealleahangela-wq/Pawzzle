@@ -5,10 +5,11 @@ const test = require('node:test');
 const axios = require('axios');
 
 const OrderReturn = require('../models/OrderReturn');
+const Order = require('../models/Order');
 const Delivery = require('../models/Delivery');
 const Notification = require('../models/Notification');
 const PayMongo = require('../services/paymongoService');
-const { calculateRefundBreakdown } = require('../services/orderReturnLifecycleService');
+const { calculateRefundBreakdown, requestVariantReturn } = require('../services/orderReturnLifecycleService');
 
 const source = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
 
@@ -53,6 +54,34 @@ test('refund calculation includes product amount and only returns shipping for a
     items: [{ _id: itemId, itemType: 'product', quantity: 2 }], shippingFee: 40, totalAmount: 300
   });
   assert.deepEqual(partial, { productAmount: 125, shippingAmount: 0, otherEligibleCharges: 0, amount: 125 });
+});
+
+test('store pickup purchases cannot open an issue after the in-person handoff', async () => {
+  const originalFindById = Order.findById;
+  Order.findById = async () => ({
+    _id: '507f1f77bcf86cd799439010',
+    customer: '507f1f77bcf86cd799439011',
+    deliveryMethod: 'pickup',
+    status: 'completed',
+    paymentStatus: 'paid',
+    isDeleted: false
+  });
+  try {
+    await assert.rejects(
+      requestVariantReturn({
+        user: { _id: '507f1f77bcf86cd799439011', role: 'customer' },
+        orderId: '507f1f77bcf86cd799439010',
+        itemId: '507f1f77bcf86cd799439012',
+        issueType: 'other',
+        requestedResolution: 'return_refund'
+      }),
+      error => error.statusCode === 409
+        && error.code === 'RETURN_NOT_ELIGIBLE'
+        && /inspected before the item is handed over/.test(error.message)
+    );
+  } finally {
+    Order.findById = originalFindById;
+  }
 });
 
 test('authenticated routes cover every role handoff and accept multipart evidence', () => {
