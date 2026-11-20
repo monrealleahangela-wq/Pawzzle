@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { PRODUCT_CATEGORY_VALUES, normalizeProductCategory } = require('../utils/productCategories');
+const { productEvidenceSchema, productRecommendationProfileSchema } = require('./schemas/productRecommendationProfile');
 
 const productSchema = new mongoose.Schema({
   productMode: {
@@ -163,6 +164,11 @@ const productSchema = new mongoose.Schema({
     type: String,
     enum: ['dog', 'cat', 'bird', 'fish', 'rabbit', 'hamster', 'reptile', 'all']
   }],
+  recommendationProfile: { type: productRecommendationProfileSchema, default: () => ({}) },
+  dssStatus: { type: String, enum: ['dss_ready', 'incomplete_information', 'needs_correction'], default: 'incomplete_information' },
+  dssCompleteness: { type: Number, min: 0, max: 100, default: 0 },
+  dssIssues: [{ type: String, trim: true }],
+  productEvidence: [productEvidenceSchema],
   isActive: {
     type: Boolean,
     default: true

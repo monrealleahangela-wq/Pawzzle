@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { productEvidenceSchema, productRecommendationProfileSchema } = require('./schemas/productRecommendationProfile');
 
 const supplierProductSchema = new mongoose.Schema({
   productMode: {
@@ -104,6 +105,11 @@ const supplierProductSchema = new mongoose.Schema({
   nutritionalInformation: { type: String, trim: true, default: '' },
   intendedSpecies: [{ type: String, trim: true }],
   safetyNotes: { type: String, trim: true, default: '' },
+  recommendationProfile: { type: productRecommendationProfileSchema, default: () => ({}) },
+  dssStatus: { type: String, enum: ['dss_ready', 'incomplete_information', 'needs_correction'], default: 'incomplete_information' },
+  dssCompleteness: { type: Number, min: 0, max: 100, default: 0 },
+  dssIssues: [{ type: String, trim: true }],
+  productEvidence: [productEvidenceSchema],
   fdaRegistrationNumber: { type: String, trim: true, default: '', select: false },
   fdaRegistrationExpiry: { type: Date, select: false },
   regulatoryDocuments: [{

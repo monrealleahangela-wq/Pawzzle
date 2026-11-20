@@ -122,7 +122,9 @@ const ProductInventory = () => {
     returnPolicy: '',
     expiryDate: '',
     ingredients: '',
-    usageInstructions: ''
+    usageInstructions: '',
+    recommendationProfile: {},
+    productEvidence: []
   };
 
   useEffect(() => {
@@ -430,6 +432,50 @@ const ProductInventory = () => {
     }
   };
 
+  const handleEvidenceUpload = async files => {
+    const selectedFiles = Array.from(files || []).slice(0, 10);
+    if (!selectedFiles.length) return;
+    if (selectedFiles.some(file => !file.type?.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      return toast.warn('Use JPG or PNG label images up to 5 MB each.');
+    }
+    setSubmitting(true);
+    const formData = new FormData();
+    selectedFiles.forEach(file => formData.append('images', file));
+    try {
+      const response = await uploadService.uploadMultipleImages(formData);
+      const urls = response.data.urls || response.data.imageUrls || [];
+      const readings = await Promise.all(selectedFiles.map(async file => {
+        const data = new FormData();
+        data.append('label', file);
+        try { return (await uploadService.extractProductLabel(data)).data?.suggestions || {}; }
+        catch (_error) { return {}; }
+      }));
+      setProductForm(current => ({
+        ...current,
+        recommendationProfile: {
+          ...(current.recommendationProfile || {}),
+          ingredients: current.recommendationProfile?.ingredients || readings.find(item => item.ingredients)?.ingredients || '',
+          nutritionalInformation: current.recommendationProfile?.nutritionalInformation || readings.find(item => item.nutritionalInformation)?.nutritionalInformation || ''
+        },
+        productEvidence: [
+          ...(current.productEvidence || []),
+          ...urls.map((url, index) => ({
+            kind: /nutrition|ingredient|label/i.test(selectedFiles[index]?.name || '') ? 'nutrition_label' : 'packaging',
+            url,
+            originalName: selectedFiles[index]?.name || 'Product label image',
+            extractedText: readings[index]?.extractedText || '',
+            reviewStatus: readings[index]?.extractedText ? 'seller_review_required' : 'not_scanned'
+          }))
+        ].slice(0, 10)
+      }));
+      toast.success('Label images attached. Review any suggested text before saving.');
+    } catch (_error) {
+      toast.error('Unable to upload the label images.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleVariantImageUpload = async (files, variantIndex) => {
     const selectedFiles = Array.from(files || []);
     if (!selectedFiles.length) return;
@@ -724,7 +770,7 @@ const ProductInventory = () => {
                   {/* Card Body */}
                   <div className="flex flex-1 flex-col gap-2.5 p-4">
                     <div>
-                      <p className="mb-1.5 text-[11px] font-bold uppercase leading-none tracking-wide text-primary-600">{product.category}</p>
+                      <div className="mb-1.5 flex flex-wrap items-center gap-1"><p className="text-[11px] font-bold uppercase leading-none tracking-wide text-primary-600">{product.category}</p><span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${product.dssStatus === 'dss_ready' ? 'bg-emerald-50 text-emerald-700' : product.dssStatus === 'needs_correction' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>{product.dssStatus === 'dss_ready' ? 'DSS Ready' : product.dssStatus === 'needs_correction' ? 'Needs Correction' : 'Incomplete Information'}</span></div>
                       <div role="heading" aria-level="3" className="mb-1 min-h-[2.5rem] text-base font-black uppercase leading-tight text-slate-900 line-clamp-2 break-words">
                         {product.name}
                       </div>
@@ -940,6 +986,7 @@ const ProductInventory = () => {
         onSubmit={handleProductSubmit}
         onImageUpload={handleImageUpload}
         onVariantImageUpload={handleVariantImageUpload}
+        onEvidenceUpload={handleEvidenceUpload}
         loading={submitting}
         variantCapabilities={variantCapabilities}
         onAdvanced={() => { setModalTab('edit'); setShowAdvancedProductEditor(true); }}

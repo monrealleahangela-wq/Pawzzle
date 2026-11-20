@@ -2,6 +2,7 @@ import React from 'react';
 import { Eye, Image as ImageIcon, Info, Package, Plus, SlidersHorizontal, Tag, Trash2, Upload, X } from 'lucide-react';
 import { getImageUrl } from '../../services/apiService';
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
+import ProductRecommendationFields from './ProductRecommendationFields';
 import {
   CompactFormModal,
   CompactFormSection,
@@ -11,7 +12,7 @@ import {
   compactTextareaClass
 } from './CompactEntityForm';
 
-const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, onImageUpload, onVariantImageUpload, loading, onAdvanced, variantCapabilities }) => {
+const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, onImageUpload, onVariantImageUpload, onEvidenceUpload, loading, onAdvanced, variantCapabilities }) => {
   const image = form.images?.[0];
   const variantMode = form.productMode === 'variant';
   const priceValid = variantMode || Number(form.price) > 0;
@@ -145,7 +146,12 @@ const ProductFormModal = ({ editingProduct, form, setForm, onClose, onSubmit, on
         </div>
       </CompactFormSection>}
 
-      <CompactFormSection step={variantMode ? '6' : '5'} icon={Eye} title="Visibility" description="Control whether this product is available to customers.">
+      <CompactFormSection step={variantMode ? '6' : '5'} icon={Tag} title="Pet Matching Details" description="These declarations power personalized recommendations. Pawzzle will not assume missing compatibility.">
+        {/food/i.test(form.category || '') && <label className="mb-3 block text-[10px] font-bold text-slate-700">Expiration date<input type="date" value={form.expiryDate ? String(form.expiryDate).slice(0, 10) : ''} onChange={event => set('expiryDate', event.target.value)} className={compactInputClass} /></label>}
+        <ProductRecommendationFields category={form.category} value={form.recommendationProfile} onChange={value => setForm(current => ({ ...current, recommendationProfile: value, dssStatus: undefined, dssIssues: [] }))} evidence={form.productEvidence || []} onEvidenceUpload={onEvidenceUpload} onEvidenceChange={value => setForm(current => ({ ...current, productEvidence: value, dssStatus: undefined, dssIssues: [] }))} status={form.dssStatus} issues={form.dssIssues || []} />
+      </CompactFormSection>
+
+      <CompactFormSection step={variantMode ? '7' : '6'} icon={Eye} title="Visibility" description="Control whether this product is available to customers.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="text-[11px] font-bold text-slate-700">Catalog Visibility<select disabled={variantMode && !variantCapabilities?.customerBrowsingEnabled} value={variantMode && !variantCapabilities?.customerBrowsingEnabled ? 'draft' : (form.visibility || 'published')} onChange={event => set('visibility', event.target.value)} className={compactInputClass}><option value="published">Published</option><option value="draft">Draft</option><option value="hidden">Hidden</option></select>{variantMode && !variantCapabilities?.customerBrowsingEnabled && <span className="mt-1 block text-[10px] font-normal text-slate-500">Saved as Draft until customer variant browsing is activated. You can still configure variants and link supplier inventory.</span>}{variantMode && variantCapabilities?.customerBrowsingEnabled && <span className="mt-1 block text-[10px] font-normal text-slate-500">Published products appear after at least one active variant has available stock.</span>}</label>
           {!variantMode && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-[11px] font-bold text-slate-700">Inventory availability</p><p className="mt-1 text-[10px] text-slate-500">{Number(form.stockQuantity || 0) > 0 ? 'In stock' : 'Out of stock'} — calculated from the inventory balance.</p></div>}

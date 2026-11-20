@@ -9,6 +9,7 @@ const {
 } = require('../utils/supplierProductApproval');
 const { normalizeVariantAttributes, normalizeVariantSku, variantError } = require('../utils/variantIdentity');
 const { claimSku, replaceSkuClaim } = require('../services/skuClaimService');
+const { calculateDssReadiness, normalizeRecommendationProfile } = require('../utils/productDss');
 const {
   assertSupplierVariantWritesEnabled,
   getSupplierVariantReadiness
@@ -283,10 +284,14 @@ const createVariantProduct = async (req, res) => {
     if (!variants.length) throw httpError('Define at least one explicit variant combination.', 400);
     const documents = normalizeDocuments(body.regulatoryDocuments);
     validateRegulatedParent({ ...body, regulatoryDocuments: documents });
+    const recommendationProfile = normalizeRecommendationProfile(body.recommendationProfile, body);
+    const ingredients = String(body.ingredients || recommendationProfile.ingredients || '').trim();
+    const nutritionalInformation = String(body.nutritionalInformation || recommendationProfile.nutritionalInformation || '').trim();
     if (['pet_food', 'pet_treats'].includes(body.category)
-        && (!String(body.ingredients || '').trim() || !String(body.nutritionalInformation || '').trim())) {
+        && (!ingredients || !nutritionalInformation)) {
       throw httpError('Ingredients and nutritional information are required for pet food and treats.', 400);
     }
+    const dssReadiness = calculateDssReadiness(body.category, recommendationProfile, body.productEvidence);
 
     let parent;
     let createdVariants;
@@ -310,10 +315,15 @@ const createVariantProduct = async (req, res) => {
         deliveryLeadTimeDays: Number(body.deliveryLeadTimeDays || 3),
         brand: body.brand,
         specifications: body.specifications,
-        ingredients: body.ingredients,
-        nutritionalInformation: body.nutritionalInformation,
+        ingredients,
+        nutritionalInformation,
         intendedSpecies: normalizeStringList(body.intendedSpecies),
         safetyNotes: body.safetyNotes,
+        recommendationProfile,
+        dssStatus: dssReadiness.status,
+        dssCompleteness: dssReadiness.completeness,
+        dssIssues: dssReadiness.issues,
+        productEvidence: Array.isArray(body.productEvidence) ? body.productEvidence : [],
         fdaRegistrationNumber: String(body.fdaRegistrationNumber || '').trim(),
         fdaRegistrationExpiry: body.fdaRegistrationExpiry || undefined,
         regulatoryDocuments: documents,

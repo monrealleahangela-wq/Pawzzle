@@ -1,12 +1,15 @@
+const { ageInMonths, rankProductsForPet } = require('./productRecommendationService');
 const { normalizeProductCategory } = require('../utils/productCategories');
 const { normalizePetType } = require('../utils/serviceAdvisorPetContract');
 
+/* Legacy exports remain for callers and regression tests while the DSS now
+ * ranks every supported product category. */
 const SPECIES_ALIASES = new Map([
   ['dogs', 'dog'], ['cats', 'cat'], ['birds', 'bird'], ['fishes', 'fish'],
   ['rabbits', 'rabbit'], ['hamsters', 'hamster'], ['reptiles', 'reptile']
 ]);
 
-const normalizeSpecies = value => {
+const legacyNormalizeSpecies = value => {
   const normalized = normalizePetType(value) || String(value || '').trim().toLowerCase();
   return SPECIES_ALIASES.get(normalized) || normalized;
 };
@@ -51,7 +54,7 @@ const declaredLifeStages = product => {
 };
 
 const suitableSpecies = product => (product?.suitableFor || [])
-  .map(normalizeSpecies)
+  .map(legacyNormalizeSpecies)
   .filter(Boolean);
 
 const compareRankedItems = (left, right) => (
@@ -67,9 +70,13 @@ const rankPetFoodProducts = ({ products = [], petProfiles = [], budget, limit = 
     throw Object.assign(new Error('Enter a valid product budget.'), { statusCode: 400 });
   }
 
+  if (products.some(product => product.recommendationProfile)) {
+    const result = rankProductsForPet({ products, petProfiles, budget, limit, now, category: 'food' });
+    return { ...result, budgetAlternatives: result.suitableAlternatives };
+  }
   const profiles = petProfiles.map(profile => ({
     ...profile,
-    normalizedType: normalizeSpecies(profile.type || profile.species),
+    normalizedType: legacyNormalizeSpecies(profile.type || profile.species),
     lifeStage: lifeStageForProfile(profile, now)
   })).filter(profile => profile.normalizedType);
 
@@ -131,6 +138,7 @@ module.exports = {
   ageInYears,
   declaredLifeStages,
   lifeStageForProfile,
-  normalizeSpecies,
+  ageInMonths,
+  normalizeSpecies: legacyNormalizeSpecies,
   rankPetFoodProducts
 };

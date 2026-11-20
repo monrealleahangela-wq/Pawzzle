@@ -39,7 +39,8 @@ const createProductValidation = [
   body('fulfillmentType').equals('pickup_only').withMessage('Fulfillment must be pickup_only'),
   body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
-  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit')
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit'),
+  body('recommendationProfile').optional().isObject().withMessage('Product matching details must be an object')
 ];
 
 const updateProductValidation = [
@@ -64,7 +65,8 @@ const updateProductValidation = [
   body('variants.*.packagingWeightUnit').optional().isIn(PRODUCT_WEIGHT_UNITS).withMessage('Variant packaging weight unit must be g or kg'),
   body('visibility').optional().isIn(['published', 'draft', 'hidden']).withMessage('Invalid visibility status'),
   body('barcode').optional().trim().isLength({ max: 100 }).withMessage('Barcode is too long'),
-  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit')
+  body('unit').optional().isIn(['piece', 'pack', 'box', 'bottle', 'bag', 'kg']).withMessage('Invalid product unit'),
+  body('recommendationProfile').optional().isObject().withMessage('Product matching details must be an object')
 ];
 
 const updateStockValidation = [

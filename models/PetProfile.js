@@ -48,6 +48,17 @@ const petProfileSchema = new mongoose.Schema({
   vaccinationStatus: { type: String, default: 'Pending' }, 
   specialNotes: { type: String, default: '' },
   allergies: { type: String, default: 'None' },
+  foodSensitivities: [{ type: String, trim: true, lowercase: true }],
+  dietaryPreferences: [{ type: String, trim: true, lowercase: true }],
+  healthConcerns: [{ type: String, trim: true, lowercase: true }],
+  activityLevel: { type: String, enum: ['unknown', 'low', 'moderate', 'high'], default: 'unknown' },
+  skinType: { type: String, enum: ['unknown', 'normal', 'dry', 'sensitive', 'oily'], default: 'unknown' },
+  bodyMeasurements: {
+    neckCm: { type: Number, min: 0 },
+    chestCm: { type: Number, min: 0 },
+    backLengthCm: { type: Number, min: 0 },
+    heightCm: { type: Number, min: 0 }
+  },
   medicalConditions: { type: String, default: 'None' },
   groomingPreferences: { type: String, default: 'None' },
   behaviorNotes: { type: String, default: 'Normal' },
@@ -80,5 +91,29 @@ petProfileSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });
+
+petProfileSchema.virtual('ageInMonths').get(function () {
+  if (this.birthday) {
+    const birthday = new Date(this.birthday);
+    if (!Number.isNaN(birthday.getTime()) && birthday <= new Date()) {
+      return Math.max(0, Math.floor((Date.now() - birthday.getTime()) / (30.4375 * 24 * 60 * 60 * 1000)));
+    }
+  }
+  if (this.approximateAge?.value === undefined || this.approximateAge?.value === null || this.approximateAge?.value === '') return null;
+  const value = Number(this.approximateAge.value);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return this.approximateAge?.unit === 'months' ? value : value * 12;
+});
+
+petProfileSchema.virtual('lifeStage').get(function () {
+  const months = this.ageInMonths;
+  if (months === null) return 'unknown';
+  if (months < 12) return 'young';
+  if (months >= 84) return 'senior';
+  return 'adult';
+});
+
+petProfileSchema.set('toJSON', { virtuals: true });
+petProfileSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('PetProfile', petProfileSchema);

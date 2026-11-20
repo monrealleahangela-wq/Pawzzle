@@ -2,7 +2,6 @@ const { validationResult } = require('express-validator');
 const Product = require('../models/Product');
 const PetProfile = require('../models/PetProfile');
 const Store = require('../models/Store');
-const { buildProductCategoryFilter } = require('../utils/productCategories');
 const {
   getCustomerVisibleOwnerIds,
   buildCustomerVisibleStoreFilter,
@@ -14,7 +13,7 @@ const {
 } = require('../services/customerProductAvailabilityService');
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { listCustomerVariants } = require('../services/customerProductVariantService');
-const { rankPetFoodProducts } = require('../services/petFoodRecommendationService');
+const { lifeStageForProfile, rankProductsForPet } = require('../services/productRecommendationService');
 
 const normalizeCandidateProduct = async product => {
   if (product.productMode !== 'variant') return hasCustomerAvailableStock(product) ? product.toObject() : null;
@@ -45,7 +44,7 @@ const getCustomerProductRecommendations = async (req, res) => {
       .lean();
     const selectedProfiles = req.body.petProfileId
       ? allProfiles.filter(profile => String(profile._id) === String(req.body.petProfileId))
-      : allProfiles;
+      : allProfiles.slice(0, 1);
     if (req.body.petProfileId && !selectedProfiles.length) {
       return res.status(404).json({ message: 'The selected pet profile was not found in your account.' });
     }
@@ -55,7 +54,6 @@ const getCustomerProductRecommendations = async (req, res) => {
     const storeIds = stores.map(store => store._id);
     const variantReadiness = await getCustomerVariantReadiness();
     const filter = {
-      category: buildProductCategoryFilter('Pet Food'),
       isActive: true,
       isDeleted: { $ne: true },
       visibility: { $nin: ['draft', 'hidden'] },
@@ -72,11 +70,12 @@ const getCustomerProductRecommendations = async (req, res) => {
       .sort({ 'ratings.average': -1, createdAt: -1 })
       .limit(200);
     const products = (await Promise.all(productDocuments.map(normalizeCandidateProduct))).filter(Boolean);
-    const ranked = rankPetFoodProducts({
+    const ranked = rankProductsForPet({
       products,
       petProfiles: selectedProfiles,
       budget: req.body.budget,
-      limit: 6
+      category: req.body.category || 'all',
+      limit: 12
     });
 
     return res.json({
@@ -86,15 +85,17 @@ const getCustomerProductRecommendations = async (req, res) => {
         _id: profile._id,
         name: profile.name,
         type: profile.type,
-        breed: profile.breed
+        breed: profile.breed,
+        size: profile.size,
+        lifeStage: lifeStageForProfile(profile)
       })),
-      methodology: 'Deterministic ranking uses declared product species suitability, saved pet life stage, current availability, and the customer budget.',
-      disclaimer: 'Suggestions are not veterinary or nutritional advice. Review ingredients and consult a veterinarian for allergies or medical dietary needs.'
+      methodology: 'Rule-based filtering removes unsafe or incompatible products. Weighted content matching ranks declared species, breed, life stage, size, weight, activity, coat, skin, dietary, allergy, and benefit information.',
+      disclaimer: 'Compatibility scores are shopping guidance, not medical or scientific guarantees. Health and wellness products are not treatments; consult a veterinarian for allergies, illness, or therapeutic needs.'
     });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
-    console.error('Pet food recommendation error:', error);
-    return res.status(500).json({ message: 'Unable to calculate pet food recommendations.' });
+    console.error('Product recommendation error:', error);
+    return res.status(500).json({ message: 'Unable to calculate personalized product recommendations.' });
   }
 };
 
