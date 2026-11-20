@@ -20,8 +20,13 @@ const {
   getEncryptionKey,
   encryptIdentityDocument,
   matchesImageSignature,
-  compareIdentityFaces
+  verifyIdentityFaceMatch
 } = require('../utils/identityVerification');
+const {
+  STRICT_FACE_MATCH_VERSION,
+  hasVerifiedIdentityEvidence,
+  getIdentityVerificationStatus
+} = require('../utils/identityVerificationStatus');
 
 const generateToken = id => jwt.sign(
   { id },
@@ -39,7 +44,7 @@ const userSummary = user => ({
   middleName: user.middleName,
   lastName: user.lastName,
   phone: user.phone,
-  identityVerificationStatus: user.identityVerification?.status || null,
+  identityVerificationStatus: getIdentityVerificationStatus(user),
   store: user.store,
   permissions: serializeEffectivePermissionMap(user),
   requiresPasswordChange: Boolean(user.requiresPasswordChange),
@@ -49,7 +54,7 @@ const userSummary = user => ({
 
 const withProfessionalVerificationState = (safeUser, sourceUser) => ({
   ...safeUser,
-  identityVerificationStatus: sourceUser.identityVerification?.status || null,
+  identityVerificationStatus: getIdentityVerificationStatus(sourceUser),
   professionalVerificationRequired: requiresPlatformVerification(sourceUser),
   professionalVerificationStatus: getProfessionalVerificationStatus(sourceUser)
 });
@@ -152,13 +157,7 @@ const verifyRegisterOTP = async (req, res) => {
     });
     if (conflict) return res.status(400).json({ message: 'Email or username was taken during verification. Please start over.' });
 
-    const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
-    if (!faceMatch.matched) {
-      return res.status(400).json({
-        code: 'FACE_MATCH_FAILED',
-        message: 'Your live selfie did not match the face on the government ID. Retake both images in clear lighting and try again.'
-      });
-    }
+    const faceMatch = await verifyIdentityFaceMatch(governmentIdImage.buffer, selfieImage.buffer);
 
     const encryptedGovernmentId = encryptIdentityDocument(governmentIdImage.buffer);
     const consumed = await otpService.consumeVerifiedOTP(verification.sessionId, 'registration');
@@ -166,6 +165,7 @@ const verifyRegisterOTP = async (req, res) => {
 
     userData.identityVerification = {
       status: 'verified',
+      verificationVersion: STRICT_FACE_MATCH_VERSION,
       governmentId: {
         documentType: userData.governmentIdType,
         typeVerificationMethod: 'applicant_declaration',
@@ -177,7 +177,9 @@ const verifyRegisterOTP = async (req, res) => {
         provider: faceMatch.provider,
         similarity: faceMatch.similarity,
         threshold: faceMatch.threshold,
-        sourceFaceConfidence: faceMatch.sourceFaceConfidence
+        sourceFaceConfidence: faceMatch.sourceFaceConfidence,
+        targetFaceConfidence: faceMatch.targetFaceConfidence,
+        targetFaceCount: faceMatch.targetFaceCount
       },
       consent: { acceptedAt: new Date(), policyVersion: 'registration-identity-v1' },
       verifiedAt: new Date()
@@ -421,7 +423,7 @@ const verifyCurrentUserIdentity = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('+identityVerification');
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.identityVerification?.status === 'verified') {
+    if (hasVerifiedIdentityEvidence(user)) {
       await user.populate('store');
       await attachStoreRolePolicy(user);
       const safe = withProfessionalVerificationState(sanitizeUser(user), user);
@@ -457,16 +459,11 @@ const verifyCurrentUserIdentity = async (req, res) => {
     }
 
     getEncryptionKey();
-    const faceMatch = await compareIdentityFaces(governmentIdImage.buffer, selfieImage.buffer);
-    if (!faceMatch.matched) {
-      return res.status(400).json({
-        code: 'FACE_MATCH_FAILED',
-        message: 'Your live selfie did not match the face on the government ID. Retake both images in clear lighting and try again.'
-      });
-    }
+    const faceMatch = await verifyIdentityFaceMatch(governmentIdImage.buffer, selfieImage.buffer);
 
     user.identityVerification = {
       status: 'verified',
+      verificationVersion: STRICT_FACE_MATCH_VERSION,
       governmentId: {
         documentType: req.body.governmentIdType,
         typeVerificationMethod: 'applicant_declaration',
@@ -478,7 +475,9 @@ const verifyCurrentUserIdentity = async (req, res) => {
         provider: faceMatch.provider,
         similarity: faceMatch.similarity,
         threshold: faceMatch.threshold,
-        sourceFaceConfidence: faceMatch.sourceFaceConfidence
+        sourceFaceConfidence: faceMatch.sourceFaceConfidence,
+        targetFaceConfidence: faceMatch.targetFaceConfidence,
+        targetFaceCount: faceMatch.targetFaceCount
       },
       consent: { acceptedAt: new Date(), policyVersion: 'identity-access-v1' },
       verifiedAt: new Date()

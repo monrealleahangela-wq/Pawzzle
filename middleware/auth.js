@@ -6,6 +6,10 @@ const {
 } = require('../config/permissions');
 const { attachStoreRolePolicy } = require('../services/rolePermissionService');
 const { requiresPlatformVerification, getProfessionalVerificationStatus } = require('../utils/staffSpecialization');
+const {
+  hasVerifiedIdentityEvidence,
+  getIdentityVerificationStatus
+} = require('../utils/identityVerificationStatus');
 
 const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
   && ['/me', '/change-password', '/logout'].includes(req.path))
@@ -14,7 +18,7 @@ const isProfessionalRecoveryRoute = req => (req.baseUrl === '/api/auth'
 const isIdentityRecoveryRoute = req => req.baseUrl === '/api/auth'
   && ['/me', '/identity/verify', '/change-password', '/logout'].includes(req.path);
 
-const hasVerifiedIdentity = user => user?.identityVerification?.status === 'verified';
+const hasVerifiedIdentity = hasVerifiedIdentityEvidence;
 
 // Authentication middleware
 const authenticate = async (req, res, next) => {
@@ -45,7 +49,7 @@ const authenticate = async (req, res, next) => {
       return res.status(403).json({
         message: 'Verify your government ID and complete the live face match before using Pawzzle features.',
         code: 'IDENTITY_VERIFICATION_REQUIRED',
-        identityVerificationStatus: user.identityVerification?.status || 'not_verified',
+        identityVerificationStatus: getIdentityVerificationStatus(user),
         verificationPath: '/identity-verification'
       });
     }
