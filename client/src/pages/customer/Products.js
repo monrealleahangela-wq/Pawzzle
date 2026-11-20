@@ -50,6 +50,8 @@ const Products = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [recommendationBudget, setRecommendationBudget] = useState('1000');
   const [selectedPetProfileId, setSelectedPetProfileId] = useState('');
+  const [recommendationCategory, setRecommendationCategory] = useState('all');
+  const [comparisonIds, setComparisonIds] = useState([]);
   const [recommendationData, setRecommendationData] = useState(null);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState('');
@@ -79,11 +81,15 @@ const Products = () => {
         setRecommendationError('');
         const response = await dssService.getProductRecommendations({
           budget: Number(recommendationBudget),
+          category: recommendationCategory,
           ...(selectedPetProfileId ? { petProfileId: selectedPetProfileId } : {})
         });
-        if (active) setRecommendationData(response.data);
+        if (active) {
+          setRecommendationData(response.data);
+          if (!selectedPetProfileId && response.data?.petProfiles?.[0]?._id) setSelectedPetProfileId(response.data.petProfiles[0]._id);
+        }
       } catch (requestError) {
-        if (active) setRecommendationError(requestError.response?.data?.message || 'Personalized food suggestions are temporarily unavailable.');
+        if (active) setRecommendationError(requestError.response?.data?.message || 'Personalized product recommendations are temporarily unavailable.');
       } finally {
         if (active) setRecommendationsLoading(false);
       }
@@ -92,7 +98,12 @@ const Products = () => {
       active = false;
       clearTimeout(debounce);
     };
-  }, [isAuthenticated, user?.role, recommendationBudget, selectedPetProfileId]);
+  }, [isAuthenticated, user?.role, recommendationBudget, selectedPetProfileId, recommendationCategory]);
+
+  useEffect(() => {
+    const availableIds = new Set((recommendationData?.recommendations || []).map(item => item.product._id));
+    setComparisonIds(current => current.filter(id => availableIds.has(id)));
+  }, [recommendationData]);
 
   const fetchProducts = async () => {
     try {
@@ -329,19 +340,22 @@ const Products = () => {
       </div>
 
       {isAuthenticated && user?.role === 'customer' && (
-        <section className="overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-secondary-50 p-4 shadow-sm sm:p-6" aria-labelledby="pet-food-dss-title">
+        <section className="overflow-hidden rounded-3xl border border-primary-100 bg-gradient-to-br from-primary-50 via-white to-secondary-50 p-4 shadow-sm sm:p-6" aria-labelledby="product-dss-title">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
-              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary-700"><Sparkles className="h-4 w-4" /> Pet Food DSS</p>
-              <h2 id="pet-food-dss-title" className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">Recommended food for your saved pets</h2>
-              <p className="mt-1 text-xs leading-5 text-slate-600">Available food is ranked using the selected saved pet profile, declared species suitability, life stage, and your maximum budget per item.</p>
+              <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-primary-700"><Sparkles className="h-4 w-4" /> Personalized Product DSS</p>
+              <h2 id="product-dss-title" className="mt-1 text-xl font-black text-slate-950 sm:text-2xl">Personalized Product Recommendations</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Products are screened and ranked using the selected pet's species, breed, age, size, weight, activity, coat, sensitivities, preferences, and budget.</p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:w-[30rem]">
+            <div className="grid gap-2 sm:grid-cols-3 lg:w-[42rem]">
               <label className="text-[10px] font-black uppercase tracking-wide text-slate-600">Saved pet profile
                 <select aria-label="Saved pet profile" value={selectedPetProfileId} onChange={event => setSelectedPetProfileId(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case tracking-normal text-slate-800">
-                  <option value="">All saved pets</option>
+                  <option value="">Select a saved pet</option>
                   {(recommendationData?.petProfiles || []).map(pet => <option key={pet._id} value={pet._id}>{pet.name} · {pet.type}{pet.breed ? ` · ${pet.breed}` : ''}</option>)}
                 </select>
+              </label>
+              <label className="text-[10px] font-black uppercase tracking-wide text-slate-600">Product category
+                <select aria-label="Recommendation category" value={recommendationCategory} onChange={event => setRecommendationCategory(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case tracking-normal text-slate-800"><option value="all">All products</option><option value="food">Food & treats</option><option value="grooming">Grooming</option><option value="toys">Toys</option><option value="accessories">Accessories & clothing</option><option value="wellness">Health & wellness</option><option value="essentials">Other essentials</option></select>
               </label>
               <label className="text-[10px] font-black uppercase tracking-wide text-slate-600">Maximum budget per item
                 <select aria-label="Maximum budget per item" value={recommendationBudget} onChange={event => setRecommendationBudget(event.target.value)} className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold normal-case tracking-normal text-slate-800">
@@ -351,19 +365,21 @@ const Products = () => {
             </div>
           </div>
 
-          {recommendationsLoading && <p className="mt-5 rounded-2xl bg-white/80 p-5 text-center text-xs font-bold text-slate-500">Calculating personalized food suggestions...</p>}
+          {recommendationsLoading && <p className="mt-5 rounded-2xl bg-white/80 p-5 text-center text-xs font-bold text-slate-500">Calculating personalized product matches...</p>}
           {!recommendationsLoading && recommendationError && <p role="alert" className="mt-5 rounded-2xl bg-rose-50 p-4 text-xs font-bold text-rose-700">{recommendationError}</p>}
-          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_pet_profiles' && <div className="mt-5 rounded-2xl border border-dashed border-primary-200 bg-white/80 p-5 text-center"><PawPrint className="mx-auto h-6 w-6 text-primary-500" /><p className="mt-2 text-sm font-black text-slate-900">Add a pet profile to receive food suggestions</p><p className="mt-1 text-xs text-slate-500">Pawzzle only recommends food when it can match a saved pet's species.</p><Link to="/profile" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-white">Manage pet profiles</Link></div>}
-          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'budget_mismatch' && <p className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold text-amber-800">Compatible food is available, but none fits the current {formatPeso(recommendationData.budget)} budget. Choose a higher budget to see suggestions.</p>}
-          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_compatible_food' && <p className="mt-5 rounded-2xl bg-white/80 p-4 text-xs font-bold text-slate-600">No currently available food has declared suitability for the selected pet profile.</p>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_pet_profiles' && <div className="mt-5 rounded-2xl border border-dashed border-primary-200 bg-white/80 p-5 text-center"><PawPrint className="mx-auto h-6 w-6 text-primary-500" /><p className="mt-2 text-sm font-black text-slate-900">Add a pet profile to receive recommendations</p><p className="mt-1 text-xs text-slate-500">A saved pet profile is required for safe, personalized matching.</p><Link to="/profile" className="mt-3 inline-flex rounded-xl bg-slate-950 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-white">Manage pet profiles</Link></div>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'budget_mismatch' && <p className="mt-5 rounded-2xl bg-amber-50 p-4 text-xs font-bold text-amber-800">Suitable products are available, but none fits the current {formatPeso(recommendationData.budget)} budget. Increase the budget or review the alternatives below.</p>}
+          {!recommendationsLoading && !recommendationError && recommendationData?.status === 'no_compatible_products' && <p className="mt-5 rounded-2xl bg-white/80 p-4 text-xs font-bold text-slate-600">No available product has enough declared information to safely match this pet. Try another category or ask sellers to complete their product details.</p>}
           {!recommendationsLoading && !recommendationError && recommendationData?.recommendations?.length > 0 && (
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {recommendationData.recommendations.map(({ product, score, reasons }) => <article key={product._id} className="flex min-w-0 gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
+              {recommendationData.recommendations.map(({ product, score, reasons, benefits = [], restrictions = [], warnings = [] }) => <article key={product._id} className="flex min-w-0 gap-3 rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">{product.images?.[0] ? <img src={getImageUrl(product.images[0])} alt={product.name} className="h-full w-full object-cover" /> : <Package className="m-6 h-8 w-8 text-slate-300" />}</div>
-                <div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="line-clamp-2 text-xs font-black uppercase leading-4 text-slate-950">{product.name}</p><span className="shrink-0 rounded-lg bg-primary-100 px-2 py-1 text-[9px] font-black text-primary-800">{score}% match</span></div><p className="mt-1 text-sm font-black text-slate-900">{formatPeso(product.price)}</p><p className="mt-1 line-clamp-2 text-[9px] font-semibold leading-4 text-slate-500">{reasons.join(' · ')}</p><Link to={`/products/${product._id}`} className="mt-2 inline-flex text-[9px] font-black uppercase tracking-wide text-primary-700">View product →</Link></div>
+                <div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><p className="line-clamp-2 text-xs font-black uppercase leading-4 text-slate-950">{product.name}</p><span className="shrink-0 rounded-lg bg-primary-100 px-2 py-1 text-[9px] font-black text-primary-800">{score}% match</span></div><p className="mt-1 text-sm font-black text-slate-900">{formatPeso(product.price)}</p><p className="mt-1 text-[9px] font-black text-slate-700">Why this matches your pet</p><p className="line-clamp-3 text-[9px] font-semibold leading-4 text-slate-500">{reasons.join(' · ')}</p>{benefits.length > 0 && <p className="mt-1 text-[9px] text-emerald-700">Benefits: {benefits.join(', ')}</p>}{restrictions.length > 0 && <p className="mt-1 text-[9px] text-amber-700">Restrictions: {restrictions.join(', ')}</p>}{warnings.length > 0 && <p className="mt-1 text-[9px] font-semibold text-rose-700">{warnings.join(' ')}</p>}<div className="mt-2 flex items-center justify-between gap-2"><Link to={`/products/${product._id}`} className="text-[9px] font-black uppercase tracking-wide text-primary-700">View product →</Link><label className="text-[8px] font-black uppercase text-slate-500"><input type="checkbox" checked={comparisonIds.includes(product._id)} disabled={!comparisonIds.includes(product._id) && comparisonIds.length >= 3} onChange={() => setComparisonIds(current => current.includes(product._id) ? current.filter(id => id !== product._id) : [...current, product._id])} className="mr-1" />Compare</label></div></div>
               </article>)}
             </div>
           )}
+          {comparisonIds.length > 1 && <div className="mt-4 overflow-x-auto rounded-2xl border border-primary-100 bg-white p-3"><p className="text-[10px] font-black uppercase text-primary-800">Product comparison</p><div className="mt-2 grid min-w-[32rem] gap-2" style={{ gridTemplateColumns: `repeat(${comparisonIds.length}, minmax(0, 1fr))` }}>{comparisonIds.map(id => { const item = recommendationData?.recommendations?.find(entry => entry.product._id === id); return <div key={id} className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black">{item?.product.name}</p><p className="mt-1 text-lg font-black text-primary-700">{item?.score}%</p><p className="text-[9px] text-slate-500">{item?.reasons?.slice(0, 3).join(' · ')}</p></div>; })}</div></div>}
+          {recommendationData?.suitableAlternatives?.length > 0 && <div className="mt-4 rounded-2xl bg-amber-50 p-4"><p className="text-[10px] font-black uppercase text-amber-900">Suitable alternatives above this budget</p><p className="mt-1 text-[10px] text-amber-800">{recommendationData.suitableAlternatives.map(item => `${item.product.name} (${formatPeso(item.product.price)})`).join(' · ')}</p></div>}
           {recommendationData?.disclaimer && <p className="mt-4 text-[9px] font-semibold leading-4 text-slate-500">{recommendationData.disclaimer}</p>}
         </section>
       )}

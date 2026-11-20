@@ -335,6 +335,9 @@ export const uploadService = {
   uploadDocument: (formData) => api.post('/uploads/document', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  extractProductLabel: (formData) => api.post('/admin/products/label-ocr', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   deleteImage: (filename) => api.delete(`/uploads/${filename}`)
 };
 
@@ -656,6 +659,7 @@ export const supplierService = {
   addVariantProduct: (data) => api.post('/suppliers/variant-products', data),
   getProducts: (params) => api.get('/suppliers/products', { params }),
   getVariantCapabilities: () => api.get('/suppliers/products/variant-capabilities'),
+  extractProductLabel: (data) => api.post('/suppliers/products/label-ocr', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
   getVariants: (productId) => api.get(`/suppliers/products/${productId}/variants`),
   addVariant: (productId, data) => api.post(`/suppliers/products/${productId}/variants`, data),
   updateVariant: (productId, variantId, data) => api.put(`/suppliers/products/${productId}/variants/${variantId}`, data),

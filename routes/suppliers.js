@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const { authenticate, superAdminOnly, requirePermission, requirePasswordChangeCompleted } = require('../middleware/auth');
 const { uploadDoc, handleUploadError } = require('../middleware/upload');
@@ -29,6 +30,11 @@ const supplierDocumentUpload = uploadDoc.fields([
   { name: 'businessRegistration', maxCount: 1 },
   { name: 'birCertificate', maxCount: 1 }
 ]);
+const productLabelUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } });
+const { extractProductLabel } = require('../controllers/productLabelOcrController');
+const supplierOnly = (req, res, next) => req.user?.role === 'supplier'
+  ? next()
+  : res.status(403).json({ message: 'Supplier access is required.' });
 
 router.get('/activate/:token', activateSupplierInvitation);
 router.post('/register', authenticate, supplierDocumentUpload, handleUploadError, registerSupplier);
@@ -38,6 +44,7 @@ router.put('/me', authenticate, requirePasswordChangeCompleted, updateSupplierPr
 router.get('/dashboard', authenticate, requirePasswordChangeCompleted, getSupplierDashboard);
 
 // ── Supplier product management ───────────────────────────
+router.post('/products/label-ocr', authenticate, requirePasswordChangeCompleted, supplierOnly, productLabelUpload.single('label'), extractProductLabel);
 router.post('/products', authenticate, requirePasswordChangeCompleted, addProduct);
 router.get('/products', authenticate, requirePasswordChangeCompleted, getMyProducts);
 router.get('/products/variant-capabilities', authenticate, requirePasswordChangeCompleted, getVariantCapabilities);

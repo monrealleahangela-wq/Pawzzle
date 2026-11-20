@@ -124,7 +124,17 @@ const buildDraftStoreProduct = ({ supplierProduct, supplierId, storeId, userId, 
     addedBy: userId,
     store: storeId,
     supplierRef: supplierId,
-    supplierProductRef: supplierProduct._id
+    supplierProductRef: supplierProduct._id,
+    recommendationProfile: supplierProduct.recommendationProfile?.toObject?.() || supplierProduct.recommendationProfile || {},
+    dssStatus: supplierProduct.dssStatus || 'incomplete_information',
+    dssCompleteness: Number(supplierProduct.dssCompleteness || 0),
+    dssIssues: Array.isArray(supplierProduct.dssIssues) ? supplierProduct.dssIssues : [],
+    productEvidence: (supplierProduct.productEvidence || []).map(item => ({
+      kind: item.kind,
+      url: item.url,
+      originalName: item.originalName,
+      reviewStatus: item.reviewStatus === 'confirmed' ? 'seller_review_required' : item.reviewStatus
+    }))
   };
   if (product.images.length) product.coverImage = product.images[0];
 

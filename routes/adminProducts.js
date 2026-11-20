@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const { body } = require('express-validator');
 const router = express.Router();
 
@@ -20,6 +21,8 @@ const variantPayloadPlan = requireSubscriptionEntitlementWhen(ENTITLEMENTS.PRODU
   req => req.body?.productMode === 'variant' || (Array.isArray(req.body?.variants) && req.body.variants.length > 0));
 const featuredPlan = requireSubscriptionEntitlementWhen(ENTITLEMENTS.FEATURED_PRODUCTS,
   req => req.body?.isFeatured === true || req.body?.featured === true);
+const labelUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024, files: 1 } });
+const { extractProductLabel } = require('../controllers/productLabelOcrController');
 
 // Enhanced Validation rules for detailed product management
 const createProductValidation = [
@@ -48,6 +51,8 @@ const createProductValidation = [
   body('images').isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
   body('images.*').custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
   body('suitableFor').optional().isArray(),
+  body('recommendationProfile').optional().isObject().withMessage('Product matching details must be an object'),
+  body('productEvidence').optional().isArray({ max: 10 }).withMessage('Product evidence must be a list'),
   body('material').optional().trim(),
   body('colors').optional().isArray(),
   body('tags').optional().isArray(),
@@ -88,6 +93,8 @@ const updateProductValidation = [
   body('images').optional().isArray({ min: 1, max: MAX_CATALOG_IMAGES }).withMessage(`Provide between 1 and ${MAX_CATALOG_IMAGES} product images`),
   body('images.*').optional().custom(isCatalogImageReference).withMessage('Each product image must be a valid uploaded image reference'),
   body('suitableFor').optional().isArray(),
+  body('recommendationProfile').optional().isObject().withMessage('Product matching details must be an object'),
+  body('productEvidence').optional().isArray({ max: 10 }).withMessage('Product evidence must be a list'),
   body('material').optional().trim(),
   body('colors').optional().isArray(),
   body('tags').optional().isArray(),
@@ -106,6 +113,7 @@ const updateProductValidation = [
 // Admin routes (filtered by user's store)
 router.get('/', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), getAllProducts);
 router.get('/variant-capabilities', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), productVariants.capabilities);
+router.post('/label-ocr', authenticate, adminOrStaff, requirePermission('products.manage'), labelUpload.single('label'), extractProductLabel);
 router.post('/variant-products', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, createProductValidation, productVariants.createVariantProduct);
 router.get('/:productId/normalized-variants', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.view'), productVariants.list);
 router.post('/:productId/normalized-variants', authenticate, adminOrStaff, requirePermission('products.manage', 'inventory.adjust'), variantsPlan, productVariants.create);

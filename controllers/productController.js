@@ -22,6 +22,7 @@ const {
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { getPublicProductRegulatoryVerification } = require('../services/productRegulatoryVerificationService');
 const { assertCanActivateListing } = require('../services/storeSubscriptionService');
+const { calculateDssReadiness, normalizeRecommendationProfile } = require('../utils/productDss');
 
 const PRODUCT_LISTING_FIELDS = [
   'name', 'category', 'description', 'shortDescription', 'price', 'sku', 'barcode', 'productMode',
@@ -29,7 +30,8 @@ const PRODUCT_LISTING_FIELDS = [
   'packagingWeightUnit', 'images', 'video', 'brand', 'tags', 'stockStatus',
   'collectionGroup', 'visibility', 'fulfillmentType', 'pickupInstructions',
   'warrantyInfo', 'returnPolicy', 'expiryDate', 'ingredients', 'usageInstructions',
-  'variants', 'suitableFor', 'isActive', 'lowStockThreshold', 'maxOrderQuantity'
+  'variants', 'suitableFor', 'isActive', 'lowStockThreshold', 'maxOrderQuantity',
+  'recommendationProfile', 'productEvidence'
 ];
 
 const pickProductListingFields = input => Object.fromEntries(
@@ -314,6 +316,13 @@ const createProduct = async (req, res) => {
       stockQuantity: initialStock,
       stockStatus: initialStock > 0 ? 'in_stock' : 'out_of_stock'
     };
+    productData.recommendationProfile = normalizeRecommendationProfile(productData.recommendationProfile, productData);
+    const dssReadiness = calculateDssReadiness(productData.category, productData.recommendationProfile, productData.productEvidence);
+    Object.assign(productData, {
+      dssStatus: dssReadiness.status,
+      dssCompleteness: dssReadiness.completeness,
+      dssIssues: dssReadiness.issues
+    });
 
     const createsActiveListing = productData.isActive !== false
       && !['draft', 'hidden'].includes(productData.visibility || 'published');
@@ -437,6 +446,19 @@ const updateProduct = async (req, res) => {
       updateData.stockQuantity = 0;
       updateData.stockStatus = 'out_of_stock';
     }
+    const nextRecommendationProfile = normalizeRecommendationProfile(
+      updateData.recommendationProfile ?? product.recommendationProfile?.toObject?.() ?? product.recommendationProfile,
+      { ...product.toObject(), ...updateData }
+    );
+    const dssReadiness = calculateDssReadiness(
+      updateData.category || product.category,
+      nextRecommendationProfile,
+      updateData.productEvidence ?? product.productEvidence
+    );
+    updateData.recommendationProfile = nextRecommendationProfile;
+    updateData.dssStatus = dssReadiness.status;
+    updateData.dssCompleteness = dssReadiness.completeness;
+    updateData.dssIssues = dssReadiness.issues;
     const wasActiveListing = product.isActive !== false && !['draft', 'hidden'].includes(product.visibility) && !product.isDeleted;
     const nextActiveListing = (updateData.isActive ?? product.isActive) !== false
       && !['draft', 'hidden'].includes(updateData.visibility ?? product.visibility)

@@ -25,6 +25,7 @@ const {
   getSupplierVariantReadiness
 } = require('../services/supplierVariantReadinessService');
 const { getVariantProcurementReadiness } = require('../services/variantProcurementReadinessService');
+const { calculateDssReadiness, normalizeRecommendationProfile } = require('../utils/productDss');
 const { isVariantRegulatorilyEligible } = require('../services/supplierVariantMappingService');
 const { resolveOperationalStore } = require('../services/storeAccessService');
 const {
@@ -667,7 +668,7 @@ const addProduct = async (req, res) => {
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
       brand, specifications, weight, weightUnit, dimensions, expirationDate, ingredients,
       nutritionalInformation, intendedSpecies, safetyNotes, regulatoryDocuments,
-      fdaRegistrationNumber, fdaRegistrationExpiry } = req.body;
+      fdaRegistrationNumber, fdaRegistrationExpiry, recommendationProfile, productEvidence } = req.body;
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
       ? req.body.itemType : 'pet_supply';
     requestedItemType = itemType;
@@ -680,8 +681,13 @@ const addProduct = async (req, res) => {
     if (itemType !== 'live_pet' && category === 'live_pets') {
       return res.status(400).json({ message: 'The live-pets category is reserved for exact live-pet catalog records.' });
     }
+    const normalizedRecommendationProfile = normalizeRecommendationProfile(recommendationProfile, {
+      intendedSpecies, ingredients, nutritionalInformation, safetyNotes
+    });
+    const authoritativeIngredients = String(ingredients || normalizedRecommendationProfile.ingredients || '').trim();
+    const authoritativeNutrition = String(nutritionalInformation || normalizedRecommendationProfile.nutritionalInformation || '').trim();
     if (['pet_food', 'pet_treats'].includes(authoritativeCategory)
-        && (!String(ingredients || '').trim() || !String(nutritionalInformation || '').trim())) {
+        && (!authoritativeIngredients || !authoritativeNutrition)) {
       return res.status(400).json({ message: 'Ingredients and nutritional information are required for pet food and treats.' });
     }
     const normalizedRegulatoryDocuments = normalizeRegulatoryDocuments(regulatoryDocuments);
@@ -711,6 +717,7 @@ const addProduct = async (req, res) => {
         await pet.save({ session });
       }
 
+      const dssReadiness = calculateDssReadiness(authoritativeCategory, normalizedRecommendationProfile, productEvidence);
       product = new SupplierProduct({
         supplier: supplier._id,
         itemType,
@@ -723,11 +730,16 @@ const addProduct = async (req, res) => {
         deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
         brand, specifications, weight: packageWeight.weight, weightUnit: packageWeight.weightUnit,
         dimensions, expirationDate,
-        ingredients, nutritionalInformation,
+        ingredients: authoritativeIngredients, nutritionalInformation: authoritativeNutrition,
         intendedSpecies: normalizeStringList(intendedSpecies), safetyNotes,
         fdaRegistrationNumber: String(fdaRegistrationNumber || '').trim(),
         fdaRegistrationExpiry: fdaRegistrationExpiry || undefined,
         regulatoryDocuments: normalizedRegulatoryDocuments,
+        recommendationProfile: normalizedRecommendationProfile,
+        productEvidence: Array.isArray(productEvidence) ? productEvidence : [],
+        dssStatus: dssReadiness.status,
+        dssCompleteness: dssReadiness.completeness,
+        dssIssues: dssReadiness.issues,
         ...approvalState
       });
       await product.save({ session });
@@ -842,7 +854,7 @@ const updateProduct = async (req, res) => {
       'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'weightUnit', 'dimensions',
       'expirationDate', 'ingredients', 'nutritionalInformation', 'intendedSpecies',
       'safetyNotes', 'fdaRegistrationNumber', 'fdaRegistrationExpiry',
-      'regulatoryDocuments', 'isActive'
+      'regulatoryDocuments', 'recommendationProfile', 'productEvidence', 'isActive'
     ];
     const updates = {};
     mutableFields.forEach(field => {
@@ -878,6 +890,18 @@ const updateProduct = async (req, res) => {
         minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive,
         approvalStatus: product.approvalStatus, published: isSupplierProductPublished(product) };
       Object.assign(product, updates);
+      const normalizedRecommendationProfile = normalizeRecommendationProfile(product.recommendationProfile?.toObject?.() || product.recommendationProfile, product);
+      const dssReadiness = calculateDssReadiness(product.category, normalizedRecommendationProfile, product.productEvidence);
+      product.recommendationProfile = normalizedRecommendationProfile;
+      if (!String(product.ingredients || '').trim() && normalizedRecommendationProfile.ingredients) {
+        product.ingredients = normalizedRecommendationProfile.ingredients;
+      }
+      if (!String(product.nutritionalInformation || '').trim() && normalizedRecommendationProfile.nutritionalInformation) {
+        product.nutritionalInformation = normalizedRecommendationProfile.nutritionalInformation;
+      }
+      product.dssStatus = dssReadiness.status;
+      product.dssCompleteness = dssReadiness.completeness;
+      product.dssIssues = dssReadiness.issues;
 
       if (variantRegistryReady && updates.sku !== undefined && String(previousValue?.sku || product.sku) !== String(updates.sku)) {
         await replaceSkuClaim({

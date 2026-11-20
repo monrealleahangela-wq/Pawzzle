@@ -89,7 +89,7 @@ test('Customer marketplace never renders a zero-stock product returned by the AP
   expect(screen.queryByText('Depleted Food')).not.toBeInTheDocument();
 });
 
-test('Customer sees pet-profile food suggestions above the catalog and can change the recommendation budget', async () => {
+test('Customer sees personalized product suggestions and can change budget and category', async () => {
   productService.getAllProducts.mockResolvedValue(emptyResponse);
   dssService.getProductRecommendations.mockResolvedValue({
     data: {
@@ -107,11 +107,14 @@ test('Customer sees pet-profile food suggestions above the catalog and can chang
 
   renderProducts();
 
-  expect(await screen.findByRole('heading', { name: 'Recommended food for your saved pets' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Personalized Product Recommendations' })).toBeInTheDocument();
   expect(await screen.findByText('Milo Puppy Food')).toBeInTheDocument();
   expect(screen.getByText('100% match')).toBeInTheDocument();
-  expect(dssService.getProductRecommendations).toHaveBeenCalledWith({ budget: 1000 });
+  expect(dssService.getProductRecommendations).toHaveBeenCalledWith({ budget: 1000, category: 'all' });
 
   fireEvent.change(screen.getByLabelText('Maximum budget per item'), { target: { value: '500' } });
-  await waitFor(() => expect(dssService.getProductRecommendations).toHaveBeenLastCalledWith({ budget: 500 }));
+  await waitFor(() => expect(dssService.getProductRecommendations).toHaveBeenLastCalledWith({ budget: 500, category: 'all', petProfileId: 'pet-1' }));
+
+  fireEvent.change(screen.getByLabelText('Recommendation category'), { target: { value: 'toys' } });
+  await waitFor(() => expect(dssService.getProductRecommendations).toHaveBeenLastCalledWith({ budget: 500, category: 'toys', petProfileId: 'pet-1' }));
 });

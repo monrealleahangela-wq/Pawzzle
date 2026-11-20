@@ -10,6 +10,7 @@ const { assertSellerVariantWritesEnabled, getSellerVariantReadiness } = require(
 const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { normalizeCatalogImages, normalizeProductPackaging, normalizeProductWeight } = require('../utils/catalogListing');
 const { requireProductCategory } = require('../utils/productCategories');
+const { calculateDssReadiness, normalizeRecommendationProfile } = require('../utils/productDss');
 
 const mutableFields = ['attributes', 'sku', 'price', 'compareAtPrice', 'images', 'unit', 'weight',
   'weightUnit', 'weightIncludesPackaging', 'packagingWeight', 'packagingWeightUnit', 'isActive'];
@@ -171,6 +172,8 @@ const createVariantProduct = async (req, res) => {
         throw httpError('An approved store is required to create variant products.', 403);
       }
       await assertOperationalStore(store, session);
+      const recommendationProfile = normalizeRecommendationProfile(req.body.recommendationProfile, req.body);
+      const dssReadiness = calculateDssReadiness(req.body.category, recommendationProfile, req.body.productEvidence);
       product = new Product({
         _id: productId,
         productMode: 'variant',
@@ -193,7 +196,12 @@ const createVariantProduct = async (req, res) => {
         visibility,
         isActive: req.body.isActive !== false,
         store,
-        addedBy: req.user._id
+        addedBy: req.user._id,
+        recommendationProfile,
+        productEvidence: Array.isArray(req.body.productEvidence) ? req.body.productEvidence : [],
+        dssStatus: dssReadiness.status,
+        dssCompleteness: dssReadiness.completeness,
+        dssIssues: dssReadiness.issues
       });
       await product.save({ session });
       await claimSku({ namespaceType: 'store', owner: store, sku: product.sku,

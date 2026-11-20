@@ -44,6 +44,15 @@ const petValidation = [
   body('coat.length').optional().isIn(COAT_LENGTHS).withMessage('Invalid coat length'),
   body('coat.type').optional().isIn(COAT_TYPES).withMessage('Invalid coat type'),
   body('coat.condition').optional().isIn(['unknown', 'normal', 'tangled', 'matted', 'heavy_shedding', 'dry_looking', 'other']).withMessage('Invalid coat condition'),
+  body('activityLevel').optional().isIn(['unknown', 'low', 'moderate', 'high']).withMessage('Invalid activity level'),
+  body('skinType').optional().isIn(['unknown', 'normal', 'dry', 'sensitive', 'oily']).withMessage('Invalid skin type'),
+  body('foodSensitivities').optional().isArray({ max: 30 }).withMessage('Food sensitivities must be a list'),
+  body('dietaryPreferences').optional().isArray({ max: 30 }).withMessage('Dietary preferences must be a list'),
+  body('healthConcerns').optional().isArray({ max: 30 }).withMessage('Health concerns must be a list'),
+  body('bodyMeasurements.neckCm').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 500 }).withMessage('Neck measurement must be valid'),
+  body('bodyMeasurements.chestCm').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 500 }).withMessage('Chest measurement must be valid'),
+  body('bodyMeasurements.backLengthCm').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 500 }).withMessage('Back length must be valid'),
+  body('bodyMeasurements.heightCm').optional({ checkFalsy: true }).isFloat({ gt: 0, max: 500 }).withMessage('Height must be valid'),
   body('serviceNeeds').optional().isArray({ max: SERVICE_NEEDS.length }).withMessage('Service needs must be a list'),
   body('serviceNeeds.*').optional().isIn(SERVICE_NEEDS).withMessage('Invalid service need'),
   body('servicePreferences.preferredServiceType').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).withMessage('Preferred service type is too long'),
@@ -62,7 +71,7 @@ const petValidation = [
   })
 ];
 
-const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'breedStatus', 'pcciRegistration', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'supportingDocuments', 'vaccinationStatus', 'specialNotes', 'allergies', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
+const profileFields = ['name', 'type', 'breed', 'isMixedBreed', 'breedStatus', 'pcciRegistration', 'size', 'birthday', 'approximateAge', 'gender', 'weight', 'weightUnit', 'color', 'photo', 'vaccinationCards', 'supportingDocuments', 'vaccinationStatus', 'specialNotes', 'allergies', 'foodSensitivities', 'dietaryPreferences', 'healthConcerns', 'activityLevel', 'skinType', 'bodyMeasurements', 'medicalConditions', 'groomingPreferences', 'behaviorNotes', 'emergencyContact', 'coat', 'groomingHistory', 'serviceNeeds', 'servicePreferences'];
 const profilePayload = body => {
   const payload = Object.fromEntries(profileFields.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
   payload.type = normalizePetType(body.type);

@@ -20,7 +20,8 @@ router.get('/customer', authenticate, getCustomerInsights);
 router.post('/customer/pet-recommendations', authenticate, customerOnly, getCustomerPetRecommendations);
 router.post('/customer/product-recommendations', authenticate, customerOnly, [
   body('budget').isFloat({ gt: 0, max: 1000000 }).withMessage('Enter a product budget between ₱1 and ₱1,000,000.'),
-  body('petProfileId').optional({ checkFalsy: true }).isMongoId().withMessage('Select a valid saved pet profile.')
+  body('petProfileId').optional({ checkFalsy: true }).isMongoId().withMessage('Select a valid saved pet profile.'),
+  body('category').optional({ checkFalsy: true }).isIn(['all', 'food', 'grooming', 'toys', 'accessories', 'wellness', 'essentials']).withMessage('Select a valid recommendation category.')
 ], getCustomerProductRecommendations);
 router.get('/service-recommendations', authenticate, getServiceRecommendations);
 router.post('/service-recommendations', authenticate, customerOnly, createServiceAdvisorRecommendations);
