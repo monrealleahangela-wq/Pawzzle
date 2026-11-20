@@ -170,6 +170,7 @@ export const adminOrderService = {
   getAllOrders: (params) => api.get('/admin/orders', { params }),
   getOrderById: (id) => api.get(`/admin/orders/${id}`),
   updateOrderStatus: (id, statusData) => api.patch(`/admin/orders/${id}/status`, statusData),
+  confirmStorePickup: (id, pickupCode) => api.post(`/admin/orders/${id}/confirm-store-pickup`, { pickupCode }),
   cancelOrder: (id) => api.patch(`/admin/orders/${id}/cancel`)
 };
 

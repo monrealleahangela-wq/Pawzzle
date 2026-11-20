@@ -13,8 +13,12 @@ const Review = require('../models/Review');
 const { getMyRiderDetails } = require('../controllers/staffController');
 const {
   cancelOrderDelivery,
-  completePickupOrder
+  confirmCustomerPickup,
+  confirmSellerPickup
 } = require('../services/deliveryAssignmentService');
+const { pickupCodeForOrder } = require('../utils/storePickup');
+
+process.env.PICKUP_VERIFICATION_SECRET ||= 'transaction-test-pickup-secret-20261120';
 
 const transactionTestUri = process.env.MONGODB_TRANSACTION_TEST_URI;
 const isolatedTransactionTestUri = transactionTestUri ? (() => {
@@ -204,12 +208,15 @@ test('real MongoDB makes cancellation resources and pickup payout exactly once',
     fulfillmentTimeline: [], createdAt: now(), updatedAt: now()
   });
 
-  const pickups = await Promise.allSettled([
-    completePickupOrder({ orderId: pickupOrder, customerId: customer }),
-    completePickupOrder({ orderId: pickupOrder, customerId: customer })
-  ]);
-  assert.equal(pickups.filter(result => result.status === 'fulfilled').length, 1);
-  assert.equal(pickups.filter(result => result.status === 'rejected').length, 1);
+  const customerConfirmation = await confirmCustomerPickup({ orderId: pickupOrder, customerId: customer });
+  assert.equal(customerConfirmation.completed, false);
+  assert.equal((await Order.findById(pickupOrder).lean()).payoutStatus, 'pending');
+  const sellerConfirmation = await confirmSellerPickup({
+    orderId: pickupOrder,
+    sellerId: owner,
+    pickupCode: pickupCodeForOrder(pickupOrder)
+  });
+  assert.equal(sellerConfirmation.completed, true);
   const completedOrder = await Order.findById(pickupOrder).lean();
   assert.equal(completedOrder.status, 'delivered');
   assert.equal(completedOrder.payoutStatus, 'released');
@@ -240,13 +247,20 @@ test('real MongoDB makes cancellation resources and pickup payout exactly once',
     status: 'ready_for_pickup', payoutStatus: 'pending', isRevenueRecorded: false,
     fulfillmentTimeline: [], createdAt: now(), updatedAt: now()
   });
+  await confirmCustomerPickup({ orderId: rollbackPickupOrder, customerId: customer });
   await assert.rejects(
-    completePickupOrder({ orderId: rollbackPickupOrder, customerId: customer }),
+    confirmSellerPickup({
+      orderId: rollbackPickupOrder,
+      sellerId: owner,
+      pickupCode: pickupCodeForOrder(rollbackPickupOrder)
+    }),
     /seller Store no longer exists/
   );
   const rolledBackPickup = await Order.findById(rollbackPickupOrder).lean();
   assert.equal(rolledBackPickup.status, 'ready_for_pickup');
   assert.equal(rolledBackPickup.payoutStatus, 'pending');
   assert.equal(rolledBackPickup.isRevenueRecorded, false);
+  assert.ok(rolledBackPickup.pickupSession.customerConfirmedAt);
+  assert.equal(rolledBackPickup.pickupSession.sellerConfirmedAt, undefined);
   assert.equal((await Pet.findById(rollbackPickupPet).lean()).status, 'reserved');
 });

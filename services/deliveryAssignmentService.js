@@ -211,6 +211,18 @@ const validatePickupEligibility = (order, customerId) => {
   return true;
 };
 
+const validateSellerPickupEligibility = order => {
+  if (order.deliveryMethod === 'delivery') {
+    throw fail('Home delivery must use the authenticated Delivery Rider workflow.', 409);
+  }
+  if (order.paymentStatus !== 'paid') throw fail('Order must be paid before confirming pickup.', 400);
+  if (['delivered', 'completed'].includes(order.status) && order.pickupSession?.sellerConfirmedAt) return true;
+  if (order.status !== 'ready_for_pickup') {
+    throw fail(`Order status ${order.status} is not eligible for store pickup confirmation.`, 409);
+  }
+  return true;
+};
+
 const restoreOrderResources = async (order, session, actorId) => {
   const restoreStock = CANCELLATION_STOCK_DEDUCTED_STATUSES.includes(order.status);
   if (restoreStock && order.paymentStatus === 'refunded' && hasNormalizedVariants(order)) {
@@ -322,70 +334,120 @@ const cancelOrderDelivery = async ({ orderId, actorId, allowRefundedCancellation
   return { ...outcome, order, delivery };
 };
 
-const completePickupOrder = async ({ orderId, customerId, session: callerSession }) => {
+const finalizePickupHandoff = async ({ order, actorId, session }) => {
+  if (!order.pickupSession?.customerConfirmedAt || !order.pickupSession?.sellerConfirmedAt) {
+    return { completed: false, changed: false, orderId: order._id };
+  }
+
+  const now = new Date();
+  const totals = RevenueService.totalsFor(order, 'order');
+  const shouldRecordRevenue = order.isRevenueRecorded !== true;
+  const claimed = await Order.findOneAndUpdate({
+    _id: order._id,
+    deliveryMethod: 'pickup',
+    paymentStatus: 'paid',
+    status: 'ready_for_pickup',
+    'pickupSession.customerConfirmedAt': { $ne: null },
+    'pickupSession.sellerConfirmedAt': { $ne: null },
+    payoutStatus: { $ne: 'released' }
+  }, {
+    $set: {
+      status: 'delivered',
+      deliveryDate: now,
+      payoutStatus: 'released',
+      'pickupSession.verifiedAt': now,
+      platformCommission: totals.platformFee,
+      platformFee: totals.platformFee,
+      netAmount: totals.netAmount,
+      updatedAt: now,
+      ...(shouldRecordRevenue ? { isRevenueRecorded: true } : {})
+    },
+    $push: {
+      fulfillmentTimeline: {
+        status: 'delivered',
+        timestamp: now,
+        actor: actorId,
+        description: 'Store pickup completed after customer receipt confirmation and seller pickup-code verification.'
+      }
+    }
+  }, { new: true, session });
+
+  if (!claimed) {
+    const latest = await Order.findById(order._id).session(session);
+    if (latest && ['delivered', 'completed'].includes(latest.status)
+        && latest.pickupSession?.customerConfirmedAt && latest.pickupSession?.sellerConfirmedAt) {
+      return { completed: true, changed: false, orderId: latest._id, netPayout: latest.netAmount };
+    }
+    throw fail('Order state changed. Refresh and try again.', 409);
+  }
+
+  for (const item of order.items) {
+    if (item.itemType !== 'pet') continue;
+    const soldPet = await finalizePetReservation({
+      petId: item.itemId,
+      source: 'order',
+      referenceId: order._id,
+      status: 'sold',
+      session
+    });
+    if (!soldPet) throw fail(`Pet "${item.name}" is not reserved for this order.`, 409);
+  }
+
+  if (shouldRecordRevenue) {
+    const store = await Store.findOneAndUpdate({ _id: order.store }, {
+      $inc: {
+        balance: totals.netAmount,
+        'stats.totalRevenue': totals.recognizedRevenue,
+        'stats.totalPlatformFees': totals.platformFee
+      }
+    }, { new: true, session });
+    if (!store) throw fail('The seller Store no longer exists.', 409);
+  }
+
+  return { completed: true, changed: true, orderId: claimed._id, netPayout: totals.netAmount };
+};
+
+const confirmCustomerPickup = async ({ orderId, customerId, evidenceHash, session: callerSession }) => {
   let outcome;
   const execute = async session => {
     const order = await Order.findById(orderId).session(session);
     if (!order) throw fail('Order not found.', 404);
+    if (['delivered', 'completed'].includes(order.status)
+        && String(order.customer) === String(customerId)
+        && order.deliveryMethod === 'pickup'
+        && order.pickupSession?.customerConfirmedAt) {
+      outcome = { completed: true, changed: false, orderId: order._id, netPayout: order.netAmount };
+      return;
+    }
     validatePickupEligibility(order, customerId);
 
     const now = new Date();
-    const totals = RevenueService.totalsFor(order, 'order');
-    const shouldRecordRevenue = order.isRevenueRecorded !== true;
-    const claimed = await Order.findOneAndUpdate({
+    const confirmed = order.pickupSession?.customerConfirmedAt ? order : await Order.findOneAndUpdate({
       _id: order._id,
       customer: customerId,
       deliveryMethod: 'pickup',
       paymentStatus: 'paid',
       status: 'ready_for_pickup',
-      payoutStatus: { $ne: 'released' }
+      'pickupSession.customerConfirmedAt': null
     }, {
       $set: {
-        status: 'delivered',
-        deliveryDate: now,
-        payoutStatus: 'released',
-        'pickupSession.verifiedAt': now,
-        platformCommission: totals.platformFee,
-        platformFee: totals.platformFee,
-        netAmount: totals.netAmount,
-        updatedAt: now,
-        ...(shouldRecordRevenue ? { isRevenueRecorded: true } : {})
+        'pickupSession.customerConfirmedAt': now,
+        'pickupSession.customerConfirmedBy': customerId,
+        'pickupSession.customerEvidenceHash': evidenceHash,
+        updatedAt: now
       },
       $push: {
         fulfillmentTimeline: {
-          status: 'delivered',
+          status: 'ready_for_pickup',
           timestamp: now,
           actor: customerId,
-          description: 'Customer confirmed pickup and receipt.'
+          description: 'Customer confirmed receipt of the store pickup order.'
         }
       }
     }, { new: true, session });
-    if (!claimed) throw fail('Order state changed. Refresh and try again.', 409);
-
-    for (const item of order.items) {
-      if (item.itemType !== 'pet') continue;
-      const soldPet = await finalizePetReservation({
-        petId: item.itemId,
-        source: 'order',
-        referenceId: order._id,
-        status: 'sold',
-        session
-      });
-      if (!soldPet) throw fail(`Pet "${item.name}" is not reserved for this order.`, 409);
-    }
-
-    if (shouldRecordRevenue) {
-      const store = await Store.findOneAndUpdate({ _id: order.store }, {
-        $inc: {
-          balance: totals.netAmount,
-          'stats.totalRevenue': totals.recognizedRevenue,
-          'stats.totalPlatformFees': totals.platformFee
-        }
-      }, { new: true, session });
-      if (!store) throw fail('The seller Store no longer exists.', 409);
-    }
-
-    outcome = { changed: true, orderId: claimed._id, netPayout: totals.netAmount };
+    if (!confirmed) throw fail('Order state changed. Refresh and try again.', 409);
+    outcome = await finalizePickupHandoff({ order: confirmed, actorId: customerId, session });
+    if (!outcome.completed) outcome.changed = !order.pickupSession?.customerConfirmedAt;
   };
 
   let ownedSession;
@@ -401,6 +463,68 @@ const completePickupOrder = async ({ orderId, customerId, session: callerSession
   if (callerSession) return outcome;
   return { ...outcome, order: await Order.findById(outcome.orderId) };
 };
+
+const confirmSellerPickup = async ({ orderId, sellerId, pickupCode, evidenceHash, session: callerSession }) => {
+  const { pickupCodeMatches } = require('../utils/storePickup');
+  let outcome;
+  const execute = async session => {
+    const order = await Order.findById(orderId).session(session);
+    if (!order) throw fail('Order not found.', 404);
+    if (['delivered', 'completed'].includes(order.status)
+        && order.deliveryMethod === 'pickup'
+        && order.pickupSession?.sellerConfirmedAt) {
+      outcome = { completed: true, changed: false, orderId: order._id, netPayout: order.netAmount };
+      return;
+    }
+    validateSellerPickupEligibility(order);
+    if (!pickupCodeMatches(order._id, pickupCode)) {
+      throw fail('The pickup code is incorrect. Ask the customer to show the current code from their Pawzzle order.', 400);
+    }
+
+    const now = new Date();
+    const confirmed = order.pickupSession?.sellerConfirmedAt ? order : await Order.findOneAndUpdate({
+      _id: order._id,
+      deliveryMethod: 'pickup',
+      paymentStatus: 'paid',
+      status: 'ready_for_pickup',
+      'pickupSession.sellerConfirmedAt': null
+    }, {
+      $set: {
+        'pickupSession.sellerConfirmedAt': now,
+        'pickupSession.sellerConfirmedBy': sellerId,
+        'pickupSession.sellerEvidenceHash': evidenceHash,
+        'pickupSession.codeVerifiedAt': now,
+        updatedAt: now
+      },
+      $push: {
+        fulfillmentTimeline: {
+          status: 'ready_for_pickup',
+          timestamp: now,
+          actor: sellerId,
+          description: 'Seller verified the buyer pickup code and confirmed the handoff.'
+        }
+      }
+    }, { new: true, session });
+    if (!confirmed) throw fail('Order state changed. Refresh and try again.', 409);
+    outcome = await finalizePickupHandoff({ order: confirmed, actorId: sellerId, session });
+    if (!outcome.completed) outcome.changed = !order.pickupSession?.sellerConfirmedAt;
+  };
+
+  let ownedSession;
+  try {
+    if (callerSession) await execute(callerSession);
+    else {
+      ownedSession = await mongoose.startSession();
+      await ownedSession.withTransaction(() => execute(ownedSession));
+    }
+  } finally {
+    if (ownedSession) await ownedSession.endSession();
+  }
+  if (callerSession) return outcome;
+  return { ...outcome, order: await Order.findById(outcome.orderId) };
+};
+
+const completePickupOrder = confirmCustomerPickup;
 
 const assignDelivery = async ({ orderId, bookingId, deliveryId, parcel: parcelInput, actorId, riderId, reassign = false }) => {
   if (!riderId || !mongoose.Types.ObjectId.isValid(riderId)) {
@@ -591,6 +715,8 @@ module.exports = {
   assignDelivery,
   cancelOrderDelivery,
   completePickupOrder,
+  confirmCustomerPickup,
+  confirmSellerPickup,
   releaseRiderCapacity,
   buildActiveRiderAccountFilter,
   isAvailableNow,
@@ -601,6 +727,7 @@ module.exports = {
   isFailedAttemptRecovery,
   validateAssignmentSource,
   validatePickupEligibility,
+  validateSellerPickupEligibility,
   ASSIGNABLE_ORDER_STATUSES,
   ASSIGNABLE_BOOKING_STATUSES
 };

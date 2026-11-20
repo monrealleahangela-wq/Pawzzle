@@ -6,6 +6,10 @@ const STATUS_PRESENTATION = {
   confirmed: { label: 'Order Confirmed', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   preparing: { label: 'Preparing Order', badgeClass: 'bg-violet-50 text-violet-700 border-violet-200' },
   ready_for_pickup: { label: 'Awaiting Rider', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' },
+  pickup_ready: { label: 'Ready for Store Pickup', badgeClass: 'bg-violet-50 text-violet-700 border-violet-200' },
+  pickup_customer_confirmed: { label: 'Customer Confirmed - Store Pending', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+  pickup_seller_confirmed: { label: 'Store Confirmed - Customer Pending', badgeClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+  pickup_completed: { label: 'Store Pickup Completed', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   pending: { label: 'Preparing Delivery', badgeClass: 'bg-violet-50 text-violet-700 border-violet-200' },
   unassigned: { label: 'Awaiting Rider', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' },
   rider_assigned: { label: 'Rider Assigned', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
@@ -56,7 +60,13 @@ export const getOrderDeliveryStatus = order => {
   const deliveryStatus = normalizeStatus(delivery?.status);
 
   let status;
-  if (TERMINAL_ORDER_STATUSES.has(orderStatus)) {
+  if (order?.deliveryMethod === 'pickup' && ['delivered', 'completed'].includes(orderStatus)) {
+    status = 'pickup_completed';
+  } else if (order?.deliveryMethod === 'pickup' && orderStatus === 'ready_for_pickup') {
+    if (order.pickupSession?.customerConfirmedAt) status = 'pickup_customer_confirmed';
+    else if (order.pickupSession?.sellerConfirmedAt) status = 'pickup_seller_confirmed';
+    else status = 'pickup_ready';
+  } else if (TERMINAL_ORDER_STATUSES.has(orderStatus)) {
     status = orderStatus;
   } else if (ACTIVE_DELIVERY_STATUSES.has(deliveryStatus)) {
     status = deliveryStatus;
@@ -81,6 +91,10 @@ const descriptionFor = status => ({
   confirmed: 'The Store confirmed the order.',
   preparing: 'The Store is preparing the parcel.',
   ready_for_pickup: 'The parcel is ready and waiting for a Rider.',
+  pickup_ready: 'The order is ready for customer collection at the Store.',
+  pickup_customer_confirmed: 'The customer confirmed receipt. The Store must verify the pickup code and handoff.',
+  pickup_seller_confirmed: 'The Store verified the pickup code. The customer must confirm receipt.',
+  pickup_completed: 'The customer and Store both confirmed the pickup handoff.',
   pending: 'Delivery preparation has started.',
   unassigned: 'Pawzzle is waiting for an available Rider.',
   rider_assigned: 'A Pawzzle Rider was assigned.',

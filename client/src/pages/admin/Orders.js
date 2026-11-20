@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { adminOrderService, getImageUrl } from '../../services/apiService';
-import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, UserRoundCheck } from 'lucide-react';
+import { ShoppingBag, Eye, Package, Filter, ChevronDown, Search, UserRoundCheck, KeyRound, X } from 'lucide-react';
 import { formatTime12h } from '../../utils/timeFormatters';
 import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { formatPeso } from '../../utils/paymentSummary';
@@ -34,6 +34,9 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [pickupTarget, setPickupTarget] = useState(null);
+  const [pickupCode, setPickupCode] = useState('');
+  const [confirmingPickup, setConfirmingPickup] = useState(false);
 
   const [filters, setFilters] = useState({
     status: '',
@@ -94,6 +97,32 @@ const AdminOrders = () => {
     }
   };
 
+  const openPickupConfirmation = order => {
+    setPickupTarget(order);
+    setPickupCode('');
+  };
+
+  const confirmStorePickup = async () => {
+    if (!pickupTarget?._id || !/^\d{6}$/.test(pickupCode)) {
+      toast.error('Enter the customer\'s 6-digit pickup code.');
+      return;
+    }
+    setConfirmingPickup(true);
+    try {
+      const response = await adminOrderService.confirmStorePickup(pickupTarget._id, pickupCode);
+      toast.success(response.data.completed
+        ? 'Store pickup completed and payout released.'
+        : 'Handoff recorded. Waiting for the customer to confirm receipt.');
+      setPickupTarget(null);
+      setPickupCode('');
+      await fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm this pickup.');
+    } finally {
+      setConfirmingPickup(false);
+    }
+  };
+
   const getStatusStyle = (status) => {
     switch (status) {
       case 'pending_payment': return 'bg-amber-50 text-amber-700 border-amber-100';
@@ -112,6 +141,13 @@ const AdminOrders = () => {
   };
 
   const formatStatus = status => String(status || 'unknown').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  const formatOrderStatus = order => {
+    const status = getEffectiveOrderStatus(order);
+    if (status !== 'ready_for_pickup' || order.deliveryMethod !== 'pickup') return formatStatus(status);
+    if (order.pickupSession?.sellerConfirmedAt) return 'Waiting For Customer Confirmation';
+    if (order.pickupSession?.customerConfirmedAt) return 'Customer Confirmed - Verify Code';
+    return 'Ready For Store Pickup';
+  };
   const hasFilters = Boolean(filters.status || filters.search);
 
   const getActionButton = (order) => {
@@ -120,7 +156,9 @@ const AdminOrders = () => {
       case 'awaiting_confirmation': return { label: 'START PREPARING', next: 'confirmed', color: 'bg-blue-500 hover:bg-blue-600' };
       case 'confirmed': return { label: 'START PACKING', next: 'preparing', color: 'bg-indigo-500 hover:bg-indigo-600' };
       case 'preparing': return { label: 'READY FOR PICKUP', next: 'ready_for_pickup', color: 'bg-purple-600 hover:bg-purple-700' };
-      case 'ready_for_pickup': return { label: 'ASSIGN RIDER', type: 'rider_assignment', color: 'bg-slate-900 hover:bg-rose-500' };
+      case 'ready_for_pickup': return order.deliveryMethod === 'pickup'
+        ? { label: order.pickupSession?.sellerConfirmedAt ? 'WAITING FOR CUSTOMER' : 'CONFIRM CUSTOMER PICKUP', type: 'store_pickup', color: 'bg-purple-700 hover:bg-purple-800' }
+        : { label: 'ASSIGN RIDER', type: 'rider_assignment', color: 'bg-slate-900 hover:bg-rose-500' };
       case 'delivered': return { label: 'CLOSE ORDER', next: 'completed', color: 'bg-slate-900 hover:bg-black' };
       default: return null;
     }
@@ -235,7 +273,7 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(getEffectiveOrderStatus(order))}`}>
-                          {formatStatus(getEffectiveOrderStatus(order))}
+                          {formatOrderStatus(order)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -253,6 +291,16 @@ const AdminOrders = () => {
                                 <UserRoundCheck className="h-3.5 w-3.5" />
                                 {order.delivery ? 'MANAGE RIDER' : 'ASSIGN RIDER'}
                               </Link>
+                            ) : getActionButton(order).type === 'store_pickup' ? (
+                              <button
+                                type="button"
+                                onClick={() => openPickupConfirmation(order)}
+                                disabled={Boolean(order.pickupSession?.sellerConfirmedAt)}
+                                className="flex items-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg transition-all hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                              >
+                                <KeyRound className="h-3.5 w-3.5" />
+                                {getActionButton(order).label}
+                              </button>
                             ) : (
                               <button
                                 onClick={() => handleStatusUpdate(order._id, getActionButton(order).next)}
@@ -280,13 +328,23 @@ const AdminOrders = () => {
                     <h3 className="font-bold text-slate-900">{order.customer?.firstName || 'Unknown'}</h3>
                   </div>
                   <span className={`px-2 py-1 rounded-md text-[10px] font-medium border ${getStatusStyle(getEffectiveOrderStatus(order))}`}>
-                    {formatStatus(getEffectiveOrderStatus(order))}
+                    {formatOrderStatus(order)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-t border-slate-100">
                   <p className="text-sm font-bold text-slate-900">{formatPeso(order.totalAmount)}</p>
                   <Link to={`/admin/orders/${order._id}`} className="text-xs font-bold text-primary-600">View Details</Link>
                 </div>
+                {canManageOrders && getActionButton(order)?.type === 'store_pickup' && (
+                  <button
+                    type="button"
+                    onClick={() => openPickupConfirmation(order)}
+                    disabled={Boolean(order.pickupSession?.sellerConfirmedAt)}
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 text-xs font-black text-white disabled:bg-slate-300"
+                  >
+                    <KeyRound className="h-4 w-4" /> {getActionButton(order).label}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -312,6 +370,48 @@ const AdminOrders = () => {
           >
             Next
           </button>
+        </div>
+      )}
+      {pickupTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="pickup-confirm-title">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700">Two-party verification</p>
+                <h2 id="pickup-confirm-title" className="mt-1 text-xl font-black text-slate-950">Confirm customer pickup</h2>
+              </div>
+              <button type="button" onClick={() => setPickupTarget(null)} className="rounded-full p-2 text-slate-500 hover:bg-slate-100" aria-label="Close pickup confirmation">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">
+              Check the customer name on this order, physically hand over the complete order, then enter the 6-digit code shown in the customer's Pawzzle account. The order completes only after the customer also confirms receipt.
+            </p>
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+              <p className="font-black text-slate-900">Order #{pickupTarget.orderNumber?.slice(-8).toUpperCase()}</p>
+              <p className="mt-1 text-slate-600">Customer: {pickupTarget.customer?.firstName} {pickupTarget.customer?.lastName}</p>
+              <p className="mt-1 text-xs font-bold text-slate-500">Customer confirmation: {pickupTarget.pickupSession?.customerConfirmedAt ? 'Recorded' : 'Still pending'}</p>
+            </div>
+            <label className="mt-5 block text-xs font-black uppercase tracking-wider text-slate-700" htmlFor="store-pickup-code">Customer pickup code</label>
+            <input
+              id="store-pickup-code"
+              value={pickupCode}
+              onChange={event => setPickupCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-4 text-center font-mono text-2xl font-black tracking-[0.35em] outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-100"
+            />
+            <button
+              type="button"
+              onClick={confirmStorePickup}
+              disabled={confirmingPickup || pickupCode.length !== 6}
+              className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-700 px-5 text-xs font-black uppercase tracking-wider text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            >
+              <KeyRound className="h-4 w-4" /> {confirmingPickup ? 'Verifying...' : 'Verify code and confirm handoff'}
+            </button>
+          </div>
         </div>
       )}
       <ConfirmationDialog

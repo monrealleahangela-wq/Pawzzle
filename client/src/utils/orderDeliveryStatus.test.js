@@ -9,6 +9,23 @@ test('uses the real order state before a Rider is needed', () => {
     .toBe('Awaiting Rider');
 });
 
+test('keeps store pickup out of the Rider workflow and shows both confirmations', () => {
+  expect(getOrderDeliveryStatus({ status: 'ready_for_pickup', deliveryMethod: 'pickup' }).label)
+    .toBe('Ready for Store Pickup');
+  expect(getOrderDeliveryStatus({
+    status: 'ready_for_pickup',
+    deliveryMethod: 'pickup',
+    pickupSession: { customerConfirmedAt: '2026-11-20T01:00:00.000Z' }
+  }).label).toBe('Customer Confirmed - Store Pending');
+  expect(getOrderDeliveryStatus({
+    status: 'ready_for_pickup',
+    deliveryMethod: 'pickup',
+    pickupSession: { sellerConfirmedAt: '2026-11-20T01:00:00.000Z' }
+  }).label).toBe('Store Confirmed - Customer Pending');
+  expect(getOrderDeliveryStatus({ status: 'delivered', deliveryMethod: 'pickup' }).label)
+    .toBe('Store Pickup Completed');
+});
+
 test('uses active delivery status instead of the assignment-type badge', () => {
   expect(getOrderDeliveryStatus({ status: 'picked_up', delivery: { status: 'picked_up', assignmentType: 'internal' } }).label)
     .toBe('Picked Up');

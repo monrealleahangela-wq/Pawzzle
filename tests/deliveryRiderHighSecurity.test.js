@@ -243,15 +243,16 @@ test('legacy Order status endpoints cannot own Delivery lifecycle transitions', 
   assert.match(orderController, /DELIVERY_CONTROLLED_ORDER_STATUSES/);
   assert.match(orderController, /controlled by the authenticated Delivery Rider workflow/);
   assert.match(deliveryService, /Home delivery completion must be confirmed through the authenticated Delivery Rider workflow/);
-  assert.match(orderController, /cancelOrderDelivery\(\{ orderId: order\._id, actorId: req\.user\._id \}\)/);
+  assert.match(orderController, /cancelOrderDelivery\(\{[\s\S]*orderId: order\._id,[\s\S]*actorId: req\.user\._id/);
   assert.doesNotMatch(orderController, /const stockWasDeducted/);
   assert.doesNotMatch(orderController, /Voucher\.findByIdAndUpdate\(order\.voucher/);
   assert.match(deliveryService, /cancelOrderDelivery[\s\S]*releaseRiderCapacity\(delivery, session\)/);
-  assert.match(deliveryService, /cancelOrderDelivery[\s\S]*restoreOrderResources\(order, session\)/);
+  assert.match(deliveryService, /const restoreOrderResources/);
+  assert.match(deliveryService, /await restoreOrderResources\(order, session, actorId\)/);
   assert.match(deliveryService, /delivery\.status = 'cancelled'/);
   assert.match(deliveryService, /status: 'cancelled'/);
   assert.match(deliveryService, /withTransaction/);
-  assert.match(deliveryService, /completePickupOrder[\s\S]*status: 'ready_for_pickup'[\s\S]*payoutStatus: 'released'/);
+  assert.match(deliveryService, /finalizePickupHandoff[\s\S]*'pickupSession\.customerConfirmedAt': \{ \$ne: null \}[\s\S]*'pickupSession\.sellerConfirmedAt': \{ \$ne: null \}[\s\S]*payoutStatus: 'released'/);
 });
 
 test('booking and Order assignment controls mirror authoritative eligibility', () => {
@@ -259,6 +260,6 @@ test('booking and Order assignment controls mirror authoritative eligibility', (
   const order = source('client/src/pages/customer/OrderDetail.js');
   assert.match(bookings, /selectedBooking\.paymentStatus === 'paid'/);
   assert.match(bookings, /\['confirmed', 'approved', 'processing'\]\.includes\(selectedBooking\.status\)/);
-  assert.match(bookings, /reassign: Boolean\(deliveryAssignment\)/);
+  assert.match(bookings, /reassign: Boolean\(deliveryAssignment\?\.assignedRider\)/);
   assert.match(order, /\['ready_for_pickup', 'rider_assigned'\]\.includes\(order\.status\)/);
 });

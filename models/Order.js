@@ -313,6 +313,13 @@ const orderSchema = new mongoose.Schema({
   pickupSession: {
     code: { type: String },
     verifiedAt: { type: Date },
+    customerConfirmedAt: { type: Date },
+    customerConfirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    customerEvidenceHash: { type: String },
+    sellerConfirmedAt: { type: Date },
+    sellerConfirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    sellerEvidenceHash: { type: String },
+    codeVerifiedAt: { type: Date },
     scheduledDate: { type: Date },
     instructions: { type: String },
     location: { type: String }
