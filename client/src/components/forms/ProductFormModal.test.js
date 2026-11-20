@@ -31,9 +31,11 @@ test('seller product form captures authoritative unit and optional packaging wei
 });
 
 test('variant product UI is gated and captures only explicit combinations', () => {
-  render(<Harness variantCapabilities={{ enabled: true }} startingForm={{ ...initial, productMode: 'simple', normalizedVariants: [] }}/>);
+  render(<Harness variantCapabilities={{ enabled: true, customerBrowsingEnabled: true }} startingForm={{ ...initial, productMode: 'simple', normalizedVariants: [] }}/>);
   fireEvent.click(screen.getByRole('button', { name: /Product With Variants/i }));
   expect(screen.getByText(/Add only combinations you actually sell/i)).toBeInTheDocument();
+  expect(screen.getByText(/Customer price is calculated from the variants/i)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Price/i)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Add explicit combination/i }));
   fireEvent.change(screen.getByPlaceholderText(/Flavor, Size, Color/i), { target: { value: 'Flavor' } });
   fireEvent.change(screen.getByPlaceholderText(/Chicken, 1 kg, Blue/i), { target: { value: 'Chicken' } });
@@ -43,6 +45,15 @@ test('variant product UI is gated and captures only explicit combinations', () =
   expect(screen.getByDisplayValue('Chicken')).toBeInTheDocument();
   expect(screen.getByDisplayValue('1 kg')).toBeInTheDocument();
   expect(screen.queryByLabelText(/Stock Quantity/i)).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/Catalog Visibility/i)).toBeEnabled();
+});
+
+test('variant products remain draft until customer variant browsing is ready', () => {
+  render(<Harness variantCapabilities={{ enabled: true, customerBrowsingEnabled: false }} startingForm={{ ...initial, productMode: 'simple', normalizedVariants: [] }}/>);
+  fireEvent.click(screen.getByRole('button', { name: /Product With Variants/i }));
+  expect(screen.getByLabelText(/Catalog Visibility/i)).toBeDisabled();
+  expect(screen.getByLabelText(/Catalog Visibility/i)).toHaveValue('draft');
+  expect(screen.getByText(/Saved as Draft until customer variant browsing is activated/i)).toBeInTheDocument();
 });
 
 test('legacy products remain editable while clearly identifying a missing weight', () => {

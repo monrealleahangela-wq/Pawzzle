@@ -8,6 +8,25 @@ const { normalizeVariantSku } = require('../utils/variantIdentity');
 const flagEnabled = name => String(process.env[name] || '').toLowerCase() === 'true';
 const sameKey = (left, right) => JSON.stringify(left || {}) === JSON.stringify(right || {});
 
+const REQUIRED_INDEXES = Object.freeze({
+  ProductVariant: [
+    { name: 'product_variant_combination_unique', key: { product: 1, combinationKey: 1 }, unique: true },
+    { name: 'store_product_variant_sku_unique', key: { store: 1, normalizedSku: 1 }, unique: true }
+  ],
+  SkuClaim: [{
+    name: 'sku_claim_active_namespace_unique',
+    key: { activeKey: 1 },
+    unique: true,
+    partialFilterExpression: { activeKey: { $type: 'string' }, isActive: true }
+  }]
+});
+
+const indexMatches = (actual, required) => Boolean(actual)
+  && sameKey(actual.key, required.key)
+  && Boolean(actual.unique) === Boolean(required.unique)
+  && (!required.partialFilterExpression
+    || sameKey(actual.partialFilterExpression, required.partialFilterExpression));
+
 const buildSellerSkuCoverageReport = async () => {
   const [parents, variants, claims] = await Promise.all([
     Product.find({ isDeleted: { $ne: true } }).select('_id store sku').lean(),
@@ -32,7 +51,14 @@ const buildSellerSkuCoverageReport = async () => {
     else seen.set(key, { entityType, entity: String(entity) });
     const claim = claimByKey.get(key);
     if (!claim || claim.entityType !== entityType || String(claim.entity) !== String(entity)) {
-      missingClaims.push({ key, entityType, entity: String(entity) });
+      missingClaims.push({
+        key,
+        namespaceType: 'store',
+        owner: String(owner),
+        normalizedSku,
+        entityType,
+        entity: String(entity)
+      });
     }
   };
   parents.forEach(parent => inspect({ owner: parent.store, sku: parent.sku, entityType: 'product', entity: parent._id }));
@@ -67,16 +93,13 @@ const getSellerVariantReadiness = async () => {
       ProductVariant.collection.indexes(),
       SkuClaim.collection.indexes()
     ]);
-    if (!variantIndexes.some(index => index.name === 'product_variant_combination_unique' && index.unique
-      && sameKey(index.key, { product: 1, combinationKey: 1 }))) {
-      reasons.push('ProductVariant combination uniqueness index is missing.');
-    }
-    if (!variantIndexes.some(index => index.name === 'store_product_variant_sku_unique' && index.unique
-      && sameKey(index.key, { store: 1, normalizedSku: 1 }))) {
-      reasons.push('ProductVariant Store SKU uniqueness index is missing.');
-    }
-    if (!claimIndexes.some(index => index.name === 'sku_claim_active_namespace_unique' && index.unique)) {
-      reasons.push('SKU claim uniqueness index is missing.');
+    const present = {
+      ProductVariant: new Map(variantIndexes.map(index => [index.name, index])),
+      SkuClaim: new Map(claimIndexes.map(index => [index.name, index]))
+    };
+    for (const [modelName, definitions] of Object.entries(REQUIRED_INDEXES)) {
+      const missing = definitions.filter(definition => !indexMatches(present[modelName].get(definition.name), definition));
+      if (missing.length) reasons.push(`${modelName} is missing or has incompatible indexes: ${missing.map(item => item.name).join(', ')}.`);
     }
   } catch (error) {
     reasons.push(`Seller variant readiness inspection failed: ${error.message}`);
@@ -103,4 +126,10 @@ const assertSellerVariantWritesEnabled = async () => {
   return readiness;
 };
 
-module.exports = { assertSellerVariantWritesEnabled, buildSellerSkuCoverageReport, getSellerVariantReadiness };
+module.exports = {
+  REQUIRED_INDEXES,
+  assertSellerVariantWritesEnabled,
+  buildSellerSkuCoverageReport,
+  getSellerVariantReadiness,
+  indexMatches
+};

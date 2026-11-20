@@ -7,12 +7,27 @@ const { canOperateStore } = require('../utils/authorizationPolicy');
 const { normalizeVariantAttributes, normalizeVariantSku } = require('../utils/variantIdentity');
 const { claimSku, replaceSkuClaim } = require('../services/skuClaimService');
 const { assertSellerVariantWritesEnabled, getSellerVariantReadiness } = require('../services/sellerVariantReadinessService');
+const { getCustomerVariantReadiness } = require('../services/customerVariantReadinessService');
 const { normalizeCatalogImages, normalizeProductPackaging, normalizeProductWeight } = require('../utils/catalogListing');
 const { requireProductCategory } = require('../utils/productCategories');
 
 const mutableFields = ['attributes', 'sku', 'price', 'compareAtPrice', 'images', 'unit', 'weight',
   'weightUnit', 'weightIncludesPackaging', 'packagingWeight', 'packagingWeightUnit', 'isActive'];
 const httpError = (message, statusCode = 400, code) => Object.assign(new Error(message), { statusCode, code });
+const VISIBILITIES = new Set(['published', 'draft', 'hidden']);
+
+const syncParentVariantPrice = async ({ productId, session }) => {
+  const rows = await ProductVariant.find({
+    product: productId,
+    isActive: true,
+    isDiscontinued: { $ne: true }
+  }).select('price').session(session).lean();
+  if (!rows.length) return null;
+  const price = Math.min(...rows.map(row => Number(row.price)).filter(Number.isFinite));
+  if (!Number.isFinite(price) || price <= 0) return null;
+  await Product.updateOne({ _id: productId }, { $set: { price } }, { session });
+  return price;
+};
 
 const assertOperationalStore = async (storeId, session) => {
   const query = Store.findById(storeId).select('_id verificationStatus isActive');
@@ -66,8 +81,18 @@ const ownedParent = async ({ user, productId, session }) => {
 };
 
 const capabilities = async (_req, res) => {
-  const readiness = await getSellerVariantReadiness();
-  res.json({ enabled: readiness.enabled, requested: readiness.requested, reasons: readiness.reasons, skuRegistryReady: Boolean(readiness.coverage?.ready) });
+  const [readiness, customerReadiness] = await Promise.all([
+    getSellerVariantReadiness(),
+    getCustomerVariantReadiness()
+  ]);
+  res.json({
+    enabled: readiness.enabled,
+    requested: readiness.requested,
+    reasons: readiness.reasons,
+    skuRegistryReady: Boolean(readiness.coverage?.ready),
+    customerBrowsingEnabled: customerReadiness.browsingEnabled,
+    customerPurchasingEnabled: customerReadiness.purchasingEnabled
+  });
 };
 
 const list = async (req, res) => {
@@ -95,6 +120,7 @@ const create = async (req, res) => {
       await claimSku({ namespaceType: 'store', owner: product.store, sku: variant.sku,
         entityType: 'product_variant', entity: variant._id, session });
       await variant.save({ session });
+      await syncParentVariantPrice({ productId: product._id, session });
     });
     res.status(201).json(variant);
   } catch (error) {
@@ -118,10 +144,23 @@ const createVariantProduct = async (req, res) => {
     const images = normalizeCatalogImages(req.body.images, { required: true });
     const weight = normalizeProductWeight(req.body.weight, req.body.weightUnit, { required: true });
     const packaging = normalizeProductPackaging(req.body.packagingWeight, req.body.packagingWeightUnit, req.body.weightIncludesPackaging);
+    const visibility = VISIBILITIES.has(req.body.visibility) ? req.body.visibility : 'draft';
+    if (visibility === 'published') {
+      const customerReadiness = await getCustomerVariantReadiness();
+      if (!customerReadiness.browsingEnabled) {
+        throw httpError(
+          'Variant browsing must pass its readiness checks before this listing can be published. Save it as Draft until activation is complete.',
+          409,
+          'CUSTOMER_VARIANT_BROWSING_NOT_READY'
+        );
+      }
+    }
     const productId = new mongoose.Types.ObjectId();
     const generatedSkuStem = String(req.body.name).trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toUpperCase();
     const parentSku = String(req.body.sku || '').trim() || `PZ-${generatedSkuStem}-${String(productId).slice(-8).toUpperCase()}`;
     normalizeVariantSku(parentSku);
+    const activePrices = variants.filter(item => item.isActive !== false).map(item => item.price);
+    const parentPrice = Math.min(...(activePrices.length ? activePrices : variants.map(item => item.price)));
     let product;
     let children;
     await mongoose.connection.transaction(async session => {
@@ -142,7 +181,7 @@ const createVariantProduct = async (req, res) => {
         brand: req.body.brand,
         sku: parentSku,
         barcode: req.body.barcode,
-        price: Math.min(...variants.map(item => item.price)),
+        price: parentPrice,
         stockQuantity: 0,
         stockStatus: 'out_of_stock',
         images,
@@ -151,9 +190,7 @@ const createVariantProduct = async (req, res) => {
         ...weight,
         ...packaging,
         unit: req.body.unit || 'piece',
-        // Customer selection and checkout are intentionally deferred to a
-        // later phase. Variant parents cannot be published by Phase 3.
-        visibility: 'draft',
+        visibility,
         isActive: req.body.isActive !== false,
         store,
         addedBy: req.user._id
@@ -205,6 +242,7 @@ const update = async (req, res) => {
       }
       Object.assign(variant, input);
       await variant.save({ session });
+      await syncParentVariantPrice({ productId: product._id, session });
     });
     res.json(variant);
   } catch (error) {
@@ -226,6 +264,7 @@ const discontinue = async (req, res) => {
         variant.discontinuedAt = new Date();
         variant.discontinuedReason = String(req.body.reason || 'Discontinued by store').trim();
         await variant.save({ session });
+        await syncParentVariantPrice({ productId: product._id, session });
       }
     });
     res.json(variant);
@@ -234,4 +273,12 @@ const discontinue = async (req, res) => {
   }
 };
 
-module.exports = { capabilities, create, createVariantProduct, discontinue, list, update, __test: { validateInput } };
+module.exports = {
+  capabilities,
+  create,
+  createVariantProduct,
+  discontinue,
+  list,
+  update,
+  __test: { syncParentVariantPrice, validateInput }
+};
