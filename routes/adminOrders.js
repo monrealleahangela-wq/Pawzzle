@@ -9,9 +9,11 @@ const {
 const {
   getOrderById,
   updateOrderStatus,
+  confirmStorePickupHandoff,
   cancelOrder
 } = require('../controllers/orderController');
 const { authenticate, adminOrStaff, requirePermission } = require('../middleware/auth');
+const { authRateLimits } = require('../middleware/authRateLimit');
 const canViewOrders = requirePermission('sales.view', 'sales.manage', 'orders.view');
 const canUpdateOrders = requirePermission('sales.manage', 'orders.update');
 
@@ -23,6 +25,15 @@ const updateOrderStatusValidation = [
 // Admin routes (filtered by user's store)
 router.get('/', authenticate, adminOrStaff, canViewOrders, getAllAdminOrders);
 router.get('/:id', authenticate, adminOrStaff, canViewOrders, getOrderById);
+router.post(
+  '/:id/confirm-store-pickup',
+  authenticate,
+  adminOrStaff,
+  canUpdateOrders,
+  authRateLimits.storePickupVerification,
+  body('pickupCode').matches(/^\d{6}$/).withMessage('Enter the customer\'s 6-digit pickup code.'),
+  confirmStorePickupHandoff
+);
 router.patch('/:id/status', authenticate, adminOrStaff, canUpdateOrders, updateOrderStatusValidation, updateOrderStatus);
 router.patch('/:id/cancel', authenticate, adminOrStaff, canUpdateOrders, cancelOrder);
 

@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import { orderService, orderReturnService, adminOrderService, paymentService, deliveryService, reviewService, staffService, getImageUrl } from '../../services/apiService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck } from 'lucide-react';
+import { Heart, Package, ArrowLeft, Truck, CreditCard, MapPin, Store, Star, CheckCircle, AlertCircle, Navigation, Phone, Activity, ChevronDown, ChevronUp, MessageSquare, FileText, ClipboardCheck, KeyRound } from 'lucide-react';
 import OrderReviewModal from '../../components/OrderReviewModal';
 import ReviewModal from '../../components/ReviewModal';
 import DeliveryAssignmentFields from '../../components/delivery/DeliveryAssignmentFields';
@@ -47,6 +47,10 @@ const OrderDetail = () => {
   const [cancellingOrder, setCancellingOrder] = useState(false);
   const [receiptConfirmationOpen, setReceiptConfirmationOpen] = useState(false);
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
+  const [pickupConfirmationOpen, setPickupConfirmationOpen] = useState(false);
+  const [confirmingPickup, setConfirmingPickup] = useState(false);
+  const [sellerPickupCode, setSellerPickupCode] = useState('');
+  const [confirmingSellerPickup, setConfirmingSellerPickup] = useState(false);
   const [concernOpen, setConcernOpen] = useState(false);
   const [concernSubmitting, setConcernSubmitting] = useState(false);
   const [returnDraft, setReturnDraft] = useState(null);
@@ -323,6 +327,39 @@ const OrderDetail = () => {
     }
   };
 
+  const confirmCustomerStorePickup = async () => {
+    setConfirmingPickup(true);
+    try {
+      const response = await orderService.confirmPickup(id);
+      setPickupConfirmationOpen(false);
+      toast.success(response.data.completed
+        ? 'Store pickup completed. Thank you!'
+        : 'Your confirmation was recorded. Waiting for the Store to confirm the handoff.');
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm store pickup.');
+    } finally {
+      setConfirmingPickup(false);
+    }
+  };
+
+  const confirmSellerStorePickup = async () => {
+    if (!/^\d{6}$/.test(sellerPickupCode)) return toast.error('Enter the customer\'s 6-digit pickup code.');
+    setConfirmingSellerPickup(true);
+    try {
+      const response = await adminOrderService.confirmStorePickup(id, sellerPickupCode);
+      setSellerPickupCode('');
+      toast.success(response.data.completed
+        ? 'Store pickup completed and payout released.'
+        : 'Handoff recorded. Waiting for the customer to confirm receipt.');
+      await fetchOrder();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm store pickup.');
+    } finally {
+      setConfirmingSellerPickup(false);
+    }
+  };
+
   const handleSubmitStoreConcern = async concern => {
     const deliveryId = deliveryAssignment?._id || order?.delivery?._id;
     if (!deliveryId) return toast.error('Delivery details are unavailable.');
@@ -493,7 +530,7 @@ const OrderDetail = () => {
           </div>
           <div className="text-right flex flex-col items-end gap-2">
             <span className={`inline-flex px-4 py-1 rounded-2xl text-[10px] font-black uppercase tracking-widest ${getStatusColor(order.status)} border shadow-sm`}>
-              {order.status.replace('_', ' ')}
+              {deliveryStatus.label}
             </span>
             <p className="text-2xl font-black text-slate-900 tracking-tighter">
               {formatPeso(order.totalAmount)}
@@ -956,6 +993,43 @@ const OrderDetail = () => {
           )}
 
           {/* Enhanced Delivery & Complaint Tracking - Collapsible for Sellers */}
+          {order.deliveryMethod === 'pickup' && order.status === 'ready_for_pickup' && (
+            <div className="card border-2 border-purple-200 bg-purple-50/60 p-6">
+              <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest text-purple-950">
+                <KeyRound className="h-4 w-4 text-purple-700" /> Store pickup verification
+              </h2>
+              {user?.role === 'customer' ? (
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs leading-relaxed text-purple-900">Show this order-bound code to the seller only when the complete order is handed to you. The Store and your account must both confirm the handoff.</p>
+                  <div className="rounded-2xl border border-purple-200 bg-white p-4 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-purple-600">Your pickup code</p>
+                    <p className="mt-2 font-mono text-3xl font-black tracking-[0.35em] text-purple-950">{order.pickupSession?.customerCode || '------'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-black uppercase">
+                    <span className={`rounded-xl p-2 ${order.pickupSession?.sellerConfirmedAt ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-500'}`}>Store {order.pickupSession?.sellerConfirmedAt ? 'confirmed' : 'pending'}</span>
+                    <span className={`rounded-xl p-2 ${order.pickupSession?.customerConfirmedAt ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-500'}`}>You {order.pickupSession?.customerConfirmedAt ? 'confirmed' : 'pending'}</span>
+                  </div>
+                  {!order.pickupSession?.customerConfirmedAt && (
+                    <button type="button" onClick={() => setPickupConfirmationOpen(true)} className="min-h-12 w-full rounded-2xl bg-purple-700 px-5 text-xs font-black uppercase tracking-wider text-white hover:bg-purple-800">Confirm I received my order</button>
+                  )}
+                </div>
+              ) : canManageOrders ? (
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs leading-relaxed text-purple-900">Confirm the customer identity shown on this order, hand over the complete order, and enter the 6-digit code from the customer's Pawzzle account.</p>
+                  <p className="rounded-xl bg-white p-3 text-xs font-bold text-slate-700">Customer confirmation: {order.pickupSession?.customerConfirmedAt ? 'Recorded' : 'Still pending'}</p>
+                  {order.pickupSession?.sellerConfirmedAt ? (
+                    <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-black text-emerald-800">Store handoff confirmation recorded. Waiting for the customer.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input value={sellerPickupCode} onChange={event => setSellerPickupCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} placeholder="6-digit code" className="min-h-12 flex-1 rounded-xl border border-purple-300 bg-white px-4 text-center font-mono text-lg font-black tracking-[0.25em] outline-none focus:ring-4 focus:ring-purple-100" />
+                      <button type="button" onClick={confirmSellerStorePickup} disabled={confirmingSellerPickup || sellerPickupCode.length !== 6} className="min-h-12 rounded-xl bg-purple-700 px-5 text-xs font-black uppercase text-white disabled:bg-slate-300">{confirmingSellerPickup ? 'Verifying...' : 'Confirm handoff'}</button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
           {order.deliveryMethod === 'delivery' && (
             <div className={`card overflow-hidden border-2 ${order.delivery?.complaints?.some(c => c.status === 'pending') ? 'border-rose-100 shadow-rose-50' : 'border-slate-100'}`}>
               <button 
@@ -1295,6 +1369,15 @@ const OrderDetail = () => {
         busy={confirmingReceipt}
         onCancel={() => setReceiptConfirmationOpen(false)}
         onConfirm={confirmDeliveryReceipt}
+      />
+      <ConfirmationDialog
+        isOpen={pickupConfirmationOpen}
+        title="Confirm store pickup received?"
+        description="Confirm only after the Store physically hands the complete order to you. Your authenticated confirmation is recorded separately from the seller's pickup-code verification."
+        confirmLabel="Yes, I received it"
+        busy={confirmingPickup}
+        onCancel={() => setPickupConfirmationOpen(false)}
+        onConfirm={confirmCustomerStorePickup}
       />
       <OrderReviewModal
         isOpen={isReviewModalOpen}

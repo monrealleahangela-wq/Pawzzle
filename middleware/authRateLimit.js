@@ -38,6 +38,12 @@ const authRateLimits = {
     prefix: 'booking-verification',
     keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}`
   }),
+  storePickupVerification: createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 8,
+    prefix: 'store-pickup-verification',
+    keyGenerator: req => `${req.ip || req.socket?.remoteAddress || 'unknown'}:${String(req.user?._id || 'anonymous')}:${String(req.params?.id || 'unknown')}`
+  }),
   identityVerification: createRateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 8,

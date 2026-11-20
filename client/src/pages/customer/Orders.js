@@ -29,6 +29,19 @@ const STATUS_META = {
   cancelled: { label: 'Cancelled', color: 'text-slate-400', bg: 'bg-slate-50', border: 'border-slate-100', icon: XCircle },
 };
 
+const statusMetaForOrder = (order, effectiveStatus) => {
+  if (effectiveStatus !== 'ready_for_pickup' || order.deliveryMethod !== 'pickup') {
+    return STATUS_META[effectiveStatus] || STATUS_META.pending_payment;
+  }
+  if (order.pickupSession?.customerConfirmedAt) {
+    return { label: 'Waiting for store confirmation', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: Clock };
+  }
+  if (order.pickupSession?.sellerConfirmedAt) {
+    return { label: 'Confirm pickup receipt', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', icon: CheckCircle };
+  }
+  return { label: 'Ready for store pickup', color: 'text-purple-700', bg: 'bg-purple-50', border: 'border-purple-200', icon: ShoppingBag };
+};
+
 const Orders = () => {
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'pets' | 'bookings'
   const [orders, setOrders] = useState([]);
@@ -40,6 +53,8 @@ const Orders = () => {
   const [returnCases, setReturnCases] = useState({});
   const [confirmationTarget, setConfirmationTarget] = useState(null);
   const [confirmingReceipt, setConfirmingReceipt] = useState(false);
+  const [pickupConfirmationTarget, setPickupConfirmationTarget] = useState(null);
+  const [confirmingPickup, setConfirmingPickup] = useState(false);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, hasNext: false, hasPrev: false });
 
   const fetchOrders = useCallback(async () => {
@@ -80,6 +95,23 @@ const Orders = () => {
       toast.error(error.response?.data?.message || 'Unable to confirm receipt.');
     } finally {
       setConfirmingReceipt(false);
+    }
+  };
+
+  const confirmStorePickup = async () => {
+    if (!pickupConfirmationTarget?._id) return;
+    setConfirmingPickup(true);
+    try {
+      const response = await orderService.confirmPickup(pickupConfirmationTarget._id);
+      toast.success(response.data.completed
+        ? 'Store pickup completed. Thank you!'
+        : 'Your confirmation was recorded. Waiting for the store to confirm the handoff.');
+      setPickupConfirmationTarget(null);
+      await fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Unable to confirm store pickup.');
+    } finally {
+      setConfirmingPickup(false);
     }
   };
 
@@ -140,7 +172,7 @@ const Orders = () => {
                 };
                 
                 const effectiveStatus = legacyToNew[order.status] || order.status;
-                const meta = STATUS_META[effectiveStatus] || STATUS_META.pending_payment;
+                const meta = statusMetaForOrder(order, effectiveStatus);
                 const StatusIcon = meta.icon;
                 const orderPolicy = normalizeRefundPolicy(order.refundPolicySnapshot || order.store?.refundPolicy);
                 
@@ -216,6 +248,39 @@ const Orders = () => {
                       </div>
                     )}
 
+                    {effectiveStatus === 'ready_for_pickup' && order.deliveryMethod === 'pickup' && (
+                      <div className="mx-3 mb-3 rounded-xl border border-purple-200 bg-purple-50 p-3 sm:mx-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-xs font-black text-purple-950">Store pickup verification</p>
+                            <p className="mt-1 text-[10px] leading-relaxed text-purple-800">
+                              Show this code to the seller only when the order is handed to you. Both you and the seller must confirm before the order is completed.
+                            </p>
+                            <p className="mt-2 font-mono text-2xl font-black tracking-[0.35em] text-purple-950" aria-label="Pickup code">
+                              {order.pickupSession?.customerCode || '------'}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-wider">
+                              <span className={`rounded-full px-2 py-1 ${order.pickupSession?.sellerConfirmedAt ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-600'}`}>
+                                Store {order.pickupSession?.sellerConfirmedAt ? 'confirmed' : 'pending'}
+                              </span>
+                              <span className={`rounded-full px-2 py-1 ${order.pickupSession?.customerConfirmedAt ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-600'}`}>
+                                You {order.pickupSession?.customerConfirmedAt ? 'confirmed' : 'pending'}
+                              </span>
+                            </div>
+                          </div>
+                          {!order.pickupSession?.customerConfirmedAt ? (
+                            <button type="button" onClick={() => setPickupConfirmationTarget(order)} className="min-h-10 shrink-0 rounded-xl bg-purple-700 px-4 text-xs font-black text-white hover:bg-purple-800">
+                              Confirm I received it
+                            </button>
+                          ) : (
+                            <span className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-800">
+                              Your confirmation is recorded
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mx-3 mb-3 rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 sm:mx-4">
                       <PaymentBreakdown summary={orderPaymentSummary(order)} compact className="!space-y-1 !text-[9px] leading-tight" />
                     </div>
@@ -224,7 +289,7 @@ const Orders = () => {
                       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[9px] font-medium text-slate-600">
                         <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">{refundPolicyLabel(orderPolicy.type)} policy</span>
                         <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">Payment: {order.paymentStatus || (effectiveStatus === 'pending_payment' ? 'pending' : 'recorded')}</span>
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">Delivery: {meta.label}</span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">{order.deliveryMethod === 'pickup' ? 'Pickup' : 'Delivery'}: {meta.label}</span>
                       </div>
                       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
                       <p className="text-[10px] text-slate-500">Ordered on {new Date(order.orderDate).toLocaleDateString()}</p>
@@ -317,6 +382,15 @@ const Orders = () => {
         onConfirm={confirmReceipt}
         onCancel={() => setConfirmationTarget(null)}
         busy={confirmingReceipt}
+      />
+      <ConfirmationDialog
+        isOpen={Boolean(pickupConfirmationTarget)}
+        title="Confirm store pickup received?"
+        description="Confirm only after the seller has physically handed the complete order to you. Your authenticated confirmation is saved as pickup evidence and cannot be used by the seller alone."
+        confirmLabel="Yes, I received it"
+        onConfirm={confirmStorePickup}
+        onCancel={() => setPickupConfirmationTarget(null)}
+        busy={confirmingPickup}
       />
     </div>
   );

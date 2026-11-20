@@ -12,7 +12,7 @@ const { createNotification, notifyStoreStaff } = require('./notificationControll
 const User = require('../models/User');
 const Voucher = require('../models/Voucher');
 const { internalCreateDelivery } = require('./deliveryController');
-const { cancelOrderDelivery, completePickupOrder } = require('../services/deliveryAssignmentService');
+const { cancelOrderDelivery, confirmCustomerPickup, confirmSellerPickup } = require('../services/deliveryAssignmentService');
 const { emitAuthorizedDeliveryEvent, revokeDeliveryRoomForUser } = require('../services/socketAuthorization');
 const { calculateCheckoutPricing } = require('../services/orderPricingService');
 const InventoryReservation = require('../models/InventoryReservation');
@@ -34,6 +34,7 @@ const {
   getPetAvailabilityIssue,
   reservePetForOrder
 } = require('../services/petAvailabilityService');
+const { customerPickupView, requestFingerprint } = require('../utils/storePickup');
 
 const canViewRetailOrders = user => isPlatformAdmin(user)
   || hasPermission(user, 'sales.view') || hasPermission(user, 'sales.manage')
@@ -134,7 +135,7 @@ const getAllOrders = async (req, res) => {
       : orders;
 
     res.json({
-      orders: responseOrders,
+      orders: req.user.role === 'customer' ? responseOrders.map(customerPickupView) : responseOrders,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -177,7 +178,8 @@ const getOrderById = async (req, res) => {
       [responseOrder] = await decorateOrdersWithProductReviewStatus([responseOrder], req.user._id);
     }
 
-    const responseValue = responseOrder?.toObject ? responseOrder.toObject() : responseOrder;
+    const rawResponseValue = responseOrder?.toObject ? responseOrder.toObject() : responseOrder;
+    const responseValue = ownsOrder ? customerPickupView(rawResponseValue) : rawResponseValue;
     const variantOrder = hasNormalizedVariants(responseValue);
     const [returnCases, lifecycleReadiness] = await Promise.all([
       variantOrder ? listOrderReturns(order._id) : [],
@@ -859,19 +861,29 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-// Confirm order pickup (Buyer confirming they received the pet/item)
+const pickupEvidenceHash = req => requestFingerprint({
+  ip: req.ip || req.socket?.remoteAddress,
+  userAgent: req.get('user-agent')
+});
+
+// Buyer confirms that the store pickup order is physically in their possession.
 const confirmOrderPickup = async (req, res) => {
   try {
-    const result = await completePickupOrder({ orderId: req.params.id, customerId: req.user._id });
+    const result = await confirmCustomerPickup({
+      orderId: req.params.id,
+      customerId: req.user._id,
+      evidenceHash: pickupEvidenceHash(req)
+    });
     const order = result.order;
 
-    // Notify seller about payout release
     const notificationResult = await Promise.allSettled([createNotification({
       recipient: order.addedBy,
       sender: req.user._id,
-      type: 'payout_released',
-      title: 'Payout Released',
-      message: `Pickup confirmed for order #${order._id.toString().slice(-6)}. The seller payout is now released.`,
+      type: result.completed ? 'payout_released' : 'order_status',
+      title: result.completed ? 'Store Pickup Completed' : 'Customer Confirmed Pickup',
+      message: result.completed
+        ? `Both parties confirmed pickup for order #${order._id.toString().slice(-6)}. The seller payout is now released.`
+        : `The customer confirmed receipt for order #${order._id.toString().slice(-6)}. Verify their pickup code and confirm the handoff.`,
       relatedId: order._id,
       relatedModel: 'Order'
     })]);
@@ -880,12 +892,65 @@ const confirmOrderPickup = async (req, res) => {
     }
 
     res.json({
-      message: 'Pickup confirmed and payout released to seller',
-      order: await Order.findById(order._id).populate('customer', 'username firstName lastName email')
+      message: result.completed
+        ? 'Store pickup completed. Both confirmations were recorded and the seller payout was released.'
+        : 'Your receipt confirmation was recorded. The order will complete after the seller verifies your pickup code.',
+      completed: result.completed,
+      order: customerPickupView(await Order.findById(order._id).populate('customer', 'username firstName lastName email'))
     });
   } catch (error) {
     console.error('Confirm pickup error:', error);
     res.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : 'Server error' });
+  }
+};
+
+// Seller verifies the buyer's order-bound code and confirms the physical handoff.
+const confirmStorePickupHandoff = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array(), message: errors.array()[0].msg });
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (!canManageRetailOrders(req.user)
+        || !(await canOperateStore(req.user, order.store, ['sales.manage', 'orders.update']))) {
+      return res.status(403).json({ message: 'You cannot confirm pickups for this store.' });
+    }
+
+    const result = await confirmSellerPickup({
+      orderId: order._id,
+      sellerId: req.user._id,
+      pickupCode: req.body.pickupCode,
+      evidenceHash: pickupEvidenceHash(req)
+    });
+    const updatedOrder = result.order;
+    const notificationResult = await Promise.allSettled([createNotification({
+      recipient: updatedOrder.customer,
+      sender: req.user._id,
+      type: 'order_status',
+      title: result.completed ? 'Store Pickup Completed' : 'Store Confirmed Handoff',
+      message: result.completed
+        ? `Both confirmations were recorded for order #${updatedOrder._id.toString().slice(-6)}. Your pickup is complete.`
+        : `The store verified your code for order #${updatedOrder._id.toString().slice(-6)}. Confirm receipt in My Orders to complete the pickup.`,
+      relatedId: updatedOrder._id,
+      relatedModel: 'Order'
+    })]);
+    if (notificationResult[0].status === 'rejected') {
+      console.error('Post-pickup notification failed:', notificationResult[0].reason?.message || notificationResult[0].reason);
+    }
+
+    res.json({
+      message: result.completed
+        ? 'Store pickup completed. Both confirmations were recorded and the seller payout was released.'
+        : 'Seller handoff confirmation recorded. Waiting for the customer to confirm receipt.',
+      completed: result.completed,
+      order: await Order.findById(updatedOrder._id).populate('customer', 'username firstName lastName email')
+    });
+  } catch (error) {
+    console.error('Confirm store pickup handoff error:', error);
+    res.status(error.statusCode || 500).json({
+      code: error.code,
+      message: error.statusCode ? error.message : 'Server error'
+    });
   }
 };
 
@@ -946,6 +1011,7 @@ module.exports = {
   quoteOrder,
   updateOrderStatus,
   confirmOrderPickup,
+  confirmStorePickupHandoff,
   cancelOrder,
   validateOrderQR
 };
