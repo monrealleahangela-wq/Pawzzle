@@ -1,15 +1,15 @@
 import api from './apiService';
 
+export const STORE_APPLICATION_UPLOAD_TIMEOUT_MS = 120000;
+
+const multipartUploadConfig = {
+  headers: { 'Content-Type': 'multipart/form-data' },
+  timeout: STORE_APPLICATION_UPLOAD_TIMEOUT_MS
+};
+
 const storeApplicationService = {
   // Submit application
-  submitApplication: (formData) => {
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    };
-    return api.post('/store-applications', formData, config);
-  },
+  submitApplication: (formData) => api.post('/store-applications', formData, multipartUploadConfig),
 
   extractDocument: (file, documentType, expectedValues = {}) => {
     const formData = new FormData();
@@ -21,13 +21,9 @@ const storeApplicationService = {
     });
   },
 
-  saveDraft: (formData) => api.post('/store-applications/draft', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  saveDraft: (formData) => api.post('/store-applications/draft', formData, multipartUploadConfig),
 
-  submitExpansionRequest: (formData) => api.post('/store-applications/expansion', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  submitExpansionRequest: (formData) => api.post('/store-applications/expansion', formData, multipartUploadConfig),
 
   withdrawApplication: () => api.patch('/store-applications/my-application/withdraw'),
 

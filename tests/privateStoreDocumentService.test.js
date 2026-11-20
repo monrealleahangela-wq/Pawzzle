@@ -49,10 +49,11 @@ test('store documents can use a bucket region separate from other AWS services',
     region: 'ap-southeast-2',
     bucket: 'private-documents'
   });
-  assert.deepEqual(privateDocumentClientConfig(env), {
-    region: 'ap-southeast-2',
-    followRegionRedirects: true
-  });
+  const clientConfig = privateDocumentClientConfig(env);
+  assert.equal(clientConfig.region, 'ap-southeast-2');
+  assert.equal(clientConfig.followRegionRedirects, true);
+  assert.equal(clientConfig.maxAttempts, 1);
+  assert.equal(clientConfig.requestHandler.constructor.name, 'NodeHttpHandler');
 });
 
 test('bucket-region redirects are returned as a retryable user-safe storage error', async () => {
