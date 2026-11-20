@@ -45,6 +45,22 @@ const {
 
 const REQUIRED_PLATFORM_DOCUMENTS = ['business_registration', 'bir_certificate'];
 const SUPPLIER_GOODS_TYPES = ['live_pets', 'pet_supplies', 'general_products'];
+const SUPPLIER_PACKAGE_WEIGHT_UNITS = ['g', 'kg'];
+
+const normalizeSupplierPackageWeight = (weight, weightUnit = 'g') => {
+  const unit = String(weightUnit || 'g').trim().toLowerCase();
+  if (!SUPPLIER_PACKAGE_WEIGHT_UNITS.includes(unit)) {
+    throw createHttpError('Package weight unit must be grams (g) or kilograms (kg).', 400);
+  }
+  if (weight === '' || weight === null || weight === undefined) {
+    return { weight: undefined, weightUnit: unit };
+  }
+  const numericWeight = Number(weight);
+  if (!Number.isFinite(numericWeight) || numericWeight <= 0) {
+    throw createHttpError('Package weight must be greater than zero.', 400);
+  }
+  return { weight: numericWeight, weightUnit: unit };
+};
 
 const normalizeStringList = value => (Array.isArray(value) ? value : [])
   .map(item => String(item || '').trim()).filter(Boolean).slice(0, 20);
@@ -649,7 +665,7 @@ const addProduct = async (req, res) => {
 
     const { name, sku, description, category, images, wholesalePrice, retailPrice,
       availableStock, minimumOrderQuantity, unitOfMeasure, deliveryLeadTimeDays,
-      brand, specifications, weight, dimensions, expirationDate, ingredients,
+      brand, specifications, weight, weightUnit, dimensions, expirationDate, ingredients,
       nutritionalInformation, intendedSpecies, safetyNotes, regulatoryDocuments,
       fdaRegistrationNumber, fdaRegistrationExpiry } = req.body;
     const itemType = ['pet_supply', 'product', 'live_pet'].includes(req.body.itemType)
@@ -669,6 +685,9 @@ const addProduct = async (req, res) => {
       return res.status(400).json({ message: 'Ingredients and nutritional information are required for pet food and treats.' });
     }
     const normalizedRegulatoryDocuments = normalizeRegulatoryDocuments(regulatoryDocuments);
+    const packageWeight = itemType === 'live_pet'
+      ? { weight: undefined, weightUnit: undefined }
+      : normalizeSupplierPackageWeight(weight, weightUnit);
     validateFdaComplianceDetails({
       category: authoritativeCategory,
       fdaRegistrationNumber,
@@ -702,7 +721,8 @@ const addProduct = async (req, res) => {
         minimumOrderQuantity: itemType === 'live_pet' ? 1 : (minimumOrderQuantity || 1),
         unitOfMeasure: itemType === 'live_pet' ? 'piece' : (unitOfMeasure || 'piece'),
         deliveryLeadTimeDays: deliveryLeadTimeDays || 3,
-        brand, specifications, weight, dimensions, expirationDate,
+        brand, specifications, weight: packageWeight.weight, weightUnit: packageWeight.weightUnit,
+        dimensions, expirationDate,
         ingredients, nutritionalInformation,
         intendedSpecies: normalizeStringList(intendedSpecies), safetyNotes,
         fdaRegistrationNumber: String(fdaRegistrationNumber || '').trim(),
@@ -819,7 +839,7 @@ const updateProduct = async (req, res) => {
     const mutableFields = [
       'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
       'retailPrice', 'availableStock', 'minimumOrderQuantity', 'unitOfMeasure',
-      'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'dimensions',
+      'deliveryLeadTimeDays', 'brand', 'specifications', 'weight', 'weightUnit', 'dimensions',
       'expirationDate', 'ingredients', 'nutritionalInformation', 'intendedSpecies',
       'safetyNotes', 'fdaRegistrationNumber', 'fdaRegistrationExpiry',
       'regulatoryDocuments', 'isActive'
@@ -840,6 +860,19 @@ const updateProduct = async (req, res) => {
         .select('+regulatoryDocuments.documentUrl +fdaRegistrationNumber +fdaRegistrationExpiry').session(session);
       if (!product) throw createHttpError('Product not found.', 404);
       if (product.productMode === 'variant') await assertSupplierVariantWritesEnabled();
+      if (product.itemType !== 'live_pet' && product.productMode !== 'variant'
+          && (Object.prototype.hasOwnProperty.call(updates, 'weight')
+            || Object.prototype.hasOwnProperty.call(updates, 'weightUnit'))) {
+        const packageWeight = normalizeSupplierPackageWeight(
+          Object.prototype.hasOwnProperty.call(updates, 'weight') ? updates.weight : product.weight,
+          Object.prototype.hasOwnProperty.call(updates, 'weightUnit') ? updates.weightUnit : product.weightUnit
+        );
+        updates.weight = packageWeight.weight;
+        updates.weightUnit = packageWeight.weightUnit;
+      } else if (product.itemType === 'live_pet' || product.productMode === 'variant') {
+        delete updates.weight;
+        delete updates.weightUnit;
+      }
       reviewedContentChanged = hasReviewedContentUpdate(req.body, product);
       previousValue = { sku: product.sku, price: product.wholesalePrice, stock: product.availableStock,
         minimumOrderQuantity: product.minimumOrderQuantity, isActive: product.isActive,
@@ -2009,6 +2042,7 @@ const adminDeactivateSupplier = async (req, res) => {
 };
 
 module.exports = {
+  normalizeSupplierPackageWeight,
   registerSupplier, resubmitSupplierApplication,
   createStoreSupplier, getStoreManagedSuppliers, resendStoreSupplierInvitation, activateSupplierInvitation,
   updateStoreSupplierAssociation,

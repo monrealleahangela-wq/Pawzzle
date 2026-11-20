@@ -91,7 +91,10 @@ const supplierProductSchema = new mongoose.Schema({
   // ── Product Details ───────────────────────────────────
   brand: { type: String, trim: true },
   specifications: { type: String },
-  weight: { type: Number },       // in grams
+  weight: { type: Number, min: 0.001 },
+  // Legacy supplier weights were entered in grams. The default preserves
+  // those records while new entries retain the supplier's selected unit.
+  weightUnit: { type: String, enum: ['g', 'kg'], default: 'g' },
   dimensions: { type: String },   // e.g., "10x5x3 cm"
   expirationDate: { type: Date },
 

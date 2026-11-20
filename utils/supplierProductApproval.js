@@ -9,7 +9,7 @@ const FDA_REVIEW_CATEGORIES = Object.freeze([
 
 const REVIEWED_CONTENT_FIELDS = [
   'name', 'sku', 'description', 'category', 'images', 'wholesalePrice',
-  'retailPrice', 'brand', 'specifications', 'weight', 'dimensions',
+  'retailPrice', 'brand', 'specifications', 'weight', 'weightUnit', 'dimensions',
   'expirationDate', 'ingredients', 'nutritionalInformation',
   'intendedSpecies', 'safetyNotes', 'regulatoryDocuments',
   'fdaRegistrationNumber', 'fdaRegistrationExpiry', 'pet'

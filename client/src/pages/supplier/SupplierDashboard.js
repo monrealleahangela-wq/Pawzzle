@@ -47,7 +47,7 @@ const SupplierDashboard = () => {
   const initialProduct = {
     productMode: 'simple', itemType: 'pet_supply', name: '', sku: '', description: '', category: 'pet_food',
     wholesalePrice: 0, retailPrice: 0, availableStock: 0, minimumOrderQuantity: 1,
-    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', weight: '', images: [],
+    unitOfMeasure: 'piece', deliveryLeadTimeDays: 3, brand: '', weight: '', weightUnit: 'g', images: [],
     ingredients: '', nutritionalInformation: '', intendedSpecies: [], safetyNotes: '',
     fdaRegistrationNumber: '', fdaRegistrationExpiry: '', regulatoryDocuments: [],
     variants: [],
@@ -135,10 +135,10 @@ const SupplierDashboard = () => {
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     const needsFdaReview = requiresFdaReview(productForm.category);
-    const normalizedWeight = normalizeSupplierPackageWeight(productForm.weight);
+    const normalizedWeight = normalizeSupplierPackageWeight(productForm.weight, productForm.weightUnit || 'g');
     if (productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet'
       && String(productForm.weight ?? '').trim() && normalizedWeight === undefined) {
-      return toast.error('Package weight must be greater than zero grams.');
+      return toast.error('Package weight must be greater than zero in grams or kilograms.');
     }
     if (needsFdaReview && !editingProduct && !String(productForm.fdaRegistrationNumber || '').trim()) {
       return toast.error('Enter the FDA product registration number.');
@@ -160,8 +160,10 @@ const SupplierDashboard = () => {
     try {
       if (productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet') {
         productPayload.weight = normalizedWeight;
+        productPayload.weightUnit = productForm.weightUnit || 'g';
       } else {
         delete productPayload.weight;
+        delete productPayload.weightUnit;
       }
       if (editingProduct) {
         await supplierService.updateProduct(editingProduct._id, productPayload);
@@ -663,7 +665,7 @@ const SupplierDashboard = () => {
                   </div>
                   {p.itemType !== 'live_pet' && p.productMode !== 'variant' && <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Package weight</span>
-                    <span className="text-[10px] font-black text-slate-700">{formatSupplierPackageWeight(p.weight)}</span>
+                    <span className="text-[10px] font-black text-slate-700">{formatSupplierPackageWeight(p.weight, p.weightUnit)}</span>
                   </div>}
                   {p.productMode === 'variant' && <div className="mt-3 space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
                     <div className="flex items-center justify-between"><p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Variants</p><span className="text-[9px] font-black text-primary-700">{p.variants?.length || 0}</span></div>
@@ -675,7 +677,7 @@ const SupplierDashboard = () => {
                   </div>}
                   {p.reviewReason && <p className="mt-3 rounded-xl bg-rose-50 p-2 text-[10px] font-semibold text-rose-700">Review note: {p.reviewReason}</p>}
                   <div className="flex gap-2 mt-3">
-                    <button onClick={() => { setProductForm(p); setEditingProduct(p); setShowProductModal(true); }}
+                    <button onClick={() => { setProductForm({ ...p, weightUnit: p.weightUnit || 'g' }); setEditingProduct(p); setShowProductModal(true); }}
                       className="flex-1 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase hover:bg-primary-600 transition-all flex items-center justify-center gap-1">
                       <Edit2 className="h-3 w-3" /> Edit
                     </button>
@@ -869,10 +871,17 @@ const SupplierDashboard = () => {
                   </select>
                 </label>}
                 {productForm.productMode !== 'variant' && productForm.itemType !== 'live_pet' && <div className="space-y-1">
-                  <label htmlFor="supplier-package-weight" className="text-[9px] font-black uppercase tracking-widest text-slate-400">Package weight (grams)</label>
-                  <input id="supplier-package-weight" type="number" min="0.01" step="0.01" value={productForm.weight ?? ''} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} placeholder="Example: 1000"
-                    className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
-                  <p className="text-[9px] font-medium text-slate-400">Enter the total packaged weight. Example: 1 kg = 1000 g.</p>
+                  <label htmlFor="supplier-package-weight" className="text-[9px] font-black uppercase tracking-widest text-slate-400">Package weight</label>
+                  <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2">
+                    <input id="supplier-package-weight" type="number" min="0.001" step="0.001" value={productForm.weight ?? ''} onChange={e => setProductForm(p => ({ ...p, weight: e.target.value }))} placeholder={productForm.weightUnit === 'kg' ? 'Example: 1.5' : 'Example: 800'}
+                      className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold outline-none" />
+                    <select aria-label="Package weight unit" value={productForm.weightUnit || 'g'} onChange={e => setProductForm(p => ({ ...p, weightUnit: e.target.value }))}
+                      className="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2 text-sm font-bold text-slate-900 outline-none">
+                      <option value="g">Grams (g)</option>
+                      <option value="kg">Kilograms (kg)</option>
+                    </select>
+                  </div>
+                  <p className="text-[9px] font-medium text-slate-400">Enter the total packaged weight for one sellable unit using your selected measurement.</p>
                 </div>}
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Lead Time (days)</label>

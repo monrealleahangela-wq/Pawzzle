@@ -898,7 +898,7 @@ const submitProcurementCart = async (req, res) => {
             unitOfMeasureSnapshot: stockSource.unitOfMeasure,
             unitSnapshot: stockSource.unitOfMeasure,
             packageWeightSnapshot: supplierVariant?.weight ?? product.weight,
-            packageWeightUnitSnapshot: supplierVariant?.weightUnit || (product.weight ? 'g' : undefined),
+            packageWeightUnitSnapshot: supplierVariant?.weightUnit || (product.weight ? (product.weightUnit || 'g') : undefined),
             selectionMatchType: supplierVariant ? 'exact' : item.selectionMatchType || (item.storeProduct
               ? getOfferMatchType({ storeProduct: mappedProductMap.get(String(item.storeProduct)), supplierProduct: product }) || 'unmapped'
               : 'unmapped'),
