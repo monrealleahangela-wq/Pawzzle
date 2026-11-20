@@ -24,6 +24,8 @@ services:
         sync: false
       - key: AWS_STORE_DOCUMENTS_BUCKET
         sync: false
+      - key: AWS_STORE_DOCUMENTS_REGION
+        sync: false
       - key: IDENTITY_DOCUMENT_ENCRYPTION_KEY
         sync: false
       - key: IDENTITY_FACE_MATCH_THRESHOLD

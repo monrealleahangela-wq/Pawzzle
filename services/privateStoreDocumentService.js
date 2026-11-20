@@ -16,9 +16,50 @@ const safeSegment = value => String(value || 'file')
   .slice(0, 100) || 'file';
 
 const privateDocumentConfig = env => ({
-  region: env.AWS_REGION || env.AWS_DEFAULT_REGION,
+  region: env.AWS_STORE_DOCUMENTS_REGION || env.AWS_REGION || env.AWS_DEFAULT_REGION,
   bucket: env.AWS_STORE_DOCUMENTS_BUCKET
 });
+
+const privateDocumentClientConfig = env => ({
+  region: privateDocumentConfig(env).region,
+  // S3 buckets are tied to a region. Following the bucket's signed redirect
+  // keeps uploads working when Textract/Rekognition use a different region.
+  followRegionRedirects: true
+});
+
+const STORE_DOCUMENT_ERROR_NAMES = new Set([
+  'AccessDenied',
+  'AuthorizationHeaderMalformed',
+  'CredentialsProviderError',
+  'ExpiredToken',
+  'IncorrectEndpoint',
+  'InvalidAccessKeyId',
+  'InvalidClientTokenId',
+  'NoSuchBucket',
+  'PermanentRedirect',
+  'SignatureDoesNotMatch',
+  'TokenRefreshRequired'
+]);
+
+const normalizeStoreDocumentError = error => {
+  if (!error || error.statusCode) return error;
+  const statusCode = Number(error?.$metadata?.httpStatusCode || error?.status || 0);
+  const name = String(error.name || error.Code || error.code || '');
+  const isServiceFailure = STORE_DOCUMENT_ERROR_NAMES.has(name)
+    || statusCode === 429
+    || statusCode >= 500
+    || ['ECONNRESET', 'ENETUNREACH', 'ETIMEDOUT'].includes(String(error.code || ''));
+  if (!isServiceFailure) return error;
+
+  const normalized = new Error(
+    'Secure document storage is temporarily unavailable. Your application was not submitted. Please try again shortly or contact Pawzzle support.'
+  );
+  normalized.name = 'StoreDocumentStorageError';
+  normalized.statusCode = 503;
+  normalized.code = 'STORE_DOCUMENT_STORAGE_UNAVAILABLE';
+  normalized.cause = error;
+  return normalized;
+};
 
 const createS3Client = (env = process.env) => {
   const { region, bucket } = privateDocumentConfig(env);
@@ -28,7 +69,7 @@ const createS3Client = (env = process.env) => {
     error.code = 'STORE_DOCUMENT_STORAGE_NOT_CONFIGURED';
     throw error;
   }
-  return { client: new S3Client({ region }), bucket };
+  return { client: new S3Client(privateDocumentClientConfig(env)), bucket };
 };
 
 const uploadPublicImage = file => new Promise((resolve, reject) => {
@@ -84,7 +125,7 @@ const persistApplicationUploads = async (files = {}, applicantId, options = {}) 
     return files;
   } catch (error) {
     if (s3) await Promise.allSettled(uploadedKeys.map(Key => s3.client.send(new DeleteObjectCommand({ Bucket: s3.bucket, Key }))));
-    throw error;
+    throw normalizeStoreDocumentError(error);
   }
 };
 
@@ -94,7 +135,7 @@ const cleanupPersistedUploads = async (files = {}, options = {}) => {
   for (const file of entries) {
     const parsed = parseS3Reference(file.path);
     if (parsed) {
-      const client = options.client || new S3Client({ region: options.env?.AWS_REGION || options.env?.AWS_DEFAULT_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION });
+      const client = options.client || new S3Client(privateDocumentClientConfig(options.env || process.env));
       tasks.push(client.send(new DeleteObjectCommand({ Bucket: parsed.bucket, Key: parsed.key })));
     } else if (file.public_id) {
       tasks.push((options.destroyPublicImage || cloudinary.uploader.destroy)(file.public_id));
@@ -111,8 +152,7 @@ const parseS3Reference = reference => {
 const streamStoredDocument = async (reference, res, options = {}) => {
   const parsed = parseS3Reference(reference);
   if (parsed) {
-    const region = options.env?.AWS_REGION || options.env?.AWS_DEFAULT_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
-    const client = options.client || new S3Client({ region });
+    const client = options.client || new S3Client(privateDocumentClientConfig(options.env || process.env));
     const object = await client.send(new GetObjectCommand({ Bucket: parsed.bucket, Key: parsed.key }));
     res.setHeader('Content-Type', object.ContentType || 'application/octet-stream');
     res.setHeader('Content-Disposition', object.ContentDisposition || 'inline');
@@ -167,8 +207,10 @@ const storeApplicationUpload = multer({
 module.exports = {
   PUBLIC_IMAGE_FIELDS,
   privateDocumentConfig,
+  privateDocumentClientConfig,
   createS3Client,
   cleanupPersistedUploads,
+  normalizeStoreDocumentError,
   persistApplicationUploads,
   parseS3Reference,
   streamStoredDocument,

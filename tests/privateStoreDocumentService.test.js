@@ -2,6 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const {
+  privateDocumentConfig,
+  privateDocumentClientConfig,
   parseS3Reference,
   persistApplicationUploads,
   streamStoredDocument
@@ -27,6 +29,66 @@ test('private application files are encrypted in S3 and represented without a pu
   assert.match(file.path, /^s3:\/\/private-documents\/store-applications\/applicant-1\/businessRegistration\//);
   assert.equal(file.secure_url, undefined);
   assert.equal(file.buffer, undefined);
+});
+
+test('store documents can use a bucket region separate from other AWS services', () => {
+  const env = {
+    AWS_REGION: 'ap-southeast-1',
+    AWS_STORE_DOCUMENTS_REGION: 'ap-southeast-2',
+    AWS_STORE_DOCUMENTS_BUCKET: 'private-documents'
+  };
+  assert.deepEqual(privateDocumentConfig(env), {
+    region: 'ap-southeast-2',
+    bucket: 'private-documents'
+  });
+  assert.deepEqual(privateDocumentClientConfig(env), {
+    region: 'ap-southeast-2',
+    followRegionRedirects: true
+  });
+});
+
+test('bucket-region redirects are returned as a retryable user-safe storage error', async () => {
+  const file = privateFile();
+  await assert.rejects(
+    persistApplicationUploads({ businessRegistration: [file] }, 'applicant-1', {
+      s3: {
+        bucket: 'private-documents',
+        client: {
+          send: async () => {
+            const error = new Error('The bucket is in another region');
+            error.name = 'PermanentRedirect';
+            error.$metadata = { httpStatusCode: 301 };
+            throw error;
+          }
+        }
+      }
+    }),
+    error => error.statusCode === 503
+      && error.code === 'STORE_DOCUMENT_STORAGE_UNAVAILABLE'
+      && !error.message.includes('bucket')
+  );
+});
+
+test('private document permission failures do not leak provider details', async () => {
+  const file = privateFile();
+  await assert.rejects(
+    persistApplicationUploads({ businessRegistration: [file] }, 'applicant-1', {
+      s3: {
+        bucket: 'private-documents',
+        client: {
+          send: async () => {
+            const error = new Error('not authorized for s3:PutObject');
+            error.name = 'AccessDenied';
+            error.$metadata = { httpStatusCode: 403 };
+            throw error;
+          }
+        }
+      }
+    }),
+    error => error.statusCode === 503
+      && error.code === 'STORE_DOCUMENT_STORAGE_UNAVAILABLE'
+      && !error.message.includes('s3:PutObject')
+  );
 });
 
 test('the public store logo keeps using the public media uploader', async () => {
