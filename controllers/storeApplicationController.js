@@ -169,7 +169,6 @@ const applicationValidationErrors = (data, files = {}) => {
   if (expectedAuthority && registration.authority !== expectedAuthority) {
     errors.push({ field: 'businessRegistration.authority', msg: `${expectedAuthority.toUpperCase()} registration is expected for the selected business structure.` });
   }
-  required(registration.certificateNumber, 'businessRegistration.certificateNumber', 'Registration number is required.');
   required(registration.registeredName, 'businessRegistration.registeredName', 'Registered name is required.');
   if (!registration.documentUrl && !files.businessRegistration) errors.push({ field: 'businessRegistration', msg: 'Business registration document is required.' });
   if (!data.mayorsPermitUrl && !files.mayorsPermit) errors.push({ field: 'mayorsPermit', msg: "Mayor's or business permit is required." });

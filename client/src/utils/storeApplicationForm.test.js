@@ -59,6 +59,21 @@ test('valid application accepts retained registration evidence without a replace
   })).toEqual({});
 });
 
+test('registration number is optional when registration evidence is uploaded or retained', () => {
+  const data = complete();
+  data.businessRegistration.certificateNumber = '';
+  expect(validateStoreApplicationForm(data, {
+    files: {}, documentAvailability: {
+      businessRegistration: true,
+      mayorsPermit: true,
+      governmentId: true,
+      birRegistration: true,
+      storefrontPhotos: 2,
+      categoryDocuments: {}
+    }
+  })).toEqual({});
+});
+
 test('missing fields map to the correct visible step', () => {
   const data = complete();
   data.businessName = '';

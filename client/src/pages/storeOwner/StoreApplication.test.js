@@ -44,6 +44,7 @@ test('all six required sections remain reachable on the responsive canonical for
 
   fireEvent.click(screen.getByRole('button', { name: /store location/i }));
   expect(screen.getByLabelText(/registration issued by/i)).toBeVisible();
+  expect(screen.getByLabelText(/registration or certificate number/i)).not.toBeRequired();
   expect(screen.getByLabelText(/business contact number/i)).toBeVisible();
   expect(screen.getByText(/bir and tax information/i)).toBeVisible();
   const locationHeading = screen.getByRole('heading', { name: /store location/i });
