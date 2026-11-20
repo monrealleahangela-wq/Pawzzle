@@ -267,6 +267,7 @@ const storeSchema = new mongoose.Schema({
     declaredTaxStatus: {
       type: String,
       enum: ['vat_registered', 'non_vat_registered', null],
+      set: value => value === '' || value === undefined ? null : value,
       default: null
     },
     verifiedTaxStatus: {

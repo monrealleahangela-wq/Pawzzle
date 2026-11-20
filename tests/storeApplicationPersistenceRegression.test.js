@@ -2,8 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const Store = require('../models/Store');
 const StoreApplication = require('../models/StoreApplication');
 const {
+  applicationValidationMessage,
   applicationValidationErrors,
   appendApplicationReviewEvent,
   buildApplicationData,
@@ -151,8 +153,9 @@ test('unregistered and pending BIR applicants are not required to submit TIN or 
   for (const birRegistrationStatus of ['not_registered', 'pending_registration']) {
     const data = buildApplicationData({
       ...body(),
-      taxProfile: JSON.stringify({ birRegistrationStatus, registeredAddress: {} })
+      taxProfile: JSON.stringify({ birRegistrationStatus, declaredTaxStatus: '', registeredAddress: {} })
     }, '64b000000000000000000001');
+    assert.equal(data.taxProfile.declaredTaxStatus, undefined);
     data.businessRegistration.documentUrl = 'secure://registration';
     data.mayorsPermitUrl = 'secure://permit';
     data.governmentIdUrl = 'secure://government-id';
@@ -160,6 +163,28 @@ test('unregistered and pending BIR applicants are not required to submit TIN or 
     const errors = applicationValidationErrors(data);
     assert.ok(!errors.some(error => error.field.startsWith('taxProfile.') || error.field === 'birRegistration'));
   }
+});
+
+test('optional tax status empty strings cannot trigger raw enum validation errors', async () => {
+  const data = buildApplicationData({
+    ...body(),
+    taxProfile: JSON.stringify({
+      birRegistrationStatus: 'not_registered',
+      declaredTaxStatus: '',
+      registeredAddress: {}
+    })
+  }, '64b000000000000000000001');
+  const application = new StoreApplication(data);
+
+  await assert.doesNotReject(application.validate());
+  assert.equal(application.taxProfile.declaredTaxStatus, undefined);
+  assert.equal(
+    applicationValidationMessage('taxProfile.declaredTaxStatus', { message: 'raw mongoose enum error' }),
+    'Choose VAT or Non-VAT only when the business is registered with BIR.'
+  );
+
+  const approvedStore = new Store({ taxProfile: { declaredTaxStatus: '' } });
+  assert.equal(approvedStore.taxProfile.declaredTaxStatus, null);
 });
 
 test('retained BAI and animal welfare files satisfy pet-sale document requirements', () => {

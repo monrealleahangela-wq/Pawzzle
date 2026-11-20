@@ -159,7 +159,8 @@ const storeApplicationSchema = new mongoose.Schema({
     lineOfBusiness: { type: String, trim: true },
     declaredTaxStatus: {
       type: String,
-      enum: ['vat_registered', 'non_vat_registered']
+      enum: ['vat_registered', 'non_vat_registered'],
+      set: value => value === '' || value === null ? undefined : value
     },
     verifiedTaxStatus: {
       type: String,
