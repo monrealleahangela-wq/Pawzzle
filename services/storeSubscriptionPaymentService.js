@@ -3,6 +3,7 @@ const Store = require('../models/Store');
 const StoreSubscriptionPayment = require('../models/StoreSubscriptionPayment');
 const ActivityLog = require('../models/ActivityLog');
 const { getSubscriptionPlan, normalizeSubscriptionTier } = require('../config/subscriptionPlans');
+const { restoreSubscriptionAccess } = require('../utils/storeSubscriptionState');
 
 const paymentAmountCentavos = payment => Number(payment?.attributes?.amount || 0);
 
@@ -86,6 +87,14 @@ const finalizeSubscriptionPayment = async (purchase, payment) => {
       store.subscriptionBillingInterval = current.billingInterval || 'monthly';
       store.pendingSubscription = undefined;
     }
+    restoreSubscriptionAccess(store);
+    store.subscriptionAccessStatus = 'active';
+    store.subscriptionSuspendedAt = undefined;
+    store.subscriptionSuspensionReason = undefined;
+    store.subscriptionLifecycle = {
+      ...(store.subscriptionLifecycle?.toObject?.() || store.subscriptionLifecycle || {}),
+      suspensionNoticeSentAt: undefined
+    };
     await store.save({ session });
 
     current.status = 'paid';

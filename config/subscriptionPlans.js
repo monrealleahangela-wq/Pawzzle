@@ -34,8 +34,7 @@ const growth = [...starter, ENTITLEMENTS.PRODUCT_VARIANTS, ENTITLEMENTS.SUPPLIER
   ENTITLEMENTS.CSV_EXPORTS, ENTITLEMENTS.STOREFRONT_CUSTOMIZATION];
 const professional = [...growth, ENTITLEMENTS.PAYROLL, ENTITLEMENTS.COMPENSATION,
   ENTITLEMENTS.SUPPLIER_COMPARISONS, ENTITLEMENTS.DETAILED_ANALYTICS, ENTITLEMENTS.SCHEDULED_REPORTS,
-  ENTITLEMENTS.PRIORITY_PLACEMENT, ENTITLEMENTS.CUSTOMER_RETENTION_INSIGHTS,
-  ENTITLEMENTS.MULTI_LOCATION, ENTITLEMENTS.CONSOLIDATED_INVENTORY];
+  ENTITLEMENTS.PRIORITY_PLACEMENT, ENTITLEMENTS.CUSTOMER_RETENTION_INSIGHTS];
 
 const SUBSCRIPTION_PLANS = Object.freeze({
   free: Object.freeze({ id: 'free', rank: 0, name: 'Free', monthlyPrice: 0, annualPrice: 0,
@@ -52,7 +51,7 @@ const SUBSCRIPTION_PLANS = Object.freeze({
       'Supplier catalog, restocking, and order receiving',
       'Basic store profile and performance summary', 'Standard email support']) }),
   growth: Object.freeze({ id: 'growth', rank: 2, name: 'Pawzzle Growth', monthlyPrice: 699, annualPrice: 7129,
-    listingLimit: 70, staffLimit: 8, locationLimit: 1, termDays: 30, trialDays: 14, supportLevel: 'faster',
+    listingLimit: 70, staffLimit: 8, locationLimit: 1, termDays: 30, trialDays: 30, supportLevel: 'faster',
     description: 'Grow your store with better inventory, staffing, and sales tools.', entitlements: Object.freeze(growth),
     features: Object.freeze(['Everything in Starter', '70 active listings and up to 8 staff accounts',
       'Product variants such as size, flavor, weight, and packaging', 'Advanced supplier procurement and variant workflows',
@@ -60,11 +59,10 @@ const SUBSCRIPTION_PLANS = Object.freeze({
       'Promotions, discount codes, and featured products', 'Advanced sales, inventory, and booking reports',
       'Downloadable CSV reports and storefront customization', 'Faster customer support']) }),
   professional: Object.freeze({ id: 'professional', rank: 3, name: 'Pawzzle Professional', monthlyPrice: 1499, annualPrice: 15289,
-    listingLimit: null, staffLimit: 25, locationLimit: 3, termDays: 30, supportLevel: 'priority',
+    listingLimit: null, staffLimit: 25, locationLimit: 1, termDays: 30, supportLevel: 'priority',
     description: 'Complete operations and reporting for established pet businesses.', entitlements: Object.freeze(professional),
     features: Object.freeze(['Everything in Growth', 'Unlimited active listings and up to 25 staff accounts',
-      'Up to 3 store locations with consolidated inventory', 'Staff payroll and compensation tools',
-      'Advanced purchasing and supplier comparisons', 'Detailed revenue and operational analytics',
+      'Staff payroll and compensation tools', 'Advanced purchasing and supplier comparisons', 'Detailed revenue and operational analytics',
       'Scheduled reports and customer-retention insights', 'Priority marketplace placement and priority support']) })
 });
 
@@ -78,7 +76,7 @@ const getPlanPrice = (tier, billingInterval = 'monthly') => {
   const plan = getSubscriptionPlan(tier);
   return billingInterval === 'annual' ? plan.annualPrice : plan.monthlyPrice;
 };
-const getPublicPlanCatalog = () => Object.values(SUBSCRIPTION_PLANS).map(plan => ({ ...plan,
+const getPublicPlanCatalog = () => Object.values(SUBSCRIPTION_PLANS).filter(plan => plan.id !== 'free').map(plan => ({ ...plan,
   features: [...plan.features], entitlements: [...plan.entitlements], universalFeatures: [...universalFeatures] }));
 
 module.exports = { LEGACY_TIER_MAP, ENTITLEMENTS, SUBSCRIPTION_PLANS, universalFeatures,

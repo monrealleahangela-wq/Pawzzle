@@ -89,8 +89,8 @@ const AdminSettings = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (activeTab !== 'plan') fetchData();
+  }, [activeTab]);
 
   useEffect(() => {
     setActiveTab(SETTINGS_SECTIONS.has(requestedSection) ? requestedSection : 'delivery');

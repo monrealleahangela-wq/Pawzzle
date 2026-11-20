@@ -267,6 +267,7 @@ const storeSchema = new mongoose.Schema({
     declaredTaxStatus: {
       type: String,
       enum: ['vat_registered', 'non_vat_registered', null],
+      set: value => value === '' || value === undefined ? null : value,
       default: null
     },
     verifiedTaxStatus: {
@@ -425,8 +426,27 @@ const storeSchema = new mongoose.Schema({
     default: 'monthly'
   },
   subscriptionTrialUsedAt: Date,
-  // Set when an owner or platform administrator deliberately selects Free so
-  // the legacy Professional compatibility grant is not reapplied.
+  subscriptionAccessStatus: {
+    type: String,
+    enum: ['trial', 'active', 'suspended'],
+    default: undefined
+  },
+  subscriptionSuspendedAt: Date,
+  subscriptionSuspensionReason: { type: String, trim: true, maxlength: 500 },
+  subscriptionLifecycle: {
+    trialReminder7SentAt: Date,
+    trialReminder1SentAt: Date,
+    suspensionNoticeSentAt: Date
+  },
+  vacationMode: {
+    isActive: { type: Boolean, default: false },
+    source: { type: String, enum: ['manual', 'subscription'], default: undefined },
+    reason: { type: String, trim: true, maxlength: 500 },
+    startedAt: Date,
+    endedAt: Date
+  },
+  // Legacy marker retained so historic explicit Free choices do not regain
+  // the Professional compatibility grant during subscription reconciliation.
   subscriptionLegacyGrantOptOutAt: Date,
   pendingSubscription: {
     tier: { type: String, enum: ['free', 'starter', 'growth'] },

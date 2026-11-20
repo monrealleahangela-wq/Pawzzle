@@ -266,7 +266,8 @@ Make sure to set these environment variables:
 - `NODE_ENV` - Environment (development/production)
 - `IDENTITY_DOCUMENT_ENCRYPTION_KEY` - Dedicated 32-byte identity-document encryption key (hex or Base64)
 - `AWS_REKOGNITION_REGION` - Optional Rekognition override; defaults to `ap-southeast-1`
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` when workload credentials are unavailable
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` - Deployment secrets for an IAM principal limited to `rekognition:CompareFaces` and `textract:AnalyzeDocument` when workload credentials are unavailable
+- `AWS_TEXTRACT_REGION` - Optional Textract processing-region override for store document reading; defaults to `AWS_REGION`, then `ap-southeast-1`
 - `AWS_STORE_DOCUMENTS_BUCKET` - Private S3 bucket used for store application and compliance documents; enable Block Public Access
 - `AWS_STORE_DOCUMENTS_REGION` - Optional S3 bucket-region override (for example `ap-southeast-2` for Sydney); defaults to `AWS_REGION`
 - `OPENSTREETMAP_SEARCH_URL` - Optional replacement for the default OpenStreetMap Nominatim search endpoint; no value or API key is required for normal low-volume use

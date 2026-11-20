@@ -1219,7 +1219,22 @@ const StoreApplication = () => {
                             {documentAvailability[doc.id] && !files[doc.id] && <p className="text-[8px] font-bold text-emerald-700">Saved document retained</p>}
                             {files[doc.id] && <p className="max-w-[220px] truncate text-[8px] font-bold text-emerald-700">{files[doc.id].name}</p>}
                             {isFieldBroken(doc.id) && <p className="text-[9px] text-rose-600 font-black mt-0.5">Please upload a corrected copy.</p>}
-                            {documentOcr[doc.id] && <p aria-live="polite" className={`mt-1 max-w-[240px] text-[9px] font-bold leading-4 ${documentOcr[doc.id].status === 'error' ? 'text-rose-600' : documentOcr[doc.id].status === 'reading' ? 'text-primary-700' : 'text-slate-500'}`}>{documentOcr[doc.id].message}</p>}
+                            {documentOcr[doc.id] && (
+                              <div aria-live="polite" className="mt-1 max-w-[240px]">
+                                <p className={`text-[9px] font-bold leading-4 ${documentOcr[doc.id].status === 'error' ? 'text-rose-600' : documentOcr[doc.id].status === 'reading' ? 'text-primary-700' : 'text-slate-500'}`}>
+                                  {documentOcr[doc.id].message}
+                                </p>
+                                {documentOcr[doc.id].status === 'error' && files[doc.id] && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFileChange(doc.id, files[doc.id])}
+                                    className="mt-1 rounded-md border border-rose-200 bg-white px-2 py-1 text-[8px] font-black uppercase text-rose-700 hover:bg-rose-50"
+                                  >
+                                    Retry document reading
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <input data-field={doc.id} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" id={doc.id} onChange={(e) => handleFileChange(doc.id, e.target.files[0])} required={doc.required && !documentAvailability[doc.id]} />

@@ -32,6 +32,8 @@ const CUSTOMER_VISIBLE_STORE_FIELDS = [
   'featured',
   'subscriptionTier',
   'subscriptionExpires',
+  'subscriptionAccessStatus',
+  'vacationMode.isActive',
   'storefrontCustomization',
   'stats.responseRate',
   'stats.responseTime',
@@ -51,6 +53,8 @@ const buildCustomerVisibleStoreFilter = (ownerIds, extra = {}) => ({
   isActive: true,
   isDeleted: { $ne: true },
   verificationStatus: 'verified',
+  subscriptionAccessStatus: { $ne: 'suspended' },
+  'vacationMode.isActive': { $ne: true },
   name: { $ne: 'Admin Pet Store' },
   ...(Object.keys(extra).length ? { $and: [extra] } : {})
 });
@@ -66,6 +70,8 @@ const isCustomerVisibleStoreRecord = (store, owner) => Boolean(
   store.isActive === true &&
   store.isDeleted !== true &&
   store.verificationStatus === 'verified' &&
+  store.subscriptionAccessStatus !== 'suspended' &&
+  store.vacationMode?.isActive !== true &&
   !(store.businessCompliance?.restrictionReasons || []).some(reason => reason.active !== false) &&
   owner.isActive !== false &&
   owner.isDeleted !== true &&

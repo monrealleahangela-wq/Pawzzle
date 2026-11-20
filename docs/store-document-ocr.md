@@ -4,9 +4,11 @@ The store application can use AWS Textract Queries to suggest fields from JPG or
 
 Required server configuration:
 
-- `AWS_REGION` (or `AWS_DEFAULT_REGION`): the Textract processing region.
-- AWS workload credentials granting only `textract:AnalyzeDocument`. Use the deployment platform's workload identity or secret manager; do not commit credentials.
+- `AWS_TEXTRACT_REGION`: optional dedicated processing-region override; defaults to `AWS_REGION`, then `AWS_DEFAULT_REGION`, then `ap-southeast-1`.
+- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`: required on Render unless the deployment has an AWS workload identity. Values are trimmed before use. Optional temporary credentials may also provide `AWS_SESSION_TOKEN`.
 - `STORE_DOCUMENT_OCR_CONFIDENCE_THRESHOLD`: optional value from 70 through 100; defaults to `85`.
+
+The IAM principal must allow `textract:AnalyzeDocument` in the configured region. Missing, incomplete, expired, or unauthorized credentials are reported with safe diagnostic codes in server logs; secrets are never returned or logged. Browser requests allow up to two minutes for cold starts and document processing, and applicants can retry a transient reading failure without selecting the file again.
 
 The OCR endpoint accepts one single-page JPG or PNG up to 5 MB, keeps it in memory only for the request, validates its signature, sends it to Textract over the AWS SDK, and clears the local buffer before returning. It returns only mapped form fields and confidence scores, not the full OCR response or raw page text. The ordinary application document upload remains the system of record.
 

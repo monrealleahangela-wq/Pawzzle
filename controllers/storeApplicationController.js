@@ -10,6 +10,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { isPlatformAdmin } = require('../config/permissions');
 const { FIELD_LABELS } = require('../utils/storeDocumentOcr');
 const { deliverHtmlEmail, wrapInTemplate } = require('../utils/emailService');
+const { trialFields } = require('../services/storeSubscriptionLifecycleService');
 const {
   BUSINESS_CATEGORIES,
   combinedCategoryRequirements,
@@ -36,6 +37,23 @@ const optionalInteger = (value, fallback) => {
   if (value === undefined || value === null || value === '') return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeTaxProfileForPersistence = value => {
+  const taxProfile = value && typeof value === 'object' && !Array.isArray(value)
+    ? { ...value }
+    : {};
+  if (taxProfile.birRegistrationStatus !== 'registered') {
+    delete taxProfile.declaredTaxStatus;
+  }
+  return taxProfile;
+};
+
+const applicationValidationMessage = (field, detail) => {
+  if (field === 'taxProfile.declaredTaxStatus') {
+    return 'Choose VAT or Non-VAT only when the business is registered with BIR.';
+  }
+  return detail?.message || 'Check this application field.';
 };
 
 const booleanValue = (value, fallback = false) => {
@@ -310,7 +328,7 @@ const buildApplicationData = (body, applicantId) => {
     representative: parsed.representative || {},
     businessRegistration: parsed.businessRegistration || {},
     barangayClearance: parsed.barangayClearance || {},
-    taxProfile: parsed.taxProfile || {},
+    taxProfile: normalizeTaxProfileForPersistence(parsed.taxProfile),
     declaration: parsed.declaration || {},
     businessDescription: body.businessDescription,
     legalStructure: body.legalStructure,
@@ -900,7 +918,10 @@ const submitApplication = async (req, res) => {
     if (error?.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Please review the application details and submit again.',
-        errors: Object.entries(error.errors || {}).map(([field, detail]) => ({ field, msg: detail.message }))
+        errors: Object.entries(error.errors || {}).map(([field, detail]) => ({
+          field,
+          msg: applicationValidationMessage(field, detail)
+        }))
       });
     }
     res.status(error.statusCode || 500).json({
@@ -1385,6 +1406,7 @@ const reviewApplication = async (req, res) => {
             }
           },
           verificationStatus: 'verified',
+          ...trialFields(new Date()),
           businessProfile: {
             registeredBusinessName: application.registeredBusinessName || application.businessRegistration?.registeredName || application.businessName,
             tradeName: application.tradeName || application.businessName,
@@ -1933,7 +1955,9 @@ module.exports = {
   getApplicationDocument,
   correctDocumentReviewInformation,
   applicationValidationErrors,
+  applicationValidationMessage,
   buildApplicationData,
+  normalizeTaxProfileForPersistence,
   maskTin,
   toApplicationResponse,
   submitExpansionRequest,
