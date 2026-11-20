@@ -62,9 +62,11 @@ test('pending replacement remains restricted and approved replacement restores a
   assert.equal(isProfessionallyAssignable(staff, now), true);
 });
 
-test('veterinarian requires a current license while other gated roles accept current approved credentials', () => {
+test('veterinarian accepts a current license or certification while training evidence remains supporting-only', () => {
   const now = at('2026-09-19T00:00:00.000Z');
   const veterinarian = profile({ documents: [{ status: 'verified', documentType: 'certification', expiresAt: '2028-01-01T00:00:00.000Z' }] });
+  assert.equal(getProfessionalVerificationStatus(veterinarian, now), 'verified');
+  veterinarian.professionalProfile.credentialDocuments[0].documentType = 'training_certificate';
   assert.equal(getProfessionalVerificationStatus(veterinarian, now), 'pending_verification');
   for (const role of ['groomer', 'trainer', 'boarding_staff']) {
     const staff = { ...profile({ documents: [{ status: 'verified', documentType: 'certification', expiresAt: '2028-01-01T00:00:00.000Z' }] }), role };

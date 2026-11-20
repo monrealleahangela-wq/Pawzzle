@@ -65,7 +65,8 @@ const hasTrustedLegacyProfessionalVerification = staff => Boolean(
 
 const isCredentialApplicableToRole = (staff, document) => {
   const role = getStaffSpecializationRole(staff);
-  return role !== 'veterinarian' || document?.documentType === 'professional_license';
+  return role !== 'veterinarian'
+    || ['professional_license', 'certification'].includes(document?.documentType);
 };
 
 const isCredentialExpired = (document, now = new Date()) => Boolean(

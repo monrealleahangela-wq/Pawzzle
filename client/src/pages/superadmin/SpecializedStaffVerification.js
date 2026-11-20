@@ -77,7 +77,7 @@ const SpecializedStaffVerification = () => {
           const role = member.staffType || member.role;
           const hasCurrentVerifiedCredential = documents.some(document => document.status === 'verified'
             && (!document.expiresAt || new Date(document.expiresAt) > new Date())
-            && (role !== 'veterinarian' || document.documentType === 'professional_license'));
+            && (role !== 'veterinarian' || ['professional_license', 'certification'].includes(document.documentType)));
           return <article key={member._id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3"><div><h2 className="font-black text-slate-900">{member.firstName} {member.lastName}</h2><p className="text-xs text-slate-500">{(member.staffType || member.role).replaceAll('_', ' ')} · {member.store?.name || 'No branch'} · {member.professionalProfile?.staffId || member._id}</p><p className="mt-1 text-[11px] text-slate-500">{member.professionalProfile?.specialty || 'Specialty not provided'} · {Number(member.professionalProfile?.experienceYears || 0)} years experience</p></div><span className="rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-bold uppercase text-primary-700">{stateLabel(member.professionalVerificationStatus)}</span></div>
             <div className="mt-4 space-y-2">{documents.length ? documents.map(document => {
