@@ -416,7 +416,7 @@ const Landing = () => {
                 <details key={question} open={index === 0}>
                   <summary>
                     <span className="landing-faq-number">{String(index + 1).padStart(2, '0')}</span>
-                    <h3>{question}</h3>
+                    <h3 className="landing-faq-question">{question}</h3>
                     <span className="landing-faq-toggle" aria-hidden="true"><ChevronDown /></span>
                   </summary>
                   <div className="landing-faq-answer"><p>{answer}</p></div>

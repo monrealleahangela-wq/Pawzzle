@@ -1,4 +1,6 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -40,13 +42,21 @@ test('renders predefined FAQ questions and answers in accessible expandable cont
   expect(accordions[0]).toHaveAttribute('open');
 
   FAQ_ITEMS.forEach(({ question, answer }) => {
-    expect(screen.getByText(question)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: question, level: 3 })).toHaveClass('landing-faq-question');
     expect(screen.getByText(answer)).toBeInTheDocument();
   });
 
   const secondSummary = accordions[1].querySelector('summary');
   fireEvent.click(secondSummary);
   expect(accordions[1]).toHaveAttribute('open');
+});
+
+test('keeps FAQ questions readable in dark mode and uses the compact presentation', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../../styles/Landing.css'), 'utf8');
+
+  expect(css).toMatch(/\.landing-page \.landing-faq-question\s*\{[^}]*color:\s*var\(--landing-brown-dark\)\s*!important;/);
+  expect(css).toMatch(/\.landing-faq-list summary\s*\{[^}]*min-height:\s*4\.35rem;/);
+  expect(css).toMatch(/\.landing-faq-intro h2\s*\{[^}]*font-size:\s*clamp\(2\.25rem,\s*3\.3vw,\s*3\.65rem\);/);
 });
 
 test('automatically generates matching FAQ metadata and landing-page navigation', async () => {
