@@ -3,6 +3,7 @@ import {
   firstInvalidStep,
   hydrateStoreApplicationForm,
   reconcileStoreApplicationErrors,
+  STORE_APPLICATION_FIELD_STEPS,
   validateStoreApplicationForm
 } from './storeApplicationForm';
 
@@ -83,6 +84,36 @@ test('missing fields map to the correct visible step', () => {
   expect(errors.businessName).toMatch(/required/i);
   expect(errors['contactInfo.address.coordinates']).toMatch(/location/i);
   expect(firstInvalidStep(errors)).toBe(1);
+});
+
+test('TIN and BIR profile errors belong to the store location step where those fields are shown', () => {
+  const data = complete();
+  data.taxProfile = {
+    birRegistrationStatus: 'registered',
+    tin: '',
+    branchCode: '',
+    registeredName: '',
+    lineOfBusiness: '',
+    declaredTaxStatus: '',
+    registeredAddress: {}
+  };
+  const errors = validateStoreApplicationForm(data, {
+    documentAvailability: {
+      businessRegistration: true,
+      mayorsPermit: true,
+      governmentId: true,
+      birRegistration: true,
+      storefrontPhotos: 2,
+      categoryDocuments: {}
+    }
+  });
+
+  expect(errors['taxProfile.tin']).toMatch(/required/i);
+  expect(firstInvalidStep(errors)).toBe(2);
+  const businessInfoErrors = Object.fromEntries(Object.entries(errors).filter(([field]) => (
+    (STORE_APPLICATION_FIELD_STEPS[field] ?? 1) === 1
+  )));
+  expect(businessInfoErrors).toEqual({});
 });
 
 test('editing a saved application preserves document requirements and reference details', () => {
