@@ -264,7 +264,6 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
     ['contactInfo.address.city', data.contactInfo?.address?.city, 'City or municipality is required.'],
     ['contactInfo.address.province', data.contactInfo?.address?.province || data.contactInfo?.address?.state, 'Province is required.'],
     ['contactInfo.address.zipCode', data.contactInfo?.address?.zipCode, 'Postal code is required.'],
-    ['businessRegistration.certificateNumber', data.businessRegistration?.certificateNumber, 'Registration number is required.'],
     ['businessRegistration.registeredName', data.businessRegistration?.registeredName, 'Registered name is required.'],
     ['declaration.applicantName', data.declaration?.applicantName, 'Applicant name is required.']
   ]) requireField(field, value, message);

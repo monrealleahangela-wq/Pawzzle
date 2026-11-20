@@ -138,6 +138,15 @@ test('business references are optional and do not block an otherwise complete ap
   assert.ok(!errors.some(error => error.field.startsWith('references')));
 });
 
+test('registration number is optional while the registration document remains required', () => {
+  const data = buildApplicationData(body(), '64b000000000000000000001');
+  data.businessRegistration.certificateNumber = '';
+  data.businessRegistration.documentUrl = 'secure://registration';
+  const errors = applicationValidationErrors(data);
+  assert.ok(!errors.some(error => error.field === 'businessRegistration.certificateNumber'));
+  assert.ok(!errors.some(error => error.field === 'businessRegistration'));
+});
+
 test('unregistered and pending BIR applicants are not required to submit TIN or Form 2303', () => {
   for (const birRegistrationStatus of ['not_registered', 'pending_registration']) {
     const data = buildApplicationData({
