@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const StockSyncService = require('../services/stockSyncService');
 const Inventory = require('../models/Inventory');
@@ -14,6 +15,7 @@ const {
 } = require('../utils/catalogListing');
 const { buildProductCategoryFilter, requireProductCategory } = require('../utils/productCategories');
 const { manualRestockBlockReason } = require('../utils/inventoryRestockingPolicy');
+const { getDirectStockEditIssue } = require('../utils/productStockPolicy');
 const { listCustomerVariants } = require('../services/customerProductVariantService');
 const {
   buildCustomerProductStockFilter,
@@ -381,13 +383,11 @@ const updateProduct = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. You do not have permission to update this asset.' });
     }
 
-    if (Object.prototype.hasOwnProperty.call(req.body, 'stockQuantity')
-        && Number(req.body.stockQuantity) !== Number(product.stockQuantity || 0)) {
-      return res.status(409).json({
-        code: 'PURCHASE_ORDER_RECEIVING_REQUIRED',
-        message: 'Stock is controlled by inventory receiving. Place a supplier order and complete receiving inspection to add stock.'
-      });
-    }
+    const hasRequestedStock = Object.prototype.hasOwnProperty.call(req.body, 'stockQuantity');
+    const requestedStock = hasRequestedStock ? Number(req.body.stockQuantity) : Number(product.stockQuantity || 0);
+    const stockChanged = hasRequestedStock && requestedStock !== Number(product.stockQuantity || 0);
+    const stockEditIssue = getDirectStockEditIssue({ product, requestedQuantity: requestedStock });
+    if (stockEditIssue) return res.status(409).json(stockEditIssue);
     if (Object.prototype.hasOwnProperty.call(req.body, 'unit')
         && String(req.body.unit || '') !== String(product.unit || 'piece')) {
       return res.status(409).json({
@@ -406,6 +406,10 @@ const updateProduct = async (req, res) => {
     const updateData = pickProductListingFields(req.body);
     delete updateData.unit;
     delete updateData.stockStatus;
+    if (stockChanged) {
+      updateData.stockQuantity = requestedStock;
+      updateData.stockStatus = requestedStock > 0 ? 'in_stock' : 'out_of_stock';
+    }
     if (Object.prototype.hasOwnProperty.call(updateData, 'category')) {
       updateData.category = requireProductCategory(updateData.category);
     }
@@ -469,15 +473,27 @@ const updateProduct = async (req, res) => {
       });
     }
     
-    // Explicitly update only mutable fields
-    Object.assign(product, updateData);
+    const saveProduct = async session => {
+      // Explicitly update only mutable fields
+      Object.assign(product, updateData);
 
-    // Ensure store resolution if missing
-    if (!product.store) {
-      product.store = await resolveAdminStore(req.user);
-    }
+      // Ensure store resolution if missing
+      if (!product.store) product.store = await resolveAdminStore(req.user);
 
-    await product.save();
+      if (session) product.$session(session);
+      await product.save(session ? { session } : undefined);
+      if (stockChanged) {
+        await StockSyncService.updateInventoryFromProduct(
+          product._id,
+          requestedStock,
+          product.store,
+          { session }
+        );
+      }
+    };
+
+    if (stockChanged) await mongoose.connection.transaction(saveProduct);
+    else await saveProduct();
 
     const updatedProduct = await Product.findById(product._id).populate('addedBy', 'username firstName lastName');
 

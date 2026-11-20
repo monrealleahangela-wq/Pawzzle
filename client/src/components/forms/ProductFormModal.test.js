@@ -73,10 +73,19 @@ test('new simple products accept a manual opening stock quantity', () => {
   expect(screen.getByText(/opening inventory balance/i)).toBeInTheDocument();
 });
 
-test('catalog editing cannot change authoritative stock or the established selling unit', () => {
+test('Store-added products allow direct stock edits while keeping the established selling unit locked', () => {
   render(<Harness editingProduct={{ _id: 'existing-product' }} />);
-  expect(screen.getByLabelText(/Stock Quantity/i)).toHaveAttribute('readonly');
+  const stock = screen.getByLabelText(/Stock Quantity/i);
+  expect(stock).not.toHaveAttribute('readonly');
+  fireEvent.change(stock, { target: { value: '18' } });
+  expect(stock).toHaveValue(18);
   expect(screen.getByRole('combobox', { name: /Selling Unit/i })).toBeDisabled();
-  expect(screen.getByText(/Use the stock workflow to change/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/Store-added product/i)).toHaveLength(2);
   expect(screen.getByText(/Locked because existing inventory and orders use this unit/i)).toBeInTheDocument();
+});
+
+test('supplier-sourced product stock stays locked until another purchase is received', () => {
+  render(<Harness editingProduct={{ _id: 'supplier-product', supplierProductRef: 'supplier-catalog-item' }} />);
+  expect(screen.getByLabelText(/Stock Quantity/i)).toHaveAttribute('readonly');
+  expect(screen.getByText(/repurchase and receive the item/i)).toBeInTheDocument();
 });

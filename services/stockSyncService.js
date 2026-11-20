@@ -43,30 +43,37 @@ class StockSyncService {
    * @param {number} newStock - New stock quantity
    * @param {string} storeId - Store ID (optional)
    */
-  static async updateInventoryFromProduct(productId, newStock, storeId = null) {
+  static async updateInventoryFromProduct(productId, newStock, storeId = null, options = {}) {
     try {
+      const { session } = options;
       if (storeId) {
         // Update specific store inventory
-        const inventory = await Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
+        const inventoryQuery = Inventory.findOne({ product: productId, store: storeId, productVariant: { $exists: false }, isActive: true });
+        const inventory = await (session ? inventoryQuery.session(session) : inventoryQuery);
 
         if (inventory) {
+          const previousStock = Number(inventory.quantity || 0);
           inventory.quantity = newStock;
-          inventory.lastRestocked = new Date();
-          await inventory.save();
+          if (Number(newStock) > previousStock) inventory.lastRestocked = new Date();
+          await inventory.save(session ? { session } : undefined);
         } else {
           // Create new inventory record if it doesn't exist
-          const product = await Product.findById(productId);
-          await Inventory.create({
+          const productQuery = Product.findById(productId);
+          const product = await (session ? productQuery.session(session) : productQuery);
+          const inventoryData = {
             product: productId,
             store: storeId,
             quantity: newStock,
             costPrice: product ? product.price : 0,
             isActive: true
-          });
+          };
+          if (session) await Inventory.create([inventoryData], { session });
+          else await Inventory.create(inventoryData);
         }
       } else {
         // For multi-store, distribute stock proportionally or update first store
-        const inventories = await Inventory.find({ product: productId, productVariant: { $exists: false }, isActive: true });
+        const inventoriesQuery = Inventory.find({ product: productId, productVariant: { $exists: false }, isActive: true });
+        const inventories = await (session ? inventoriesQuery.session(session) : inventoriesQuery);
 
         if (inventories.length === 0) {
           // No inventory records exist, create one with default store
@@ -75,9 +82,10 @@ class StockSyncService {
         }
 
         // Update the first inventory record (could be enhanced for multi-store logic)
+        const previousStock = Number(inventories[0].quantity || 0);
         inventories[0].quantity = newStock;
-        inventories[0].lastRestocked = new Date();
-        await inventories[0].save();
+        if (Number(newStock) > previousStock) inventories[0].lastRestocked = new Date();
+        await inventories[0].save(session ? { session } : undefined);
       }
     } catch (error) {
       console.error('Error updating inventory from product stock:', error);
