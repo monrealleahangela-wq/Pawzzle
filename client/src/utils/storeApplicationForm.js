@@ -68,11 +68,6 @@ export const createStoreApplicationForm = user => ({
     lineOfBusiness: '',
     declaredTaxStatus: ''
   },
-  subscriptionPreference: {
-    tier: 'growth',
-    billingInterval: 'monthly',
-    trialAcknowledged: false
-  },
   declaration: { accepted: false, applicantName: '' },
   contactInfo: {
     phone: user?.phone || '',
@@ -165,11 +160,6 @@ export const hydrateStoreApplicationForm = (application, user) => {
       birRegistrationStatus: 'registered',
       registeredAddress: { ...defaults.taxProfile.registeredAddress, ...registeredAddress }
     },
-    subscriptionPreference: {
-      ...defaults.subscriptionPreference,
-      ...(application?.subscriptionPreference || {}),
-      trialAcknowledged: application?.subscriptionPreference?.trialAcknowledged === true
-    },
     declaration: { accepted: false, applicantName: application?.declaration?.applicantName || defaults.declaration.applicantName },
     contactInfo: {
       ...defaults.contactInfo,
@@ -238,10 +228,6 @@ export const STORE_APPLICATION_FIELD_STEPS = {
   proofOfBusinessAddress: 3,
   categoryDocuments: 3,
   references: 5,
-  subscriptionPreference: 5,
-  'subscriptionPreference.tier': 5,
-  'subscriptionPreference.billingInterval': 5,
-  'subscriptionPreference.trialAcknowledged': 5,
   'declaration.applicantName': 5,
   'declaration.accepted': 5,
   ...Object.fromEntries(Object.values(CATEGORY_REQUIREMENTS).flat().map(requirement => [categoryDocumentField(requirement.key), 3]))
@@ -338,15 +324,6 @@ export const validateStoreApplicationForm = (data, { files = {}, documentAvailab
     ['taxProfile.registeredAddress.postalCode', data.taxProfile.registeredAddress?.postalCode, 'BIR registered postal code is required.']
   ]) requireField(field, value, message);
   if (!files.birRegistration && !documentAvailability.birRegistration) errors.birRegistration = 'BIR Form 2303 is required.';
-  if (!['starter', 'growth', 'professional'].includes(data.subscriptionPreference?.tier)) {
-    errors['subscriptionPreference.tier'] = 'Choose a Pawzzle subscription plan.';
-  }
-  if (!['monthly', 'annual'].includes(data.subscriptionPreference?.billingInterval)) {
-    errors['subscriptionPreference.billingInterval'] = 'Choose monthly or annual billing.';
-  }
-  if (data.subscriptionPreference?.trialAcknowledged !== true) {
-    errors['subscriptionPreference.trialAcknowledged'] = 'Confirm that you understand the Growth trial and payment terms.';
-  }
   if (data.declaration?.accepted !== true) errors['declaration.accepted'] = 'Accept the declaration before submitting.';
   return errors;
 };

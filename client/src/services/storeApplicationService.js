@@ -51,10 +51,7 @@ const storeApplicationService = {
   }),
 
   // Get user's application
-  getUserApplication: () => api.get('/store-applications/my-application'),
-
-  // Public paid-plan catalog used while an authenticated applicant prepares a store application.
-  getSubscriptionPlans: () => api.get('/stores/subscription-plans')
+  getUserApplication: () => api.get('/store-applications/my-application')
 };
 
 export default storeApplicationService;

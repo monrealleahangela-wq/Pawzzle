@@ -47,7 +47,6 @@ const body = () => ({
     registeredAddress: { street: 'Main St', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114', country: 'PH' }
   }),
   declaration: JSON.stringify({ accepted: true, applicantName: 'Store Owner' }),
-  subscriptionPreference: JSON.stringify({ tier: 'growth', billingInterval: 'monthly', trialAcknowledged: true }),
   references: JSON.stringify([
     { name: 'Reference One', business: 'One Corp', phone: '1', email: 'one@example.com' },
     { name: 'Reference Two', business: 'Two Corp', phone: '2', email: 'two@example.com' }
@@ -65,24 +64,23 @@ test('multipart application mappings preserve supported nested fields and staffi
   assert.equal(data.businessRegistration.registeredName, data.registeredBusinessName);
   assert.equal(data.businessLicense.expiryDate, '2027-12-31');
   assert.equal(data.barangayClearance.expiryDate, '2027-12-31');
-  const { selectedAt, ...preference } = data.subscriptionPreference;
-  assert.deepEqual(preference, { tier: 'growth', billingInterval: 'monthly', trialAcknowledged: true });
-  assert.ok(selectedAt instanceof Date);
+  assert.equal(data.subscriptionPreference, undefined);
 });
 
-test('store applications reject free plans and require explicit trial acknowledgement', () => {
+test('store applications do not collect or validate subscription choices', () => {
   const data = buildApplicationData({
     ...body(),
     subscriptionPreference: JSON.stringify({ tier: 'free', billingInterval: 'monthly', trialAcknowledged: false })
   }, '64b000000000000000000001');
   const errors = applicationValidationErrors(data);
-  assert.ok(errors.some(error => error.field === 'subscriptionPreference.tier'));
-  assert.ok(errors.some(error => error.field === 'subscriptionPreference.trialAcknowledged'));
+  assert.equal(data.subscriptionPreference, undefined);
+  assert.ok(!errors.some(error => error.field.startsWith('subscriptionPreference.')));
 });
 
-test('approved stores retain the applicant plan preference while starting the Growth trial', () => {
+test('approved stores start the Growth trial without an onboarding plan preference', () => {
   const controller = read('controllers/storeApplicationController.js');
-  assert.match(controller, /\.\.\.trialFields\(new Date\(\)\),[\s\S]*onboardingSubscriptionPreference: application\.subscriptionPreference/);
+  assert.match(controller, /\.\.\.trialFields\(new Date\(\)\)/);
+  assert.doesNotMatch(controller, /onboardingSubscriptionPreference: application\.subscriptionPreference/);
 });
 
 test('approved permit and barangay expiry dates seed compliance monitoring', () => {
