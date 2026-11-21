@@ -17,6 +17,7 @@ import { useRealTimeUpdates } from '../../hooks/useRealTimeUpdates';
 import { hasUiActionPermission } from '../../utils/authorization';
 import { buildOrderDeliveryTimeline, getOrderDeliveryStatus } from '../../utils/orderDeliveryStatus';
 import ReturnIssueModal from '../../components/returns/ReturnIssueModal';
+import { orderListPathForDetail } from '../../utils/orderNavigation';
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -61,6 +62,7 @@ const OrderDetail = () => {
   const orderRefundPolicy = normalizeRefundPolicy(order?.refundPolicySnapshot || order?.store?.refundPolicy);
   const checkoutBatchId = order?.checkoutBatch?._id || order?.checkoutBatch;
   const authoritativePaymentSummary = order ? orderPaymentSummary(order) : null;
+  const ordersListPath = orderListPathForDetail(location.pathname);
   const orderLineItems = useMemo(() => orderLineItemRows(order?.items), [order?.items]);
   const deliveryStatus = useMemo(() => getOrderDeliveryStatus(order), [order]);
   const deliveryTimeline = useMemo(() => buildOrderDeliveryTimeline(order), [order]);
@@ -503,7 +505,7 @@ const OrderDetail = () => {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Order not found</h2>
-        <Link to="/orders" className="btn btn-primary">
+        <Link to={ordersListPath} className="btn btn-primary">
           Back to Orders
         </Link>
       </div>
@@ -512,7 +514,7 @@ const OrderDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Link to="/orders" className="flex items-center text-primary-600 hover:text-primary-700">
+      <Link to={ordersListPath} className="flex items-center text-primary-600 hover:text-primary-700">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Orders
       </Link>
