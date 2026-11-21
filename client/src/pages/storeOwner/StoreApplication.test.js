@@ -9,7 +9,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../services/storeApplicationService', () => ({
   __esModule: true,
-  default: { getUserApplication: jest.fn(), getSubscriptionPlans: jest.fn(), submitApplication: jest.fn(), saveDraft: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
+  default: { getUserApplication: jest.fn(), submitApplication: jest.fn(), saveDraft: jest.fn(), submitExpansionRequest: jest.fn(), extractDocument: jest.fn() }
 }));
 jest.mock('../../components/OpenStreetMapLocationPicker', () => ({ onLocationSelected }) => (
   <button type="button" onClick={() => onLocationSelected({ street: 'Main', city: 'Dasmarinas', barangay: 'San Jose', zipCode: '4114', lat: 14.3, lng: 120.9 })}>
@@ -25,7 +25,6 @@ jest.mock('react-toastify', () => ({ toast: { error: jest.fn(), success: jest.fn
 beforeEach(() => {
   jest.clearAllMocks();
   storeApplicationService.getUserApplication.mockResolvedValue({ data: { application: null } });
-  storeApplicationService.getSubscriptionPlans.mockResolvedValue({ data: { plans: [] } });
 });
 test('all six required sections remain reachable on the responsive canonical form', async () => {
   render(<StoreApplication />);
@@ -66,11 +65,8 @@ test('all six required sections remain reachable on the responsive canonical for
   expect(screen.getByText(/store payout details/i)).toBeVisible();
 
   fireEvent.click(screen.getByRole('button', { name: /review & submit/i }));
-  expect(screen.getByRole('heading', { name: /choose the plan you prefer after your trial/i })).toBeVisible();
-  expect(screen.getByText(/there is no charge today/i)).toBeVisible();
-  expect(screen.queryByText(/^Free$/i)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /choose starter/i }));
-  expect(screen.getByRole('button', { name: /Pawzzle Starter/i })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByText(/choose the plan you prefer/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/selected plan/i)).not.toBeInTheDocument();
   expect(screen.getByLabelText(/your full legal name/i)).toBeVisible();
   const declarationCheckbox = screen.getByRole('checkbox', { name: /i confirm that all information/i });
   expect(declarationCheckbox).toHaveClass('mt-0.5');

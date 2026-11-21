@@ -25,7 +25,6 @@ const complete = () => ({
   businessRegistration: { authority: 'dti', certificateNumber: 'DTI-1', registeredName: 'Pawzzle Store', registrationDate: '', expirationDate: '' },
   taxProfile: { birRegistrationStatus: 'registered', tin: '123-456-789', branchCode: '000', registeredName: 'Pawzzle Store', lineOfBusiness: 'Pet supplies', declaredTaxStatus: 'non_vat_registered', registeredAddress: { street: 'Main', barangay: 'San Jose', city: 'Dasmarinas', province: 'Cavite', postalCode: '4114' } },
   declaration: { accepted: true, applicantName: 'Store Owner' },
-  subscriptionPreference: { tier: 'growth', billingInterval: 'monthly', trialAcknowledged: true },
   references: [
     { name: 'One', business: 'One Co', phone: '1', email: 'one@example.com' },
     { name: 'Two', business: 'Two Co', phone: '2', email: 'two@example.com' }
@@ -62,19 +61,14 @@ test('valid application accepts retained registration evidence without a replace
   })).toEqual({});
 });
 
-test('subscription preference is required and remains on the final review step', () => {
-  const data = complete();
-  data.subscriptionPreference = { tier: 'free', billingInterval: 'weekly', trialAcknowledged: false };
-  const errors = validateStoreApplicationForm(data, {
+test('store application does not require a subscription choice', () => {
+  const errors = validateStoreApplicationForm(complete(), {
     documentAvailability: {
       businessRegistration: true, mayorsPermit: true, governmentId: true, birRegistration: true,
       storefrontPhotos: 2, categoryDocuments: {}
     }
   });
-  expect(errors['subscriptionPreference.tier']).toMatch(/choose/i);
-  expect(errors['subscriptionPreference.billingInterval']).toMatch(/monthly or annual/i);
-  expect(errors['subscriptionPreference.trialAcknowledged']).toMatch(/trial/i);
-  expect(firstInvalidStep(errors)).toBe(5);
+  expect(errors).toEqual({});
 });
 
 test('registration number is optional when registration evidence is uploaded or retained', () => {

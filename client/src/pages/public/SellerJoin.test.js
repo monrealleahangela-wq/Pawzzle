@@ -48,6 +48,9 @@ test('seller join shows the canonical application journey without duplicating th
   expect(screen.getByText(/before you begin/i)).toHaveClass('!text-primary-200');
   expect(screen.getByRole('region', { name: /verified personal identity/i })).toBeInTheDocument();
   expect(screen.getByPlaceholderText(/create a secure password/i)).toHaveClass('store-field-with-action');
+  expect(screen.getByRole('heading', { name: /see pawzzle seller plans before you apply/i })).toBeVisible();
+  expect(screen.getByText(/plan preview only/i)).toBeVisible();
+  expect(screen.queryByRole('button', { name: /choose starter|choose growth|choose professional/i })).not.toBeInTheDocument();
 });
 
 test('new seller account proceeds from account details to email verification', async () => {

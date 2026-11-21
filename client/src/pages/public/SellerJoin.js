@@ -5,6 +5,7 @@ import { ArrowRight, BadgeCheck, Eye, EyeOff, LockKeyhole, Mail, RefreshCw, Shie
 import { useAuth } from '../../contexts/AuthContext';
 import authService from '../../services/authService';
 import StoreApplicationJourney from '../../components/stores/StoreApplicationJourney';
+import StorePlanPreview from '../../components/stores/StorePlanPreview';
 import IdentityRegistrationFields from '../../components/auth/IdentityRegistrationFields';
 import useGovernmentIdDocument from '../../hooks/useGovernmentIdDocument';
 import { isGovernmentIdConfirmed } from '../../utils/governmentIdRegistration';
@@ -147,6 +148,8 @@ const SellerJoin = () => {
     <main className="min-h-screen bg-gradient-to-b from-primary-50/60 via-white to-slate-50 px-4 py-6 sm:px-6 sm:py-10 lg:py-14">
       <div className="mx-auto max-w-6xl space-y-6">
         <StoreApplicationJourney activeStage={step === 1 ? 'account' : 'verify'} />
+
+        <StorePlanPreview />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section className="overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-xl shadow-slate-200/40 sm:rounded-[2.5rem]">
