@@ -353,7 +353,7 @@ const ProductInventory = () => {
         }));
       }
       if (editingProduct) {
-        delete payload.stockQuantity;
+        if (editingProduct.supplierProductRef || editingProduct.productMode === 'variant') delete payload.stockQuantity;
         delete payload.stockStatus;
         delete payload.unit;
       }
@@ -1166,10 +1166,10 @@ const ProductInventory = () => {
                         <div className="p-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-2 duration-300">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Stock Quantity</label>
-                             <input aria-label="Stock Quantity" required={!editingProduct} type="number" min="0" step="1" readOnly={Boolean(editingProduct)} value={productForm.stockQuantity ?? 0}
+                             <input aria-label="Stock Quantity" required={!editingProduct} type="number" min="0" step="1" readOnly={Boolean(editingProduct?.supplierProductRef)} value={productForm.stockQuantity ?? 0}
                                onChange={(e) => setProductForm({ ...productForm, stockQuantity: e.target.value })}
-                               className={`w-full rounded-xl border-2 border-slate-100 px-5 py-3.5 text-[12px] font-black text-slate-700 ${editingProduct ? 'cursor-not-allowed bg-slate-100' : 'bg-white focus:border-primary-500 focus:outline-none'}`} />
-                             <p className="px-1 text-[9px] leading-relaxed text-slate-500">{editingProduct ? 'Use the stock workflow to change the current inventory balance.' : 'Enter the units currently on hand as the opening inventory balance.'}</p>
+                               className={`w-full rounded-xl border-2 border-slate-100 px-5 py-3.5 text-[12px] font-black text-slate-700 ${editingProduct?.supplierProductRef ? 'cursor-not-allowed bg-slate-100' : 'bg-white focus:border-primary-500 focus:outline-none'}`} />
+                             <p className="px-1 text-[9px] leading-relaxed text-slate-500">{editingProduct?.supplierProductRef ? 'Supplier-sourced stock changes only after you repurchase and receive the item.' : editingProduct ? 'Update the units currently on hand for this Store-added product.' : 'Enter the units currently on hand as the opening inventory balance.'}</p>
                           </div>
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>

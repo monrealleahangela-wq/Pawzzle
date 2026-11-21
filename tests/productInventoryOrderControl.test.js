@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 
-test('new products accept opening stock while later catalog edits cannot overwrite inventory', () => {
+test('new products and Store-added product edits accept stock while supplier stock stays receiving-controlled', () => {
   const controller = read('controllers/productController.js');
   const adminRoutes = read('routes/adminProducts.js');
   assert.match(controller, /const initialStock = Number\(req\.body\.stockQuantity \?\? 0\)/);
@@ -14,8 +14,9 @@ test('new products accept opening stock while later catalog edits cannot overwri
   assert.match(controller, /initializeInventoryForProduct\(product\._id, storeId, initialStock\)/);
   assert.match(controller, /Inventory\.deleteOne[\s\S]*Product\.deleteOne[\s\S]*throw inventoryError/);
   assert.match(adminRoutes, /body\('stockQuantity'\)\.optional\(\)\.isInt\(\{ min: 0 \}\)/);
-  assert.match(controller, /Number\(req\.body\.stockQuantity\)[\s\S]*Number\(product\.stockQuantity \|\| 0\)/);
-  assert.match(controller, /Stock is controlled by inventory receiving/);
+  assert.match(controller, /getDirectStockEditIssue/);
+  assert.match(controller, /updateInventoryFromProduct/);
+  assert.match(controller, /mongoose\.connection\.transaction/);
 });
 
 test('the established selling unit and calculated availability are immutable catalog fields', () => {
@@ -29,16 +30,16 @@ test('the established selling unit and calculated availability are immutable cat
   assert.match(variantController, /PRODUCT_UNIT_LOCKED/);
 });
 
-test('product editors accept opening stock but omit inventory-controlled fields during later edits', () => {
+test('product editors allow Store stock edits and omit supplier-controlled stock', () => {
   const page = read('client/src/pages/admin/ProductInventory.js');
   const compactForm = read('client/src/components/forms/ProductFormModal.js');
-  assert.match(page, /delete payload\.stockQuantity/);
+  assert.match(page, /editingProduct\.supplierProductRef[\s\S]*delete payload\.stockQuantity/);
   assert.match(page, /delete payload\.stockStatus/);
   assert.match(page, /delete payload\.unit/);
-  assert.match(page, /aria-label="Stock Quantity" required=\{!editingProduct\}[\s\S]*readOnly=\{Boolean\(editingProduct\)\}/);
+  assert.match(page, /aria-label="Stock Quantity" required=\{!editingProduct\}[\s\S]*readOnly=\{Boolean\(editingProduct\?\.supplierProductRef\)\}/);
   assert.match(page, /\{product\.stockQuantity \|\| 0\} \{product\.unit \|\| 'unit'\}/);
   assert.match(compactForm, /This becomes the opening inventory balance/);
-  assert.match(compactForm, /readOnly=\{Boolean\(editingProduct\)\}/);
+  assert.match(compactForm, /readOnly=\{supplierManagedStock\}/);
   assert.match(compactForm, /disabled=\{Boolean\(editingProduct\)\}/);
   assert.match(compactForm, /set\('stockQuantity'/);
   assert.match(page, /aria-label=\{`Variant \$\{i \+ 1\} stock`\} readOnly/);
