@@ -255,7 +255,6 @@ const AdminDSS = () => {
                         <div className="p-2 bg-primary-600/20 rounded-2xl backdrop-blur-md border border-primary-500/30">
                             <Brain size={20} className="text-primary-400" />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.35em] text-primary-400">Store Decision Support</span>
                     </div>
 
                     <div className="max-w-3xl">
